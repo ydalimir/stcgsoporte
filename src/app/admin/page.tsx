@@ -1,65 +1,41 @@
+
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
 import { TicketTable } from "@/components/admin/ticket-table";
 import { LayoutDashboard, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isLoading, isAdmin } = useAuth();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
-            const userDocRef = doc(db, "users", user.uid);
-            const userDoc = await getDoc(userDocRef);
-
-            if (userDoc.exists() && userDoc.data().role === 'admin') {
-              setIsAdmin(true);
-            } else {
-              toast({
-                title: "Access Denied",
-                description: "You do not have permission to view this page.",
-                variant: "destructive",
-              });
-              router.push("/");
-            }
-        } catch (error) {
-            console.error("Error fetching user role:", error);
-            toast({
-                title: "Authentication Error",
-                description: "Could not verify your user role. Please try again later.",
-                variant: "destructive",
-            });
-            router.push("/");
-        }
-      } else {
+    if (!isLoading) {
+      if (!user) {
+        // If not logged in, redirect to login page
         router.push("/login");
+      } else if (!isAdmin) {
+        // If logged in but not an admin, show error and redirect to home
+        toast({
+          title: "Access Denied",
+          description: "You do not have permission to view this page.",
+          variant: "destructive",
+        });
+        router.push("/");
       }
-      setIsLoading(false);
-    });
+    }
+  }, [user, isLoading, isAdmin, router, toast]);
 
-    return () => unsubscribe();
-  }, [router, toast]);
-
-  if (isLoading) {
+  if (isLoading || !isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
-  }
-
-  if (!isAdmin) {
-    return null; // or a message, but we are redirecting
   }
 
   return (
