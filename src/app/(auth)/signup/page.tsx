@@ -1,37 +1,46 @@
 "use client";
 
 import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogIn, Loader2 } from "lucide-react";
+import { UserPlus, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
-export default function LoginPage() {
+export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleSignIn = async () => {
+  const handleSignUp = async () => {
     setIsSubmitting(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Add user to Firestore with default role
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        role: "user", // Default role
+      });
+
       toast({
-        title: "Login Successful",
-        description: "You have been successfully logged in.",
+        title: "Account Created",
+        description: "Your account has been successfully created.",
       });
       router.push("/");
     } catch (error: any) {
-      console.error("Error signing in: ", error);
+      console.error("Error signing up: ", error);
       toast({
-        title: "Login Failed",
+        title: "Sign Up Failed",
         description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
@@ -45,10 +54,10 @@ export default function LoginPage() {
       <Card className="w-full max-w-md mx-4">
         <CardHeader className="text-center">
           <div className="mx-auto w-fit mb-4">
-             <LogIn className="w-10 h-10 text-primary"/>
+             <UserPlus className="w-10 h-10 text-primary"/>
           </div>
-          <CardTitle className="text-2xl font-headline">Welcome Back</CardTitle>
-          <CardDescription>Enter your credentials to access your account.</CardDescription>
+          <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
+          <CardDescription>Enter your email and password to get started.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -74,12 +83,12 @@ export default function LoginPage() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          <Button className="w-full" onClick={handleSignIn} disabled={isSubmitting}>
+          <Button className="w-full" onClick={handleSignUp} disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isSubmitting ? "Signing In..." : "Sign In"}
+            {isSubmitting ? "Creating Account..." : "Sign Up"}
           </Button>
           <p className="text-xs text-muted-foreground text-center">
-             Don't have an account? <Link href="/signup" className="underline hover:text-primary">Sign up</Link>
+             Already have an account? <Link href="/login" className="underline hover:text-primary">Log in</Link>
           </p>
         </CardFooter>
       </Card>

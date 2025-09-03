@@ -23,6 +23,7 @@ import {
 
 const navLinks = [
   { href: '/services', label: 'Services' },
+  { href: '/tickets/new', label: 'Submit Ticket' },
   { href: '/faq', label: 'FAQ' },
   { href: '/quote', label: 'Request a Quote' },
 ];
@@ -117,13 +118,15 @@ export function Header() {
           {user ? (
             <UserMenu />
           ) : (
-            <Button variant="outline" asChild>
-              <Link href="/login">Login</Link>
-            </Button>
+            <>
+              <Button variant="outline" asChild>
+                <Link href="/login">Login</Link>
+              </Button>
+              <Button asChild className="bg-accent hover:bg-accent/90">
+                <Link href="/signup">Sign Up</Link>
+              </Button>
+            </>
           )}
-          <Button asChild className="bg-accent hover:bg-accent/90">
-            <Link href="/tickets/new">Submit Ticket</Link>
-          </Button>
         </div>
 
         <div className="md:hidden">
@@ -173,13 +176,15 @@ export function Header() {
                        <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
                     </div>
                   ) : (
-                    <Button variant="outline" asChild>
-                      <Link href="/login">Login</Link>
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" asChild className="w-full">
+                        <Link href="/login">Login</Link>
+                      </Button>
+                       <Button asChild className="bg-accent hover:bg-accent/90 w-full">
+                        <Link href="/signup">Sign Up</Link>
+                      </Button>
+                    </div>
                   )}
-                  <Button asChild className="bg-accent hover:bg-accent/90">
-                    <Link href="/tickets/new">Submit Ticket</Link>
-                  </Button>
                 </div>
               </div>
             </SheetContent>

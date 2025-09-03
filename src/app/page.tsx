@@ -55,7 +55,7 @@ export default function Home() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Button asChild size="lg" className="bg-accent hover:bg-accent/90">
-                <Link href="/tickets/new">Submit a Ticket</Link>
+                <Link href="/signup">Get Started</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
                 <Link href="/services">View Services</Link>
