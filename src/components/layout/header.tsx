@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, User, Shield } from 'lucide-react';
+import { Menu, User } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -11,7 +11,7 @@ import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from "firebase/firestore";
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,7 +39,8 @@ export function Header() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+        const userDocRef = doc(db, "users", currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
         if (userDoc.exists() && userDoc.data().role === 'admin') {
           setIsAdmin(true);
         } else {
@@ -112,6 +113,17 @@ export function Header() {
               {link.label}
             </Link>
           ))}
+           {isAdmin && (
+            <Link
+              href="/admin"
+              className={cn(
+                'text-sm font-medium transition-colors hover:text-primary',
+                pathname === '/admin' ? 'text-primary' : 'text-muted-foreground'
+              )}
+            >
+              Admin
+            </Link>
+          )}
         </nav>
 
         <div className="hidden md:flex items-center gap-2">
