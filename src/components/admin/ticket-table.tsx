@@ -2,10 +2,10 @@
 
 import * as React from "react"
 import {
-  CaretSortIcon,
-  ChevronDownIcon,
-  DotsHorizontalIcon,
-} from "@radix-ui/react-icons"
+  ArrowUpDown,
+  ChevronDown,
+  MoreHorizontal,
+} from "lucide-react"
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -126,7 +126,7 @@ export const columns: ColumnDef<Ticket>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           User
-          <CaretSortIcon className="ml-2 h-4 w-4" />
+          <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       )
     },
@@ -177,7 +177,7 @@ export const columns: ColumnDef<Ticket>[] = [
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
               <span className="sr-only">Open menu</span>
-              <DotsHorizontalIcon className="h-4 w-4" />
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -233,7 +233,7 @@ export function TicketTable() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
-              Columns <ChevronDownIcon className="ml-2 h-4 w-4" />
+              Columns <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
