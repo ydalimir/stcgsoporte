@@ -3,22 +3,77 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, Wrench } from 'lucide-react';
+import { Menu, User } from 'lucide-react';
 import { Logo } from '@/components/logo';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const navLinks = [
   { href: '/services', label: 'Services' },
   { href: '/faq', label: 'FAQ' },
   { href: '/quote', label: 'Request a Quote' },
-  { href: '/admin', label: 'Admin' },
 ];
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isSheetOpen, setSheetOpen] = React.useState(false);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    await auth.signOut();
+    router.push('/');
+  };
+
+  const UserMenu = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback>
+              <User className="h-5 w-5" />
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">My Account</p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {user?.email}
+            </p>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/profile">Profile</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleSignOut}>
+          Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-sm">
@@ -41,9 +96,13 @@ export function Header() {
         </nav>
 
         <div className="hidden md:flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/login">Login</Link>
-          </Button>
+          {user ? (
+            <UserMenu />
+          ) : (
+            <Button variant="outline" asChild>
+              <Link href="/login">Login</Link>
+            </Button>
+          )}
           <Button asChild className="bg-accent hover:bg-accent/90">
             <Link href="/tickets/new">Submit Ticket</Link>
           </Button>
@@ -78,9 +137,16 @@ export function Header() {
                   ))}
                 </nav>
                 <div className="mt-auto p-4 border-t flex flex-col gap-4">
-                  <Button variant="outline" asChild>
-                    <Link href="/login">Login</Link>
-                  </Button>
+                  {user ? (
+                    <div className='flex items-center justify-between'>
+                       <p className="text-sm text-muted-foreground">{user.email}</p>
+                       <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
+                    </div>
+                  ) : (
+                    <Button variant="outline" asChild>
+                      <Link href="/login">Login</Link>
+                    </Button>
+                  )}
                   <Button asChild className="bg-accent hover:bg-accent/90">
                     <Link href="/tickets/new">Submit Ticket</Link>
                   </Button>
