@@ -7,20 +7,39 @@ import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { TicketTable } from "@/components/admin/ticket-table";
 import { LayoutDashboard, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists() && userDoc.data().role === 'admin') {
-          setIsAdmin(true);
-        } else {
-          router.push("/"); 
+        try {
+            const userDocRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (userDoc.exists() && userDoc.data().role === 'admin') {
+              setIsAdmin(true);
+            } else {
+              toast({
+                title: "Access Denied",
+                description: "You do not have permission to view this page.",
+                variant: "destructive",
+              });
+              router.push("/");
+            }
+        } catch (error) {
+            console.error("Error fetching user role:", error);
+            toast({
+                title: "Authentication Error",
+                description: "Could not verify your user role. Please try again later.",
+                variant: "destructive",
+            });
+            router.push("/");
         }
       } else {
         router.push("/login");
@@ -29,7 +48,7 @@ export default function AdminDashboardPage() {
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, toast]);
 
   if (isLoading) {
     return (
