@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, User } from 'lucide-react';
+import { Menu, User, Shield } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -31,10 +32,21 @@ export function Header() {
   const router = useRouter();
   const [isSheetOpen, setSheetOpen] = React.useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+        if (userDoc.exists() && userDoc.data().role === 'admin') {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -68,6 +80,12 @@ export function Header() {
         <DropdownMenuItem asChild>
           <Link href="/profile">Profile</Link>
         </DropdownMenuItem>
+        {isAdmin && (
+           <DropdownMenuItem asChild>
+             <Link href="/admin">Admin</Link>
+           </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>
           Sign out
         </DropdownMenuItem>
@@ -135,10 +153,22 @@ export function Header() {
                       {link.label}
                     </Link>
                   ))}
+                  {isAdmin && (
+                     <Link
+                        href="/admin"
+                        onClick={() => setSheetOpen(false)}
+                        className={cn(
+                          'text-lg font-medium transition-colors hover:text-primary',
+                           pathname === '/admin' ? 'text-primary' : 'text-foreground'
+                        )}
+                      >
+                        Admin
+                      </Link>
+                  )}
                 </nav>
                 <div className="mt-auto p-4 border-t flex flex-col gap-4">
                   {user ? (
-                    <div className='flex items-center justify-between'>
+                     <div className='flex items-center justify-between'>
                        <p className="text-sm text-muted-foreground">{user.email}</p>
                        <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
                     </div>
