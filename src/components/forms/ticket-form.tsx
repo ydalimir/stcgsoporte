@@ -47,6 +47,7 @@ const ticketSchema = z.object({
     required_error: "Por favor seleccione un nivel de urgencia.",
   }),
   price: z.number().optional(),
+  quantity: z.coerce.number().min(1, "La cantidad debe ser al menos 1.").optional(),
   // New client fields
   clientName: z.string().min(1, { message: "El nombre es obligatorio." }),
   clientPhone: z.string().min(10, { message: "El teléfono debe tener al menos 10 dígitos." }),
@@ -71,6 +72,7 @@ export function TicketForm() {
       equipmentType: "",
       serviceType: undefined,
       urgency: "media",
+      quantity: 1,
       clientName: "",
       clientPhone: "",
       clientAddress: "",
@@ -78,6 +80,10 @@ export function TicketForm() {
       clientRfc: "",
     },
   });
+
+  const unitPrice = form.watch('price');
+  const quantity = form.watch('quantity');
+  const estimatedTotal = (unitPrice || 0) * (quantity || 1);
 
   useEffect(() => {
     const serviceType = searchParams.get('serviceType');
@@ -126,8 +132,10 @@ export function TicketForm() {
 
     setIsSubmitting(true);
     try {
+        const finalPrice = data.price ? data.price * (data.quantity || 1) : undefined;
         await addDoc(collection(db, "tickets"), {
             ...data,
+            price: finalPrice, // Save the calculated total price
             userId: user.uid,
             status: "Recibido",
             createdAt: serverTimestamp(),
@@ -222,6 +230,27 @@ export function TicketForm() {
                 </FormItem>
             )}
             />
+
+            {unitPrice && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <FormField control={form.control} name="quantity" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Cantidad</FormLabel>
+                            <FormControl><Input type="number" min={1} {...field}/></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormItem>
+                        <FormLabel>Precio por Unidad</FormLabel>
+                        <FormControl><Input value={`$${unitPrice.toFixed(2)} MXN`} readOnly /></FormControl>
+                    </FormItem>
+                     <FormItem>
+                        <FormLabel>Total Estimado</FormLabel>
+                        <FormControl><Input value={`$${estimatedTotal.toFixed(2)} MXN`} readOnly /></FormControl>
+                    </FormItem>
+                </div>
+            )}
+
             <FormField
             control={form.control}
             name="description"

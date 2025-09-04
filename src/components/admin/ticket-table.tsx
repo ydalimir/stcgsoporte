@@ -191,6 +191,14 @@ export function TicketTable() {
         header: "Asunto / Equipo",
         cell: ({ row }) => <div>{row.getValue("equipmentType")}</div>,
       },
+       {
+        accessorKey: "price",
+        header: "Precio",
+        cell: ({ row }) => {
+          const price = row.getValue("price") as number | undefined;
+          return price ? `$${price.toFixed(2)}` : "N/A";
+        },
+      },
       {
         accessorKey: "createdAt",
         header: ({ column }) => (
