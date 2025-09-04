@@ -82,7 +82,11 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
     if (!quote.items || quote.items.length === 0) {
       throw new Error("La cotización no tiene items.");
     }
-  
+    
+    // Create a detailed description from quote items
+    const itemsDescription = quote.items.map(item => `${item.quantity} x ${item.description}`).join(', ');
+    const finalDescription = `${itemsDescription}. --- OBSERVACIONES: ${quote.policies || 'Ninguna.'}`;
+
     const ticketData = {
       clientName: quote.clientName,
       clientPhone: quote.clientPhone, 
@@ -90,8 +94,8 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
       clientEmail: "N/A", 
       clientRfc: quote.rfc || "N/A",
       serviceType: "correctivo" as "correctivo" | "preventivo", 
-      equipmentType: quote.items.map(item => item.description).join(', '),
-      description: `Servicio basado en cotización #${String(quote.quoteNumber).padStart(3, '0')}. ${quote.policies || ''}`,
+      equipmentType: `Servicio desde cotización #${String(quote.quoteNumber).padStart(3, '0')}`,
+      description: finalDescription,
       urgency: "media" as "baja" | "media" | "alta",
       status: "Recibido",
       createdAt: serverTimestamp(),
@@ -212,7 +216,7 @@ export function QuoteManager() {
     return () => unsubscribe();
   }, [toast]);
 
-  const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'quoteNumber'> & {quoteNumber?: number}) => {
+  const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'quoteNumber'>) => {
     try {
         if (selectedQuote) {
             // Update existing quote
@@ -466,5 +470,3 @@ export function QuoteManager() {
     </div>
   );
 }
-
-    

@@ -271,7 +271,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
             </div>
 
             <FormField name="policies" control={form.control} render={({ field }) => (
-              <FormItem><FormLabel>Políticas y Términos</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem><FormLabel>Políticas y Términos (Observaciones)</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             
              <div className="flex justify-end">
@@ -312,5 +312,3 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     </Dialog>
   );
 }
-
-    
