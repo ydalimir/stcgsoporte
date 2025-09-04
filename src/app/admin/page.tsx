@@ -6,13 +6,14 @@ import { useRouter } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { TicketTable } from "@/components/admin/ticket-table";
-import { LayoutDashboard, Loader2, List, Wrench, FileText } from "lucide-react";
+import { LayoutDashboard, Loader2, List, Wrench, FileText, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ServiceManager } from "@/components/admin/service-manager";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { QuoteManager } from "@/components/admin/quote-manager";
+import { SparePartsManager } from "@/components/admin/spare-parts-manager";
 
 
 export default function AdminDashboardPage() {
@@ -81,7 +82,7 @@ export default function AdminDashboardPage() {
         </div>
         
         <Tabs defaultValue="tickets" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="tickets">
               <List className="mr-2"/>
               Tickets
@@ -93,6 +94,10 @@ export default function AdminDashboardPage() {
             <TabsTrigger value="quotes">
               <FileText className="mr-2"/>
               Cotizaciones
+            </TabsTrigger>
+            <TabsTrigger value="spare-parts">
+              <Package className="mr-2"/>
+              Refacciones
             </TabsTrigger>
           </TabsList>
           
@@ -128,6 +133,18 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent>
                 <QuoteManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="spare-parts">
+             <Card>
+              <CardHeader>
+                <CardTitle>Gestión de Refacciones</CardTitle>
+                <CardDescription>Añadir, editar y eliminar refacciones del inventario.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SparePartsManager />
               </CardContent>
             </Card>
           </TabsContent>
