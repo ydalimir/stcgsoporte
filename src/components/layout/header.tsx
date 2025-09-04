@@ -8,8 +8,9 @@ import { Menu, User } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import React from 'react';
-import { auth } from '@/lib/firebase';
+import React, { useEffect, useState } from 'react';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -32,7 +33,29 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const [isSheetOpen, setSheetOpen] = React.useState(false);
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    // Reset admin state on user change
+    setIsAdmin(false);
+
+    if (user) {
+      const checkAdminRole = async () => {
+        try {
+          const userDocRef = doc(db, "users", user.uid);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists() && userDoc.data().role === 'admin') {
+            setIsAdmin(true);
+          }
+        } catch (error) {
+          console.error("Could not check admin role, maybe offline:", error);
+          setIsAdmin(false);
+        }
+      };
+      checkAdminRole();
+    }
+  }, [user]);
 
 
   const handleSignOut = async () => {

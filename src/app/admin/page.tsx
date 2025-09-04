@@ -1,8 +1,10 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { TicketTable } from "@/components/admin/ticket-table";
 import { LayoutDashboard, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -11,28 +13,58 @@ import { useAuth } from "@/hooks/use-auth";
 export default function AdminDashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, isLoading, isAdmin } = useAuth();
+  const { user, isLoading: authIsLoading } = useAuth();
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
-        // If not logged in, redirect to login page
-        router.push("/login");
-      } else if (!isAdmin) {
-        // If logged in but not an admin, show error and redirect to home
+    // No hacer nada hasta que la autenticación inicial termine.
+    if (authIsLoading) {
+      return;
+    }
+
+    // Si no hay usuario, redirigir a login.
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    // Si hay usuario, verificar su rol desde Firestore.
+    const checkAdminRole = async () => {
+      try {
+        const userDocRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        const userRole = userDoc.exists() ? userDoc.data().role : 'user';
+        
+        if (userRole === 'admin') {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+          toast({
+            title: "Acceso Denegado",
+            description: "No tienes permiso para ver esta página.",
+            variant: "destructive",
+          });
+          router.push("/");
+        }
+      } catch (error) {
+        console.error("Error fetching user role:", error);
+        setIsAdmin(false);
         toast({
-          title: "Access Denied",
-          description: "You do not have permission to view this page.",
+          title: "Error de Permisos",
+          description: "No se pudo verificar tu rol. Es posible que no tengas conexión.",
           variant: "destructive",
         });
         router.push("/");
       }
-    }
-  }, [user, isLoading, isAdmin, router, toast]);
+    };
 
-  // Show a loader while we are verifying auth and role.
-  // This will prevent rendering the page content before we know if the user is an admin.
-  if (isLoading || !isAdmin) {
+    checkAdminRole();
+
+  }, [user, authIsLoading, router, toast]);
+
+  // Mostrar un loader mientras se carga la autenticación O se verifica el rol.
+  if (authIsLoading || isAdmin === null) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -40,7 +72,8 @@ export default function AdminDashboardPage() {
     );
   }
 
-  // At this point, we know the user is an admin.
+  // En este punto, sabemos que el usuario es un admin.
+  // Si no lo fuera, ya habría sido redirigido.
   return (
     <div className="container mx-auto px-4 py-10">
       <div className="flex items-center gap-4 mb-8">
