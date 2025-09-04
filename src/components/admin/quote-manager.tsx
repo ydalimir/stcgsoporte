@@ -50,6 +50,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { Badge } from "../ui/badge";
 
 
 export type QuoteItem = {
@@ -113,11 +114,15 @@ export function QuoteManager() {
         const quotesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
         setQuotes(quotesData);
         setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching quotes:", error);
+        toast({ title: "Error al cargar", description: "No se pudieron cargar las cotizaciones.", variant: "destructive"});
+        setIsLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [toast]);
 
-  const handleSave = async (quoteData: Omit<Quote, 'id'>) => {
+  const handleSave = async (quoteData: Omit<Quote, 'id' | 'total'> & { total: number }) => {
     try {
         if (selectedQuote) {
             const quoteDoc = doc(db, "quotes", selectedQuote.id);
@@ -191,11 +196,12 @@ export function QuoteManager() {
       foot: [['', '', 'Total', `$${quote.total.toFixed(2)}`]],
       headStyles: { fillColor: [46, 154, 254] },
       didDrawPage: (data) => {
-        yPos = data.cursor?.y || 0;
+        const cursorY = data.cursor?.y;
+        if(cursorY) yPos = cursorY;
       }
     });
 
-    yPos += 10;
+    yPos = (doc as any).lastAutoTable.finalY + 10;
 
     if (quote.policies) {
         doc.setFontSize(10);
@@ -376,3 +382,5 @@ export function QuoteManager() {
     </div>
   );
 }
+
+    
