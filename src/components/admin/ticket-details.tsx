@@ -10,9 +10,10 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
-import { Download } from "lucide-react";
+import { Download, ChevronDown } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
 type TicketDetailsProps = {
   ticket: Ticket;
@@ -85,6 +86,20 @@ export function TicketDetails({ ticket }: TicketDetailsProps) {
             toast({ title: "Error", description: "No se pudo actualizar el estado.", variant: "destructive" });
         }
     };
+    
+    const updateUrgency = async (newUrgency: Ticket['urgency']) => {
+        const ticketRef = doc(db, "tickets", ticket.id);
+        try {
+            await updateDoc(ticketRef, { urgency: newUrgency });
+            toast({
+                title: "Urgencia Actualizada",
+                description: `La urgencia del ticket se ha cambiado a ${newUrgency}.`,
+            });
+        } catch (error) {
+            console.error("Error updating urgency:", error);
+            toast({ title: "Error", description: "No se pudo actualizar la urgencia.", variant: "destructive" });
+        }
+    };
 
   return (
     <Card>
@@ -124,15 +139,28 @@ export function TicketDetails({ ticket }: TicketDetailsProps) {
              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
                 <div><span className="font-medium text-muted-foreground">Tipo de Servicio:</span> {ticket.serviceType === 'correctivo' ? 'Correctivo' : 'Preventivo'}</div>
                 <div><span className="font-medium text-muted-foreground">Equipo/Asunto:</span> {ticket.equipmentType}</div>
-                <div>
+                <div className="flex items-center gap-2">
                     <span className="font-medium text-muted-foreground">Urgencia:</span>
-                    <Badge variant="outline" className={cn('ml-2',
-                        ticket.urgency === 'alta' && 'border-red-500 text-red-500',
-                        ticket.urgency === 'media' && 'border-yellow-500 text-yellow-500',
-                        ticket.urgency === 'baja' && 'border-green-500 text-green-500'
-                    )}>{ticket.urgency.charAt(0).toUpperCase() + ticket.urgency.slice(1)}</Badge>
+                     <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                             <Button variant="outline" size="sm" className="h-auto py-0.5 px-2">
+                                <Badge variant="outline" className={cn('border-none p-0',
+                                    ticket.urgency === 'alta' && 'text-red-500',
+                                    ticket.urgency === 'media' && 'text-yellow-500',
+                                    ticket.urgency === 'baja' && 'text-green-500'
+                                )}>{ticket.urgency.charAt(0).toUpperCase() + ticket.urgency.slice(1)}</Badge>
+                                <ChevronDown className="ml-2 h-4 w-4 text-muted-foreground" />
+                             </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => updateUrgency('baja')}>Baja</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateUrgency('media')}>Media</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateUrgency('alta')}>Alta</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
                  <div><span className="font-medium text-muted-foreground">Precio:</span> {ticket.price ? `$${ticket.price.toFixed(2)}` : 'N/A'}</div>
+                 {ticket.quantity && <div><span className="font-medium text-muted-foreground">Cantidad:</span> {ticket.quantity}</div>}
             </div>
              <div className="mt-4">
                 <p className="font-medium text-muted-foreground text-sm">Descripción del Problema:</p>

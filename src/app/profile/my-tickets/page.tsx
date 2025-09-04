@@ -22,6 +22,7 @@ type Ticket = {
   urgency: "baja" | "media" | "alta";
   status: "Recibido" | "En Progreso" | "Resuelto";
   createdAt: Timestamp;
+  quantity?: number;
 };
 
 export default function MyTicketsPage() {

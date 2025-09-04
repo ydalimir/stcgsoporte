@@ -76,6 +76,7 @@ export type Ticket = {
   status: "Recibido" | "En Progreso" | "Resuelto"
   createdAt: Timestamp
   price?: number
+  quantity?: number
 }
 
 const downloadServiceOrderPDF = (ticket: Ticket) => {
