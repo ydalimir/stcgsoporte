@@ -128,13 +128,17 @@ const downloadPDF = (quote: Quote) => {
     }
     yPos += 10;
 
+    // Defensively calculate totals in case they are missing from older records
+    const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
     const ivaPercentage = quote.iva ?? 16;
-    const ivaAmount = quote.subtotal * (ivaPercentage / 100);
+    const ivaAmount = subtotal * (ivaPercentage / 100);
+    const total = quote.total ?? subtotal + ivaAmount;
+
 
     const foot = [
-        ['', '', 'Subtotal', `$${quote.subtotal.toFixed(2)}`],
+        ['', '', 'Subtotal', `$${subtotal.toFixed(2)}`],
         ['', '', `IVA (${ivaPercentage}%)`, `$${ivaAmount.toFixed(2)}`],
-        [{ content: 'Total', styles: { fontStyle: 'bold' } }, '', '', { content: `$${quote.total.toFixed(2)}`, styles: { fontStyle: 'bold' } }],
+        [{ content: 'Total', styles: { fontStyle: 'bold' } }, '', '', { content: `$${total.toFixed(2)}`, styles: { fontStyle: 'bold' } }],
     ];
     
     autoTable(doc, {
@@ -236,7 +240,7 @@ export function QuoteManager() {
       {
         accessorKey: "total",
         header: "Total",
-        cell: ({ row }) => `$${row.original.total.toFixed(2)}`,
+        cell: ({ row }) => `$${(row.original.total || 0).toFixed(2)}`,
       },
       { accessorKey: "status", header: "Estado", cell: ({row}) => <Badge>{row.original.status}</Badge> },
       {
@@ -401,6 +405,5 @@ export function QuoteManager() {
     </div>
   );
 }
-
 
     
