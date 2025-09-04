@@ -90,7 +90,7 @@ const createTicketFromQuote = async (quote: Quote, toast: (options: any) => void
       clientRfc: quote.rfc || "N/A",
       serviceType: "correctivo" as "correctivo" | "preventivo", 
       equipmentType: quote.items.map(item => item.description).join(', '),
-      description: `Ticket generado a partir de la cotización #${quote.quoteNumber}. ${quote.policies || ''}`,
+      description: `Ticket generado a partir de la cotización #${String(quote.quoteNumber).padStart(3, '0')}. ${quote.policies || ''}`,
       urgency: "media" as "baja" | "media" | "alta",
       status: "Recibido",
       createdAt: serverTimestamp(),
@@ -111,7 +111,7 @@ const downloadPDF = (quote: Quote) => {
     let yPos = 22;
     
     doc.setFontSize(20);
-    doc.text(`Cotización #${quote.quoteNumber}`, 14, yPos);
+    doc.text(`Cotización #${String(quote.quoteNumber).padStart(3, '0')}`, 14, yPos);
     yPos += 10;
     
     doc.setFontSize(12);
@@ -164,7 +164,7 @@ const downloadPDF = (quote: Quote) => {
         doc.text(splitPolicies, 14, yPos);
     }
     
-    doc.save(`cotizacion-${quote.quoteNumber}.pdf`);
+    doc.save(`cotizacion-${String(quote.quoteNumber).padStart(3, '0')}.pdf`);
 }
 
 export function QuoteManager() {
@@ -189,7 +189,7 @@ export function QuoteManager() {
     return () => unsubscribe();
   }, [toast]);
 
-  const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'quoteNumber' | 'total'> & { total: number; subtotal: number }) => {
+  const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'quoteNumber'>) => {
     try {
         if (selectedQuote) {
             // Update existing quote
@@ -207,7 +207,7 @@ export function QuoteManager() {
                     newQuoteNumber = counterDoc.data().lastNumber + 1;
                 }
                 
-                transaction.set(counterRef, { lastNumber: newQuoteNumber });
+                transaction.set(counterRef, { lastNumber: newQuoteNumber }, { merge: true });
                 
                 const newQuoteRef = doc(collection(db, "quotes"));
                 transaction.set(newQuoteRef, { ...quoteData, quoteNumber: newQuoteNumber });
@@ -250,13 +250,23 @@ export function QuoteManager() {
 
   const columns: ColumnDef<Quote>[] = useMemo(
     () => [
-      { accessorKey: "quoteNumber", header: "ID" },
+      { 
+        accessorKey: "quoteNumber", 
+        header: "ID",
+        cell: ({ row }) => {
+          const quoteNumber = row.original.quoteNumber;
+          return quoteNumber ? String(quoteNumber).padStart(3, '0') : 'N/A';
+        }
+      },
       { accessorKey: "clientName", header: "Cliente" },
       { accessorKey: "date", header: "Fecha", cell: ({ row }) => new Date(row.original.date).toLocaleDateString('es-MX') },
       {
         accessorKey: "total",
         header: "Total",
-        cell: ({ row }) => `$${(row.original.total || 0).toFixed(2)}`,
+        cell: ({ row }) => {
+            const total = row.original.total ?? (row.original.items.reduce((sum, item) => sum + item.price * item.quantity, 0) * (1 + (row.original.iva ?? 16)/100));
+            return `$${total.toFixed(2)}`;
+        },
       },
       { accessorKey: "status", header: "Estado", cell: ({row}) => <Badge>{row.original.status}</Badge> },
       {

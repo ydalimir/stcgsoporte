@@ -137,7 +137,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
-          <DialogTitle>{quote ? `Editar Cotización #${quote.quoteNumber}` : "Crear Cotización"}</DialogTitle>
+          <DialogTitle>{quote ? `Editar Cotización #${String(quote.quoteNumber).padStart(3, '0')}` : "Crear Cotización"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-h-[80vh] overflow-y-auto pr-4">
