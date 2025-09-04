@@ -95,7 +95,7 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
       clientEmail: "N/A", 
       clientRfc: quote.rfc || "N/A",
       serviceType: "correctivo" as "correctivo" | "preventivo", 
-      equipmentType: `Servicio desde cotización #${String(quote.quoteNumber).padStart(3, '0')}`,
+      equipmentType: `Servicio desde cotización #COT-${String(quote.quoteNumber).padStart(3, '0')}`,
       description: finalDescription,
       urgency: "media" as "baja" | "media" | "alta",
       status: "Recibido",
@@ -134,6 +134,7 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
 const downloadPDF = (quote: Quote) => {
     const doc = new jsPDF();
     let yPos = 20;
+    const quoteId = `COT-${String(quote.quoteNumber).padStart(3, '0')}`;
 
     // Company Name
     doc.setFontSize(14);
@@ -142,7 +143,7 @@ const downloadPDF = (quote: Quote) => {
     
     // Quote Title
     doc.setFontSize(12);
-    doc.text(`Cotización #${String(quote.quoteNumber).padStart(3, '0')}`, 14, yPos);
+    doc.text(`Cotización #${quoteId}`, 14, yPos);
     yPos += 10;
     
     // Client Info
@@ -212,7 +213,7 @@ const downloadPDF = (quote: Quote) => {
         doc.text(splitPolicies, 14, yPos);
     }
     
-    doc.save(`COT-${String(quote.quoteNumber).padStart(3, '0')}.pdf`);
+    doc.save(`${quoteId}.pdf`);
 }
 
 export function QuoteManager() {
@@ -315,7 +316,7 @@ export function QuoteManager() {
         header: "ID",
         cell: ({ row }) => {
           const quoteNumber = row.original.quoteNumber;
-          return quoteNumber ? String(quoteNumber).padStart(3, '0') : 'N/A';
+          return quoteNumber ? `COT-${String(quoteNumber).padStart(3, '0')}` : 'N/A';
         }
       },
       { accessorKey: "clientName", header: "Cliente" },
