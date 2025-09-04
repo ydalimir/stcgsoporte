@@ -20,6 +20,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useEffect, useState } from "react";
@@ -29,6 +31,7 @@ import type { Quote, QuoteItem } from "@/components/admin/quote-manager";
 import type { Service } from "@/components/admin/service-manager";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { SparePart } from "../admin/spare-parts-manager";
 
 
 const quoteItemSchema = z.object({
@@ -53,20 +56,28 @@ type QuoteFormValues = z.infer<typeof quoteFormSchema>;
 interface QuoteFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (quote: Omit<Quote, 'id' | 'quoteNumber'>) => void;
+  onSave: (quote: Omit<Quote, 'id' | 'quoteNumber' | 'subtotal' | 'total'> & { subtotal: number, total: number }) => void;
   quote: Quote | null;
 }
 
 export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProps) {
   const [services, setServices] = useState<Service[]>([]);
+  const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-      const unsubscribe = onSnapshot(collection(db, "services"), (snapshot) => {
+      const unsubscribeServices = onSnapshot(collection(db, "services"), (snapshot) => {
           const servicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
           setServices(servicesData);
       });
-      return () => unsubscribe();
+      const unsubscribeParts = onSnapshot(collection(db, "spare_parts"), (snapshot) => {
+        const partsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SparePart));
+        setSpareParts(partsData);
+    });
+      return () => {
+        unsubscribeServices();
+        unsubscribeParts();
+      }
   }, []);
 
   const form = useForm<QuoteFormValues>({
@@ -126,10 +137,15 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     onOpenChange(false);
   };
   
-  const handleServiceSelect = (serviceId: string) => {
-    const service = services.find(s => s.id === serviceId);
+  const handleItemSelect = (itemId: string) => {
+    const service = services.find(s => s.id === itemId);
     if (service) {
       append({ description: service.title, quantity: 1, price: service.price });
+      return;
+    }
+    const part = spareParts.find(p => p.id === itemId);
+    if (part) {
+        append({ description: part.name, quantity: 1, price: part.price });
     }
   };
 
@@ -188,14 +204,23 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                     ))}
                 </div>
                  <div className="flex items-center gap-4">
-                    <Select onValueChange={handleServiceSelect}>
+                    <Select onValueChange={handleItemSelect}>
                         <SelectTrigger className="w-[300px]">
-                            <SelectValue placeholder="Agregar servicio existente" />
+                            <SelectValue placeholder="Agregar item existente" />
                         </SelectTrigger>
                         <SelectContent>
-                            {services.map(service => (
-                                <SelectItem key={service.id} value={service.id!}>{service.title}</SelectItem>
-                            ))}
+                            <SelectGroup>
+                                <SelectLabel>Servicios</SelectLabel>
+                                {services.map(service => (
+                                    <SelectItem key={service.id} value={service.id!}>{service.title}</SelectItem>
+                                ))}
+                            </SelectGroup>
+                            <SelectGroup>
+                                 <SelectLabel>Refacciones</SelectLabel>
+                                {spareParts.map(part => (
+                                    <SelectItem key={part.id} value={part.id!}>{part.name}</SelectItem>
+                                ))}
+                            </SelectGroup>
                         </SelectContent>
                     </Select>
                      <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, price: 0 })}>
