@@ -51,6 +51,8 @@ export default function SignUpPage() {
         description = "This email is already registered. Please try logging in or use a different email.";
       } else if (error.code === 'auth/weak-password') {
         description = "The password is too weak. Please choose a stronger password.";
+      } else if (error.code === 'auth/network-request-failed') {
+        description = "A network error occurred. Please check your internet connection and try again.";
       } else if (error.message) {
         description = error.message;
       }
