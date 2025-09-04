@@ -3,9 +3,19 @@
 
 import * as React from "react"
 import {
+  collection,
+  query,
+  onSnapshot,
+  doc,
+  updateDoc,
+  Timestamp
+} from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import {
   ArrowUpDown,
   ChevronDown,
   MoreHorizontal,
+  Loader2,
 } from "lucide-react"
 import {
   ColumnDef,
@@ -19,7 +29,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -27,7 +36,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
@@ -41,165 +55,219 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-
-const data: Ticket[] = [
-    {
-      id: "TICK-8782",
-      user: "Restaurante La Tradición",
-      email: "compras@latradicion.com",
-      equipment: "Horno de convección",
-      serviceType: "Correctivo",
-      urgency: "Alta",
-      status: "Recibido",
-      createdAt: "2024-07-26",
-    },
-    {
-      id: "TICK-4331",
-      user: "Hotel Casa de Piedra",
-      email: "mantenimiento@casadepiedra.com",
-      equipment: "Sistema de refrigeración",
-      serviceType: "Preventivo",
-      urgency: "Media",
-      status: "En Progreso",
-      createdAt: "2024-07-25",
-    },
-    {
-      id: "TICK-2345",
-      user: "Cafetería El Buen Café",
-      email: "gerencia@buencafe.com",
-      equipment: "Máquina de espresso",
-      serviceType: "Correctivo",
-      urgency: "Media",
-      status: "Recibido",
-      createdAt: "2024-07-26",
-    },
-    {
-      id: "TICK-9876",
-      user: "Cocina Económica Doña Mary",
-      email: "mary@cocina.com",
-      equipment: "Estufa de 6 quemadores",
-      serviceType: "Correctivo",
-      urgency: "Baja",
-      status: "Resuelto",
-      createdAt: "2024-07-22",
-    },
-     {
-      id: "TICK-5432",
-      user: "Banquetería Royal",
-      email: "eventos@royal.com",
-      equipment: "Freidoras industriales",
-      serviceType: "Preventivo",
-      urgency: "Baja",
-      status: "Recibido",
-      createdAt: "2024-07-26",
-    },
-  ]
+import { useToast } from "@/hooks/use-toast"
 
 export type Ticket = {
   id: string
-  user: string
-  email: string
-  equipment: string
+  userId: string
+  userEmail: string
   serviceType: "Correctivo" | "Preventivo"
+  equipmentType: string
+  description: string
   urgency: "Baja" | "Media" | "Alta"
   status: "Recibido" | "En Progreso" | "Resuelto"
-  createdAt: string
+  createdAt: Timestamp
 }
 
-export const columns: ColumnDef<Ticket>[] = [
-  {
-    accessorKey: "id",
-    header: "Ticket ID",
-    cell: ({ row }) => <div className="font-medium">{row.getValue("id")}</div>,
-  },
-  {
-    accessorKey: "user",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Cliente
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      )
-    },
-    cell: ({ row }) => <div>{row.getValue("user")}</div>,
-  },
-   {
-    accessorKey: "status",
-    header: "Estado",
-    cell: ({ row }) => {
-      const status = row.getValue("status") as string;
-      return <Badge variant={status === 'Resuelto' ? 'secondary' : 'default'} className={cn(
-        'text-white',
-        status === 'Recibido' && 'bg-blue-500',
-        status === 'En Progreso' && 'bg-yellow-500 text-black',
-        status === 'Resuelto' && 'bg-green-500'
-      )}>{status}</Badge>;
-    },
-  },
-  {
-    accessorKey: "urgency",
-    header: "Urgencia",
-    cell: ({ row }) => {
-      const urgency = row.getValue("urgency") as string;
-      return <Badge variant="outline" className={cn(
-        urgency === 'Alta' && 'border-red-500 text-red-500',
-        urgency === 'Media' && 'border-yellow-500 text-yellow-500',
-        urgency === 'Baja' && 'border-green-500 text-green-500'
-      )}>{urgency}</Badge>
-    },
-  },
-   {
-    accessorKey: "equipment",
-    header: "Equipo",
-    cell: ({ row }) => <div>{row.getValue("equipment")}</div>,
-  },
-  {
-    accessorKey: "createdAt",
-    header: "Fecha",
-    cell: ({ row }) => <div>{row.getValue("createdAt")}</div>,
-  },
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const ticket = row.original
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Abrir menú</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-            <DropdownMenuItem>Ver Detalles del Ticket</DropdownMenuItem>
-            <DropdownMenuItem>Asignar a Técnico</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Marcar como "En Progreso"</DropdownMenuItem>
-            <DropdownMenuItem>Marcar como "Resuelto"</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    },
-  },
-]
-
 export function TicketTable() {
-  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [tickets, setTickets] = React.useState<Ticket[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "createdAt", desc: true },
+  ])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
+  const { toast } = useToast()
+
+  React.useEffect(() => {
+    setIsLoading(true)
+    const q = query(collection(db, "tickets"))
+
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const fetchedTickets = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Ticket[]
+        setTickets(fetchedTickets)
+        setIsLoading(false)
+      },
+      (error) => {
+        console.error("Error fetching tickets:", error)
+        toast({
+          title: "Error al cargar los tickets",
+          description: "No se pudieron obtener los datos. Intente de nuevo.",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+      }
+    )
+
+    return () => unsubscribe()
+  }, [toast])
+
+  const updateTicketStatus = async (ticketId: string, status: string) => {
+    const ticketRef = doc(db, "tickets", ticketId)
+    try {
+      await updateDoc(ticketRef, { status })
+      toast({
+        title: "Ticket Actualizado",
+        description: `El estado del ticket se ha cambiado a "${status}".`,
+      })
+    } catch (error) {
+      console.error("Error updating ticket status:", error)
+      toast({
+        title: "Error al actualizar",
+        description: "No se pudo cambiar el estado del ticket.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const columns: ColumnDef<Ticket>[] = React.useMemo(
+    () => [
+      {
+        accessorKey: "userEmail",
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Cliente
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: ({ row }) => <div>{row.getValue("userEmail")}</div>,
+      },
+      {
+        accessorKey: "status",
+        header: "Estado",
+        cell: ({ row }) => {
+          const status = row.getValue("status") as string
+          return (
+            <Badge
+              variant={status === "Resuelto" ? "secondary" : "default"}
+              className={cn(
+                "text-white",
+                status === "Recibido" && "bg-blue-500",
+                status === "En Progreso" && "bg-yellow-500 text-black",
+                status === "Resuelto" && "bg-green-500"
+              )}
+            >
+              {status}
+            </Badge>
+          )
+        },
+      },
+      {
+        accessorKey: "urgency",
+        header: "Urgencia",
+        cell: ({ row }) => {
+          const urgency = row.getValue("urgency") as string
+          return (
+            <Badge
+              variant="outline"
+              className={cn(
+                urgency === "alta" && "border-red-500 text-red-500",
+                urgency === "media" && "border-yellow-500 text-yellow-500",
+                urgency === "baja" && "border-green-500 text-green-500"
+              )}
+            >
+              {urgency.charAt(0).toUpperCase() + urgency.slice(1)}
+            </Badge>
+          )
+        },
+      },
+      {
+        accessorKey: "equipmentType",
+        header: "Asunto / Equipo",
+        cell: ({ row }) => <div>{row.getValue("equipmentType")}</div>,
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Fecha
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: ({ row }) => {
+          const timestamp = row.getValue("createdAt") as Timestamp
+          return (
+            <div>{timestamp?.toDate().toLocaleDateString() || "N/A"}</div>
+          )
+        },
+      },
+      {
+        id: "actions",
+        enableHiding: false,
+        cell: ({ row }) => {
+          const ticket = row.original
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Abrir menú</span>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => alert(`Detalles para ${ticket.id}`)}
+                >
+                  Ver Detalles del Ticket
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>Cambiar Estado</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuRadioGroup
+                      value={ticket.status}
+                      onValueChange={(value) =>
+                        updateTicketStatus(ticket.id, value)
+                      }
+                    >
+                      <DropdownMenuRadioItem value="Recibido">
+                        Recibido
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="En Progreso">
+                        En Progreso
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="Resuelto">
+                        Resuelto
+                      </DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                 <DropdownMenuItem
+                  onClick={() => alert(`Asignar ticket ${ticket.id}`)}
+                >
+                  Asignar a Técnico
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => alert(`Crear cotización para ${ticket.id}`)}
+                >
+                  Crear Cotización
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )
+        },
+      },
+    ],
+    [toast]
+  )
 
   const table = useReactTable({
-    data,
+    data: tickets,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -215,14 +283,25 @@ export function TicketTable() {
     },
   })
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-10">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-4">Cargando tickets...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="w-full">
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filtrar por cliente..."
-          value={(table.getColumn("user")?.getFilterValue() as string) ?? ""}
+          placeholder="Filtrar por email..."
+          value={
+            (table.getColumn("userEmail")?.getFilterValue() as string) ?? ""
+          }
           onChange={(event) =>
-            table.getColumn("user")?.setFilterValue(event.target.value)
+            table.getColumn("userEmail")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />
@@ -246,7 +325,7 @@ export function TicketTable() {
                       column.toggleVisibility(!!value)
                     }
                   >
-                    {column.id}
+                    {column.accessorKey as string}
                   </DropdownMenuCheckboxItem>
                 )
               })}

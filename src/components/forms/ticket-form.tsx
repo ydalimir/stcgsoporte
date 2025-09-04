@@ -23,10 +23,10 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Input } from "../ui/input";
@@ -36,7 +36,7 @@ const ticketSchema = z.object({
     required_error: "Por favor seleccione el tipo de servicio.",
   }),
   equipmentType: z.string().min(3, {
-    message: "Por favor, describa el equipo (ej. Horno, Refrigerador)."
+    message: "Por favor, describa el asunto o equipo (ej. Falla en Horno).",
   }),
   description: z.string().min(20, {
     message: "La descripción debe tener al menos 20 caracteres.",
@@ -55,14 +55,29 @@ export function TicketForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const form = useForm<TicketFormValues>({
     resolver: zodResolver(ticketSchema),
     defaultValues: {
       description: "",
       equipmentType: "",
+      serviceType: undefined,
+      urgency: "media",
     },
   });
+
+  useEffect(() => {
+    const serviceType = searchParams.get('serviceType');
+    const equipmentType = searchParams.get('equipmentType');
+    if (serviceType === 'correctivo' || serviceType === 'preventivo') {
+        form.setValue('serviceType', serviceType);
+    }
+    if (equipmentType) {
+        form.setValue('equipmentType', equipmentType);
+    }
+  }, [searchParams, form]);
+
 
   if (isLoading) {
     return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -90,7 +105,7 @@ export function TicketForm() {
 
     setIsSubmitting(true);
     try {
-        const docRef = await addDoc(collection(db, "tickets"), {
+        await addDoc(collection(db, "tickets"), {
             ...data,
             userId: user.uid,
             userEmail: user.email,
@@ -98,11 +113,6 @@ export function TicketForm() {
             createdAt: serverTimestamp(),
         });
       
-        // Update the document with its own ID
-        // await updateDoc(docRef, {
-        //     id: docRef.id
-        // });
-
       toast({
         title: "¡Ticket Enviado!",
         description: "Hemos recibido su ticket de soporte y nos pondremos en contacto en breve.",
@@ -132,7 +142,7 @@ export function TicketForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Tipo de Servicio</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccione el tipo de servicio requerido" />
@@ -152,15 +162,15 @@ export function TicketForm() {
           name="equipmentType"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Tipo de Equipo</FormLabel>
+              <FormLabel>Asunto / Equipo</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="Ej: Estufa industrial, Horno de convección, Refrigerador comercial..."
+                  placeholder="Ej: Falla en estufa, Contratar plan de hornos..."
                   {...field}
                 />
               </FormControl>
                <FormDescription>
-                Sea lo más específico posible con el equipo que necesita servicio.
+                Sea lo más específico posible. Si viene de la página de servicios, esto se llena automáticamente.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -192,7 +202,7 @@ export function TicketForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Nivel de Urgencia</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="¿Qué tan urgente es este problema?" />
