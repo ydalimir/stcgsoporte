@@ -61,13 +61,15 @@ import { useToast } from "@/hooks/use-toast"
 export type Ticket = {
   id: string
   userId: string
-  userEmail: string
+  clientName: string,
+  clientPhone: string,
   serviceType: "Correctivo" | "Preventivo"
   equipmentType: string
   description: string
   urgency: "Baja" | "Media" | "Alta"
   status: "Recibido" | "En Progreso" | "Resuelto"
   createdAt: Timestamp
+  price?: number
 }
 
 export function TicketTable() {
@@ -133,7 +135,7 @@ export function TicketTable() {
   const columns: ColumnDef<Ticket>[] = React.useMemo(
     () => [
       {
-        accessorKey: "userEmail",
+        accessorKey: "clientName",
         header: ({ column }) => (
           <Button
             variant="ghost"
@@ -143,7 +145,7 @@ export function TicketTable() {
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         ),
-        cell: ({ row }) => <div>{row.getValue("userEmail")}</div>,
+        cell: ({ row }) => <div>{row.getValue("clientName")}</div>,
       },
       {
         accessorKey: "status",
@@ -298,12 +300,12 @@ export function TicketTable() {
     <div className="w-full">
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filtrar por email..."
+          placeholder="Filtrar por cliente..."
           value={
-            (table.getColumn("userEmail")?.getFilterValue() as string) ?? ""
+            (table.getColumn("clientName")?.getFilterValue() as string) ?? ""
           }
           onChange={(event) =>
-            table.getColumn("userEmail")?.setFilterValue(event.target.value)
+            table.getColumn("clientName")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />
@@ -327,7 +329,7 @@ export function TicketTable() {
                       column.toggleVisibility(!!value)
                     }
                   >
-                    {column.accessorKey as string}
+                    {column.id}
                   </DropdownMenuCheckboxItem>
                 )
               })}

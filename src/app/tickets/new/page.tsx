@@ -18,7 +18,9 @@ function NewTicketContent() {
                     </p>
                 </div>
                 <div className="bg-card p-8 rounded-lg shadow-lg">
-                    <TicketForm />
+                    <Suspense fallback={<div className="flex justify-center">Cargando formulario...</div>}>
+                        <TicketForm />
+                    </Suspense>
                 </div>
             </div>
         </div>

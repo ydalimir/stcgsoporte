@@ -46,6 +46,13 @@ const ticketSchema = z.object({
   urgency: z.enum(["baja", "media", "alta"], {
     required_error: "Por favor seleccione un nivel de urgencia.",
   }),
+  price: z.number().optional(),
+  // New client fields
+  clientName: z.string().min(1, { message: "El nombre es obligatorio." }),
+  clientPhone: z.string().min(10, { message: "El teléfono debe tener al menos 10 dígitos." }),
+  clientAddress: z.string().min(1, { message: "La dirección es obligatoria." }),
+  clientEmail: z.string().email({ message: "Por favor ingrese un correo válido." }).optional().or(z.literal('')),
+  clientRfc: z.string().optional(),
 });
 
 type TicketFormValues = z.infer<typeof ticketSchema>;
@@ -64,19 +71,33 @@ export function TicketForm() {
       equipmentType: "",
       serviceType: undefined,
       urgency: "media",
+      clientName: "",
+      clientPhone: "",
+      clientAddress: "",
+      clientEmail: "",
+      clientRfc: "",
     },
   });
 
   useEffect(() => {
     const serviceType = searchParams.get('serviceType');
     const equipmentType = searchParams.get('equipmentType');
+    const price = searchParams.get('price');
+
     if (serviceType === 'correctivo' || serviceType === 'preventivo') {
         form.setValue('serviceType', serviceType);
     }
     if (equipmentType) {
         form.setValue('equipmentType', equipmentType);
     }
-  }, [searchParams, form]);
+    if (price) {
+        form.setValue('price', parseFloat(price));
+    }
+    if (user?.email) {
+        form.setValue('clientEmail', user.email);
+    }
+
+  }, [searchParams, form, user]);
 
 
   if (isLoading) {
@@ -108,7 +129,6 @@ export function TicketForm() {
         await addDoc(collection(db, "tickets"), {
             ...data,
             userId: user.uid,
-            userEmail: user.email,
             status: "Recibido",
             createdAt: serverTimestamp(),
         });
@@ -136,88 +156,116 @@ export function TicketForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField
-          control={form.control}
-          name="serviceType"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tipo de Servicio</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+
+        <div className="space-y-4 border-b pb-6">
+             <h3 className="text-lg font-medium">Información del Cliente</h3>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <FormField control={form.control} name="clientName" render={({ field }) => (
+                    <FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="Ej: Juan Pérez" {...field} /></FormControl><FormMessage /></FormItem>
+                 )} />
+                 <FormField control={form.control} name="clientPhone" render={({ field }) => (
+                    <FormItem><FormLabel>Número de Teléfono</FormLabel><FormControl><Input placeholder="Ej: 9991234567" {...field} /></FormControl><FormMessage /></FormItem>
+                 )} />
+             </div>
+             <FormField control={form.control} name="clientAddress" render={({ field }) => (
+                <FormItem><FormLabel>Dirección Completa</FormLabel><FormControl><Input placeholder="Calle, Número, Colonia, Ciudad" {...field} /></FormControl><FormMessage /></FormItem>
+             )} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <FormField control={form.control} name="clientEmail" render={({ field }) => (
+                    <FormItem><FormLabel>Correo Electrónico (Opcional)</FormLabel><FormControl><Input type="email" placeholder="correo@ejemplo.com" {...field} /></FormControl><FormMessage /></FormItem>
+                 )} />
+                 <FormField control={form.control} name="clientRfc" render={({ field }) => (
+                    <FormItem><FormLabel>RFC (Opcional)</FormLabel><FormControl><Input placeholder="Ej: PEJU800101XXX" {...field} /></FormControl><FormMessage /></FormItem>
+                 )} />
+             </div>
+        </div>
+
+        <div className="space-y-4">
+             <h3 className="text-lg font-medium">Detalles del Servicio</h3>
+            <FormField
+            control={form.control}
+            name="serviceType"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Tipo de Servicio</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Seleccione el tipo de servicio requerido" />
+                    </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                    <SelectItem value="correctivo">Mantenimiento Correctivo</SelectItem>
+                    <SelectItem value="preventivo">Mantenimiento Preventivo</SelectItem>
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="equipmentType"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Asunto / Equipo</FormLabel>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione el tipo de servicio requerido" />
-                  </SelectTrigger>
+                    <Input
+                    placeholder="Ej: Falla en estufa, Contratar plan de hornos..."
+                    {...field}
+                    />
                 </FormControl>
-                <SelectContent>
-                  <SelectItem value="correctivo">Mantenimiento Correctivo</SelectItem>
-                  <SelectItem value="preventivo">Mantenimiento Preventivo</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-         <FormField
-          control={form.control}
-          name="equipmentType"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Asunto / Equipo</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="Ej: Falla en estufa, Contratar plan de hornos..."
-                  {...field}
-                />
-              </FormControl>
-               <FormDescription>
-                Sea lo más específico posible. Si viene de la página de servicios, esto se llena automáticamente.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Descripción de la Falla o Necesidad</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Por favor describa el problema o la necesidad en detalle..."
-                  className="min-h-[150px]"
-                  {...field}
-                />
-              </FormControl>
-              <FormDescription>
-                Mientras más detalles nos brinde, más rápido podremos ayudarle.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="urgency"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nivel de Urgencia</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+                <FormDescription>
+                    Sea lo más específico posible. Si viene de la página de servicios, esto se llena automáticamente.
+                </FormDescription>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Descripción de la Falla o Necesidad</FormLabel>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="¿Qué tan urgente es este problema?" />
-                  </SelectTrigger>
+                    <Textarea
+                    placeholder="Por favor describa el problema o la necesidad en detalle..."
+                    className="min-h-[150px]"
+                    {...field}
+                    />
                 </FormControl>
-                <SelectContent>
-                  <SelectItem value="baja">Baja - Puede esperar</SelectItem>
-                  <SelectItem value="media">Media - Afecta la operación</SelectItem>
-                  <SelectItem value="alta">Alta - Operación detenida</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                <FormDescription>
+                    Mientras más detalles nos brinde, más rápido podremos ayudarle.
+                </FormDescription>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="urgency"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Nivel de Urgencia</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                    <SelectTrigger>
+                        <SelectValue placeholder="¿Qué tan urgente es este problema?" />
+                    </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                    <SelectItem value="baja">Baja - Puede esperar</SelectItem>
+                    <SelectItem value="media">Media - Afecta la operación</SelectItem>
+                    <SelectItem value="alta">Alta - Operación detenida</SelectItem>
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
+
         <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
            {isSubmitting ? "Enviando Ticket..." : "Enviar Ticket"}
