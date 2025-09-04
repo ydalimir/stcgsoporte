@@ -19,34 +19,41 @@ export default function ProfilePage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        // Ensure user document exists in Firestore, create it if it doesn't.
-        // This is a "write-if-not-exists" operation.
-        const userDocRef = doc(db, "users", currentUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (!userDoc.exists()) {
+        // We have the user, so stop the main loading state.
+        setIsLoading(false);
+        
+        // Handle Firestore document creation in the background.
+        const ensureUserDocument = async () => {
+          const userDocRef = doc(db, "users", currentUser.uid);
           try {
-            // We set a default role 'user' upon first profile visit after signup.
-            await setDoc(userDocRef, {
-              email: currentUser.email,
-              role: "user", 
-              createdAt: new Date().toISOString(),
-            });
+            const userDoc = await getDoc(userDocRef);
+            if (!userDoc.exists()) {
+              // Document doesn't exist, create it.
+              await setDoc(userDocRef, {
+                email: currentUser.email,
+                role: "user",
+                createdAt: new Date().toISOString(),
+              });
+            }
           } catch (error) {
-            console.error("Error creating user document:", error);
+             console.error("Error ensuring user document:", error);
              toast({
-              title: "Profile Error",
-              description: "Could not create your user profile data.",
+              title: "Profile Sync Error",
+              description: "Could not sync your profile with our database. Some features might not work correctly.",
               variant: "destructive",
             });
           }
-        }
+        };
+
+        ensureUserDocument();
+
       } else {
+        // No user found, redirect to login page.
         router.push("/login");
       }
-      setIsLoading(false);
     });
 
     return () => unsubscribe();
@@ -78,7 +85,7 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    // This will be briefly visible before the redirect in useEffect kicks in.
+    // This state will be brief before the redirect in useEffect kicks in.
     return (
         <div className="flex items-center justify-center min-h-screen">
             <p>Redirecting to login...</p>
