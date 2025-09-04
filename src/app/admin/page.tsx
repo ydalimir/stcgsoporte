@@ -30,6 +30,8 @@ export default function AdminDashboardPage() {
     }
   }, [user, isLoading, isAdmin, router, toast]);
 
+  // Show a loader while we are verifying auth and role.
+  // This will prevent rendering the page content before we know if the user is an admin.
   if (isLoading || !isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -38,6 +40,7 @@ export default function AdminDashboardPage() {
     );
   }
 
+  // At this point, we know the user is an admin.
   return (
     <div className="container mx-auto px-4 py-10">
       <div className="flex items-center gap-4 mb-8">
