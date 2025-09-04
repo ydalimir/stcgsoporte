@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useEffect, useState } from "react";
 import { Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -41,6 +42,9 @@ const quoteFormSchema = z.object({
   date: z.string().min(1, "La fecha es requerida."),
   status: z.enum(["Borrador", "Enviada", "Aceptada", "Rechazada"]),
   items: z.array(quoteItemSchema).min(1, "Debe agregar al menos un ítem."),
+  expirationDate: z.string().optional(),
+  rfc: z.string().optional(),
+  policies: z.string().optional(),
 });
 
 type QuoteFormValues = z.infer<typeof quoteFormSchema>;
@@ -71,6 +75,9 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
       date: new Date().toISOString().split("T")[0],
       status: "Borrador",
       items: [],
+      expirationDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // Default 15 days
+      rfc: "",
+      policies: "Esta cotización tiene una validez de 15 días a partir de la fecha de emisión. Los precios no incluyen IVA. El tiempo de entrega puede variar.",
     },
   });
   
@@ -83,17 +90,19 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     if (isOpen) {
       if (quote) {
         form.reset({
-          clientName: quote.clientName,
+          ...quote,
           date: new Date(quote.date).toISOString().split("T")[0],
-          status: quote.status,
-          items: quote.items.map(item => ({...item}))
+          expirationDate: quote.expirationDate ? new Date(quote.expirationDate).toISOString().split("T")[0] : undefined,
         });
       } else {
-        form.reset({
-          clientName: "",
-          date: new Date().toISOString().split("T")[0],
-          status: "Borrador",
-          items: [],
+         form.reset({
+            clientName: "",
+            date: new Date().toISOString().split("T")[0],
+            status: "Borrador",
+            items: [],
+            expirationDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+            rfc: "",
+            policies: "Esta cotización tiene una validez de 15 días a partir de la fecha de emisión. Los precios no incluyen IVA. El tiempo de entrega puede variar.",
         });
       }
     }
@@ -128,15 +137,21 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
           <DialogTitle>{quote ? "Editar Cotización" : "Crear Cotización"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-h-[80vh] overflow-y-auto pr-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField name="clientName" control={form.control} render={({ field }) => (
                 <FormItem><FormLabel>Cliente</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
               )} />
-              <FormField name="date" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Fecha</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+              <FormField name="rfc" control={form.control} render={({ field }) => (
+                <FormItem><FormLabel>RFC (Opcional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
               )} />
-              <FormField name="status" control={form.control} render={({ field }) => (
+               <FormField name="date" control={form.control} render={({ field }) => (
+                <FormItem><FormLabel>Fecha de Emisión</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField name="expirationDate" control={form.control} render={({ field }) => (
+                <FormItem><FormLabel>Fecha de Vencimiento</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+               <FormField name="status" control={form.control} render={({ field }) => (
                 <FormItem><FormLabel>Estado</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
@@ -163,7 +178,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                                 <FormItem className="w-24"><FormControl><Input type="number" placeholder="Cant." {...field} /></FormControl></FormItem>
                             )} />
                              <FormField name={`items.${index}.price`} control={form.control} render={({ field }) => (
-                                <FormItem className="w-32"><FormControl><Input type="number" placeholder="Precio" {...field} /></FormControl></FormItem>
+                                <FormItem className="w-32"><FormControl><Input type="number" step="0.01" placeholder="Precio" {...field} /></FormControl></FormItem>
                             )} />
                             <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
@@ -184,14 +199,18 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                         <PlusCircle className="mr-2 h-4 w-4" /> Agregar Item Manual
                     </Button>
                 </div>
-                {form.formState.errors.items && <p className="text-sm font-medium text-destructive">{form.formState.errors.items.message}</p>}
+                {form.formState.errors.items && <p className="text-sm font-medium text-destructive">{form.formState.errors.items?.root?.message || form.formState.errors.items.message}</p>}
             </div>
+
+            <FormField name="policies" control={form.control} render={({ field }) => (
+              <FormItem><FormLabel>Políticas y Términos</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
 
             <div className="text-right text-xl font-bold">
                 Total: ${total.toFixed(2)}
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="pt-4">
                 <DialogClose asChild>
                     <Button type="button" variant="ghost">Cancelar</Button>
                 </DialogClose>
@@ -206,5 +225,3 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     </Dialog>
   );
 }
-
-    

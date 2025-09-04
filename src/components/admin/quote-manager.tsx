@@ -27,6 +27,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2 } from "lucide-react";
 import {
@@ -38,13 +43,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { QuoteForm } from "@/components/forms/quote-form";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 
@@ -58,10 +62,43 @@ export type Quote = {
   id: string;
   clientName: string;
   date: string;
+  expirationDate?: string;
+  rfc?: string;
+  policies?: string;
   total: number;
   status: "Borrador" | "Enviada" | "Aceptada" | "Rechazada";
   items: QuoteItem[];
 };
+
+const createTicketFromQuote = async (quote: Quote) => {
+    if (!quote.items || quote.items.length === 0) {
+      console.error("Quote has no items to create a ticket from.");
+      return;
+    }
+  
+    // Find client information from the users collection if possible, or use quote data.
+    // For now, we will use data from the quote as a fallback.
+    // This part can be enhanced later.
+  
+    const ticketData = {
+      userId: 'admin_generated', // Or find a real user ID
+      clientName: quote.clientName,
+      clientPhone: "N/A", // Not in quote, needs to be added or handled
+      clientAddress: "N/A", // Not in quote
+      clientEmail: "N/A", // Not in quote
+      clientRfc: quote.rfc || "N/A",
+      serviceType: "correctivo" as "correctivo" | "preventivo", // Or determine from items
+      equipmentType: quote.items.map(item => item.description).join(', '),
+      description: `Ticket generado a partir de la cotización #${quote.id.substring(0,7)}. ${quote.policies || ''}`,
+      urgency: "media" as "baja" | "media" | "alta",
+      status: "Recibido",
+      createdAt: serverTimestamp(),
+      price: quote.total,
+    };
+  
+    await addDoc(collection(db, "tickets"), ticketData);
+};
+
 
 export function QuoteManager() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -87,8 +124,8 @@ export function QuoteManager() {
             await updateDoc(quoteDoc, quoteData);
             toast({ title: "Cotización Actualizada", description: `La cotización para ${quoteData.clientName} ha sido actualizada.` });
         } else {
-            const newDoc = await addDoc(collection(db, "quotes"), quoteData);
-            toast({ title: "Cotización Creada", description: `La cotización ${newDoc.id} ha sido creada.` });
+            const newDocRef = await addDoc(collection(db, "quotes"), quoteData);
+            toast({ title: "Cotización Creada", description: `La cotización ${newDocRef.id.substring(0,7)} ha sido creada.` });
         }
         setSelectedQuote(null);
     } catch (error) {
@@ -100,29 +137,73 @@ export function QuoteManager() {
   const handleDelete = async (id: string) => {
     try {
         await deleteDoc(doc(db, "quotes", id));
-        toast({ title: "Cotización Eliminada", description: `La cotización ${id} ha sido eliminada.` });
+        toast({ title: "Cotización Eliminada", description: `La cotización ${id.substring(0,7)} ha sido eliminada.` });
     } catch (error) {
         console.error("Error deleting quote:", error);
         toast({ title: "Error al eliminar", description: "No se pudo eliminar la cotización.", variant: "destructive" });
     }
   };
 
+  const handleStatusChange = async (quote: Quote, newStatus: Quote['status']) => {
+    try {
+        const quoteDoc = doc(db, "quotes", quote.id);
+        await updateDoc(quoteDoc, { status: newStatus });
+
+        if (newStatus === "Aceptada") {
+            await createTicketFromQuote(quote);
+            toast({ title: "¡Cotización Aceptada!", description: `Se ha generado un nuevo ticket de servicio.`});
+        } else {
+            toast({ title: "Estado Actualizado", description: `La cotización para ${quote.clientName} ahora está ${newStatus}.` });
+        }
+    } catch (error) {
+        console.error("Error updating status:", error);
+        toast({ title: "Error al actualizar", description: "No se pudo cambiar el estado.", variant: "destructive"});
+    }
+  };
+
   const downloadPDF = (quote: Quote) => {
     const doc = new jsPDF();
+    let yPos = 22;
     
     doc.setFontSize(20);
-    doc.text(`Cotización #${quote.id.substring(0, 7)}`, 14, 22);
+    doc.text(`Cotización #${quote.id.substring(0, 7)}`, 14, yPos);
+    yPos += 10;
+    
     doc.setFontSize(12);
-    doc.text(`Cliente: ${quote.clientName}`, 14, 32);
-    doc.text(`Fecha: ${new Date(quote.date).toLocaleDateString('es-MX')}`, 14, 42);
+    doc.text(`Cliente: ${quote.clientName}`, 14, yPos);
+    yPos += 7;
+
+    if (quote.rfc) {
+      doc.text(`RFC: ${quote.rfc}`, 14, yPos);
+      yPos += 7;
+    }
+
+    doc.text(`Fecha de Emisión: ${new Date(quote.date).toLocaleDateString('es-MX')}`, 14, yPos);
+    if(quote.expirationDate) {
+        doc.text(`Válida hasta: ${new Date(quote.expirationDate).toLocaleDateString('es-MX')}`, 120, yPos);
+    }
+    yPos += 10;
     
     autoTable(doc, {
-      startY: 50,
+      startY: yPos,
       head: [['Descripción', 'Cantidad', 'Precio Unitario', 'Importe']],
       body: quote.items.map(item => [item.description, item.quantity, `$${item.price.toFixed(2)}`, `$${(item.quantity * item.price).toFixed(2)}`]),
       foot: [['', '', 'Total', `$${quote.total.toFixed(2)}`]],
       headStyles: { fillColor: [46, 154, 254] },
+      didDrawPage: (data) => {
+        yPos = data.cursor?.y || 0;
+      }
     });
+
+    yPos += 10;
+
+    if (quote.policies) {
+        doc.setFontSize(10);
+        doc.text("Políticas y Términos:", 14, yPos);
+        yPos += 5;
+        const splitPolicies = doc.splitTextToSize(quote.policies, 180);
+        doc.text(splitPolicies, 14, yPos);
+    }
     
     doc.save(`cotizacion-${quote.id.substring(0,7)}.pdf`);
   }
@@ -131,13 +212,13 @@ export function QuoteManager() {
     () => [
       { accessorKey: "id", header: "ID", cell: ({ row }) => <span className="font-mono text-xs">{row.original.id.substring(0, 7)}</span> },
       { accessorKey: "clientName", header: "Cliente" },
-      { accessorKey: "date", header: "Fecha" },
+      { accessorKey: "date", header: "Fecha", cell: ({ row }) => new Date(row.original.date).toLocaleDateString('es-MX') },
       {
         accessorKey: "total",
         header: "Total",
         cell: ({ row }) => `$${row.original.total.toFixed(2)}`,
       },
-      { accessorKey: "status", header: "Estado" },
+      { accessorKey: "status", header: "Estado", cell: ({row}) => <Badge>{row.original.status}</Badge> },
       {
         id: "actions",
         cell: ({ row }) => (
@@ -155,6 +236,20 @@ export function QuoteManager() {
               <DropdownMenuItem onClick={() => downloadPDF(row.original)}>
                 <Download className="mr-2 h-4 w-4" /> Descargar PDF
               </DropdownMenuItem>
+              <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>Cambiar Estado</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                      <DropdownMenuRadioGroup 
+                          value={row.original.status} 
+                          onValueChange={(newStatus) => handleStatusChange(row.original, newStatus as Quote['status'])}
+                       >
+                           <DropdownMenuRadioItem value="Borrador">Borrador</DropdownMenuRadioItem>
+                           <DropdownMenuRadioItem value="Enviada">Enviada</DropdownMenuRadioItem>
+                           <DropdownMenuRadioItem value="Aceptada">Aceptada</DropdownMenuRadioItem>
+                           <DropdownMenuRadioItem value="Rechazada">Rechazada</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                  </DropdownMenuSubContent>
+              </DropdownMenuSub>
               <DropdownMenuSeparator />
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -191,8 +286,15 @@ export function QuoteManager() {
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    initialState: {
+        pagination: {
+            pageSize: 5,
+        }
+    }
   });
   
+  table.getColumn("clientName")?.setFilterValue(filter);
+
   if (isLoading) {
     return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
@@ -203,10 +305,7 @@ export function QuoteManager() {
         <Input
           placeholder="Buscar cotización por cliente..."
           value={filter}
-          onChange={(e) => {
-            setFilter(e.target.value);
-            table.getColumn("clientName")?.setFilterValue(e.target.value);
-          }}
+          onChange={(e) => setFilter(e.target.value)}
           className="max-w-sm"
         />
         <Button onClick={() => { setSelectedQuote(null); setIsFormOpen(true); }}>
@@ -277,5 +376,3 @@ export function QuoteManager() {
     </div>
   );
 }
-
-    
