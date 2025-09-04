@@ -64,6 +64,9 @@ export function TicketForm() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  
+  // Check if serviceType is coming from URL to disable the field
+  const preselectedServiceType = searchParams.get('serviceType');
 
   const form = useForm<TicketFormValues>({
     resolver: zodResolver(ticketSchema),
@@ -196,7 +199,7 @@ export function TicketForm() {
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Tipo de Servicio</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={!!preselectedServiceType}>
                     <FormControl>
                     <SelectTrigger>
                         <SelectValue placeholder="Seleccione el tipo de servicio requerido" />
