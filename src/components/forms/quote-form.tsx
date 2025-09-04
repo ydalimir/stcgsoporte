@@ -27,13 +27,13 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
 const quoteSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  email: z.string().email({ message: "Please enter a valid email address." }),
-  service: z.string({ required_error: "Please select a service." }),
+  name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
+  email: z.string().email({ message: "Por favor ingrese un correo electrónico válido." }),
+  service: z.string({ required_error: "Por favor seleccione un servicio." }),
   message: z.string().min(20, {
-    message: "Message must be at least 20 characters.",
+    message: "El mensaje debe tener al menos 20 caracteres.",
   }).max(500, {
-    message: "Message must not be longer than 500 characters."
+    message: "El mensaje no debe exceder los 500 caracteres."
   }),
 });
 
@@ -59,8 +59,8 @@ export function QuoteForm() {
     console.log(data);
     
     toast({
-      title: "Quote Request Sent!",
-      description: "Our team will review your request and get back to you with a quote soon.",
+      title: "¡Solicitud Enviada!",
+      description: "Nuestro equipo revisará su solicitud y se pondrá en contacto con usted pronto.",
     });
 
     form.reset();
@@ -76,9 +76,9 @@ export function QuoteForm() {
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Full Name</FormLabel>
+                <FormLabel>Nombre Completo</FormLabel>
                 <FormControl>
-                  <Input placeholder="John Doe" {...field} />
+                  <Input placeholder="Juan Pérez" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -89,9 +89,9 @@ export function QuoteForm() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email Address</FormLabel>
+                <FormLabel>Correo Electrónico</FormLabel>
                 <FormControl>
-                  <Input placeholder="john.doe@example.com" {...field} />
+                  <Input placeholder="juan.perez@example.com" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -103,18 +103,19 @@ export function QuoteForm() {
           name="service"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Service of Interest</FormLabel>
+              <FormLabel>Servicio de Interés</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a service" />
+                    <SelectValue placeholder="Seleccione un servicio" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="installation">Installation</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="repair">Repair</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="reparacion">Reparación</SelectItem>
+                  <SelectItem value="mantenimiento_preventivo">Mantenimiento Preventivo</SelectItem>
+                  <SelectItem value="mantenimiento_correctivo">Mantenimiento Correctivo</SelectItem>
+                  <SelectItem value="asesoria">Asesoría Técnica</SelectItem>
+                  <SelectItem value="otro">Otro</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -126,10 +127,10 @@ export function QuoteForm() {
           name="message"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Project Details</FormLabel>
+              <FormLabel>Detalles del Proyecto o Necesidad</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Please provide details about your project or needs..."
+                  placeholder="Por favor, brinde detalles sobre su proyecto o la falla de su equipo..."
                   className="min-h-[150px]"
                   {...field}
                 />
@@ -140,7 +141,7 @@ export function QuoteForm() {
         />
         <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isSubmitting ? "Sending..." : "Send Request"}
+          {isSubmitting ? "Enviando..." : "Enviar Solicitud"}
         </Button>
       </form>
     </Form>

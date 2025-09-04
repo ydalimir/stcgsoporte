@@ -26,16 +26,19 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
 const ticketSchema = z.object({
-  equipmentType: z.enum(["home", "commercial", "industrial"], {
-    required_error: "Please select an equipment type.",
+  serviceType: z.enum(["correctivo", "preventivo"], {
+    required_error: "Por favor seleccione el tipo de servicio.",
+  }),
+  equipmentType: z.string().min(3, {
+    message: "Por favor, describa el equipo (ej. Horno, Refrigerador)."
   }),
   description: z.string().min(20, {
-    message: "Description must be at least 20 characters.",
+    message: "La descripción debe tener al menos 20 caracteres.",
   }).max(500, {
-    message: "Description must not be longer than 500 characters."
+    message: "La descripción no puede exceder los 500 caracteres."
   }),
-  urgency: z.enum(["low", "medium", "high"], {
-    required_error: "Please select an urgency level.",
+  urgency: z.enum(["baja", "media", "alta"], {
+    required_error: "Por favor seleccione un nivel de urgencia.",
   }),
 });
 
@@ -49,6 +52,7 @@ export function TicketForm() {
     resolver: zodResolver(ticketSchema),
     defaultValues: {
       description: "",
+      equipmentType: "",
     },
   });
 
@@ -60,8 +64,8 @@ export function TicketForm() {
     console.log(data);
     
     toast({
-      title: "Ticket Submitted!",
-      description: "We have received your support ticket and will be in touch shortly.",
+      title: "¡Ticket Enviado!",
+      description: "Hemos recibido su ticket de soporte y nos pondremos en contacto en breve.",
     });
 
     form.reset();
@@ -73,24 +77,40 @@ export function TicketForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
           control={form.control}
-          name="equipmentType"
+          name="serviceType"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Equipment Type</FormLabel>
+              <FormLabel>Tipo de Servicio</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select the type of equipment" />
+                    <SelectValue placeholder="Seleccione el tipo de servicio requerido" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="home">Home</SelectItem>
-                  <SelectItem value="commercial">Commercial</SelectItem>
-                  <SelectItem value="industrial">Industrial</SelectItem>
+                  <SelectItem value="correctivo">Mantenimiento Correctivo</SelectItem>
+                  <SelectItem value="preventivo">Mantenimiento Preventivo</SelectItem>
                 </SelectContent>
               </Select>
-              <FormDescription>
-                Choose the category that best fits your equipment.
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+         <FormField
+          control={form.control}
+          name="equipmentType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tipo de Equipo</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Ej: Estufa industrial, Horno de convección, Refrigerador comercial..."
+                  className="min-h-[50px]"
+                  {...field}
+                />
+              </FormControl>
+               <FormDescription>
+                Sea lo más específico posible con el equipo que necesita servicio.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -101,16 +121,16 @@ export function TicketForm() {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Issue Description</FormLabel>
+              <FormLabel>Descripción de la Falla o Necesidad</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Please describe the issue in detail..."
+                  placeholder="Por favor describa el problema o la necesidad en detalle..."
                   className="min-h-[150px]"
                   {...field}
                 />
               </FormControl>
               <FormDescription>
-                The more detail you provide, the faster we can help.
+                Mientras más detalles nos brinde, más rápido podremos ayudarle.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -121,21 +141,21 @@ export function TicketForm() {
           name="urgency"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Urgency Level</FormLabel>
+              <FormLabel>Nivel de Urgencia</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="How urgent is this issue?" />
+                    <SelectValue placeholder="¿Qué tan urgente es este problema?" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="low">Low - Routine check/minor issue</SelectItem>
-                  <SelectItem value="medium">Medium - Affects operation</SelectItem>
-                  <SelectItem value="high">High - Critical failure/stoppage</SelectItem>
+                  <SelectItem value="baja">Baja - Revisión de rutina / problema menor</SelectItem>
+                  <SelectItem value="media">Media - Afecta la operación</SelectItem>
+                  <SelectItem value="alta">Alta - Falla crítica / Equipo detenido</SelectItem>
                 </SelectContent>
               </Select>
               <FormDescription>
-                This helps us prioritize your request appropriately.
+                Esto nos ayuda a priorizar su solicitud adecuadamente.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -143,7 +163,7 @@ export function TicketForm() {
         />
         <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto bg-accent hover:bg-accent/90">
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isSubmitting ? "Submitting..." : "Submit Ticket"}
+          {isSubmitting ? "Enviando..." : "Enviar Ticket"}
         </Button>
       </form>
     </Form>

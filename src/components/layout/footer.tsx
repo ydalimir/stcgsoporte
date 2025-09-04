@@ -11,21 +11,21 @@ export function Footer() {
           <div className="flex flex-col items-center md:items-start gap-2">
             <Logo />
             <p className="text-sm text-muted-foreground">
-              &copy; {currentYear} STICS. All rights reserved.
+              &copy; {currentYear} sticgsa SA de CV. Todos los derechos reservados.
             </p>
           </div>
           <nav className="flex flex-wrap justify-center gap-4 md:gap-6">
-            <Link href="/services" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-              Services
+             <Link href="/about" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              Nosotros
             </Link>
-            <Link href="/faq" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-              FAQ
+            <Link href="/services" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              Servicios
+            </Link>
+            <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              Contacto
             </Link>
             <Link href="/tickets/new" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-              Submit Ticket
-            </Link>
-            <Link href="/quote" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-              Request Quote
+              Crear Ticket
             </Link>
           </nav>
         </div>

@@ -6,8 +6,8 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 
 export const metadata: Metadata = {
-  title: 'STICS Support Hub',
-  description: 'Your one-stop solution for equipment support and services.',
+  title: 'sticgsa | Reparación y Mantenimiento Gastronómico',
+  description: 'Expertos en reparación y mantenimiento de equipos de cocina industrial en Mérida, Yucatán.',
 };
 
 export default function RootLayout({
@@ -16,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

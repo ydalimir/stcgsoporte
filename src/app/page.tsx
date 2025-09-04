@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Wrench, Shield, Zap } from 'lucide-react';
+import { HardHat, Wrench, Shield } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -8,37 +8,18 @@ export default function Home() {
   const services = [
     {
       icon: <Wrench className="w-8 h-8 text-primary" />,
-      title: 'Expert Repairs',
-      description: 'Fast and reliable repairs for home, commercial, and industrial equipment.',
+      title: 'Reparación',
+      description: 'Contamos con refacciones y un entusiasta equipo, listo para su reparacion inmediata.',
     },
     {
       icon: <Shield className="w-8 h-8 text-primary" />,
-      title: 'Preventive Maintenance',
-      description: 'Scheduled maintenance plans to keep your equipment running smoothly.',
+      title: 'Mantenimiento',
+      description: 'Mantenimientos preventivos y correctivos de las mejores marcas de equipos de gastronomía en el mundo.',
     },
     {
-      icon: <Zap className="w-8 h-8 text-primary" />,
-      title: 'Professional Installation',
-      description: 'Seamless and certified installation for all types of equipment.',
-    },
-  ];
-
-  const benefits = [
-    {
-      icon: <CheckCircle className="w-6 h-6 text-accent" />,
-      text: '24/7 Customer Support',
-    },
-    {
-      icon: <CheckCircle className="w-6 h-6 text-accent" />,
-      text: 'Certified & Experienced Technicians',
-    },
-    {
-      icon: <CheckCircle className="w-6 h-6 text-accent" />,
-      text: 'Transparent Pricing',
-    },
-    {
-      icon: <CheckCircle className="w-6 h-6 text-accent" />,
-      text: 'Rapid Response Times',
+      icon: <HardHat className="w-8 h-8 text-primary" />,
+      title: 'Asesoría Técnica',
+      description: 'Será un placer asesorarlo para que su proyecto se convierta en nuestro proyecto también.',
     },
   ];
 
@@ -48,25 +29,25 @@ export default function Home() {
         <div className="container mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
           <div className="space-y-6">
             <h1 className="font-headline text-4xl md:text-6xl font-bold tracking-tighter">
-              Reliable Support for Your Equipment
+              Reparación y mantenimiento de equipos de cocina en Mérida, Yucatán
             </h1>
             <p className="text-lg text-muted-foreground">
-              STICS Support Hub offers expert installation, maintenance, and repair services to keep your operations running without a hitch.
+              Soluciones expertas para mantener tu cocina funcionando sin contratiempos.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Button asChild size="lg" className="bg-accent hover:bg-accent/90">
-                <Link href="/signup">Get Started</Link>
+                <Link href="/quote">Empezar</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link href="/services">View Services</Link>
+                <Link href="/services">Ver Servicios</Link>
               </Button>
             </div>
           </div>
           <div className="relative h-64 md:h-96 rounded-lg overflow-hidden shadow-2xl">
             <Image
               src="https://picsum.photos/800/600"
-              alt="Technician working on equipment"
-              data-ai-hint="technician industrial"
+              alt="Técnico reparando equipo de cocina"
+              data-ai-hint="kitchen repair"
               fill
               className="object-cover"
             />
@@ -76,11 +57,8 @@ export default function Home() {
 
       <section id="services" className="py-24">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="font-headline text-3xl md:text-4xl font-bold mb-4">Our Core Services</h2>
-          <p className="max-w-2xl mx-auto text-muted-foreground mb-12">
-            We provide a comprehensive range of services to meet all your equipment needs.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <h2 className="font-headline text-3xl md:text-4xl font-bold mb-4">Nuestros Servicios Principales</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
             {services.map((service, index) => (
               <Card key={index} className="text-center shadow-lg hover:shadow-xl transition-shadow duration-300">
                 <CardHeader>
@@ -98,32 +76,30 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="why-us" className="py-24 bg-card">
+      <section id="about-us" className="py-24 bg-card">
         <div className="container mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
-          <div className="relative h-80 md:h-full rounded-lg overflow-hidden shadow-2xl">
+          <div className="relative h-80 md:h-[500px] rounded-lg overflow-hidden shadow-2xl order-last md:order-first">
             <Image
               src="https://picsum.photos/600/800"
-              alt="Satisfied customer"
-              data-ai-hint="customer smile"
+              alt="Equipo de sticgsa"
+              data-ai-hint="team workshop"
               fill
               className="object-cover"
             />
           </div>
           <div className="space-y-6">
-            <h2 className="font-headline text-3xl md:text-4xl font-bold">Why Choose STICS?</h2>
-            <p className="text-muted-foreground">
-              Our commitment to excellence and customer satisfaction sets us apart. We are dedicated to providing you with the best service possible.
+            <h2 className="font-headline text-3xl md:text-4xl font-bold">Más sobre nosotros</h2>
+            <p className="text-muted-foreground font-semibold">
+              Expertos en servicios para estufas, freidoras, campanas, hornos y refrigeradores.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {benefits.map((benefit, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  {benefit.icon}
-                  <span className="font-medium">{benefit.text}</span>
-                </div>
-              ))}
-            </div>
+            <p className="text-muted-foreground">
+              En Equipo Técnico Gastronómico sticgsa SA de CV tenemos más de 30 años de experiencia dentro del ramo industrial, brindando los mejores servicios de reparación, mantenimiento preventivo y correctivo de diferentes equipos de cocina industrial. Nos ubicamos en la Ciudad de Mérida Yucatán.
+            </p>
+            <p className="text-muted-foreground">
+              Manejamos excelentes relaciones comerciales permitiéndonos ofrecer soluciones prácticas a la medida de manera rápida y oportuna. Nuestro personal es profesional, está capacitado y son especialistas para la realización de cualquier servicio, trabajando con las marcas más importantes del mercado.
+            </p>
             <Button asChild size="lg" variant="link" className="p-0 text-accent">
-              <Link href="/quote">Get a Free Quote &rarr;</Link>
+              <Link href="/quote">Contáctanos &rarr;</Link>
             </Button>
           </div>
         </div>

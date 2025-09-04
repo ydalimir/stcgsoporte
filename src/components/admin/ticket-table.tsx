@@ -44,58 +44,53 @@ import { cn } from "@/lib/utils"
 const data: Ticket[] = [
     {
       id: "TICK-8782",
-      user: "John Doe",
-      email: "john.d@example.com",
-      equipment: "Industrial",
-      description: "Main conveyor belt is offline. Production stopped.",
-      urgency: "High",
-      priority: "High",
-      status: "Received",
-      createdAt: "2023-10-26",
+      user: "Restaurante La Tradición",
+      email: "compras@latradicion.com",
+      equipment: "Horno de convección",
+      serviceType: "Correctivo",
+      urgency: "Alta",
+      status: "Recibido",
+      createdAt: "2024-07-26",
     },
     {
       id: "TICK-4331",
-      user: "Jane Smith",
-      email: "jane.s@example.com",
-      equipment: "Commercial",
-      description: "Walk-in freezer temperature is fluctuating.",
-      urgency: "Medium",
-      priority: "High",
-      status: "In Progress",
-      createdAt: "2023-10-25",
+      user: "Hotel Casa de Piedra",
+      email: "mantenimiento@casadepiedra.com",
+      equipment: "Sistema de refrigeración",
+      serviceType: "Preventivo",
+      urgency: "Media",
+      status: "En Progreso",
+      createdAt: "2024-07-25",
     },
     {
       id: "TICK-2345",
-      user: "Bob Johnson",
-      email: "bob.j@example.com",
-      equipment: "Home",
-      description: "Dishwasher is not draining properly.",
-      urgency: "Low",
-      priority: "Low",
-      status: "Received",
-      createdAt: "2023-10-26",
+      user: "Cafetería El Buen Café",
+      email: "gerencia@buencafe.com",
+      equipment: "Máquina de espresso",
+      serviceType: "Correctivo",
+      urgency: "Media",
+      status: "Recibido",
+      createdAt: "2024-07-26",
     },
     {
       id: "TICK-9876",
-      user: "Alice Williams",
-      email: "alice.w@example.com",
-      equipment: "Commercial",
-      description: "Office HVAC unit is making a loud noise.",
-      urgency: "Medium",
-      priority: "Medium",
-      status: "Resolved",
-      createdAt: "2023-10-22",
+      user: "Cocina Económica Doña Mary",
+      email: "mary@cocina.com",
+      equipment: "Estufa de 6 quemadores",
+      serviceType: "Correctivo",
+      urgency: "Baja",
+      status: "Resuelto",
+      createdAt: "2024-07-22",
     },
      {
       id: "TICK-5432",
-      user: "Charlie Brown",
-      email: "charlie.b@example.com",
-      equipment: "Industrial",
-      description: "Hydraulic press is leaking fluid. Minor leak, but needs attention.",
-      urgency: "Low",
-      priority: "Medium",
-      status: "Received",
-      createdAt: "2023-10-26",
+      user: "Banquetería Royal",
+      email: "eventos@royal.com",
+      equipment: "Freidoras industriales",
+      serviceType: "Preventivo",
+      urgency: "Baja",
+      status: "Recibido",
+      createdAt: "2024-07-26",
     },
   ]
 
@@ -103,11 +98,10 @@ export type Ticket = {
   id: string
   user: string
   email: string
-  equipment: "Home" | "Commercial" | "Industrial"
-  description: string
-  urgency: "Low" | "Medium" | "High"
-  priority: "Low" | "Medium" | "High"
-  status: "Received" | "In Progress" | "Resolved"
+  equipment: string
+  serviceType: "Correctivo" | "Preventivo"
+  urgency: "Baja" | "Media" | "Alta"
+  status: "Recibido" | "En Progreso" | "Resuelto"
   createdAt: string
 }
 
@@ -125,7 +119,7 @@ export const columns: ColumnDef<Ticket>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          User
+          Cliente
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       )
@@ -134,36 +128,37 @@ export const columns: ColumnDef<Ticket>[] = [
   },
    {
     accessorKey: "status",
-    header: "Status",
+    header: "Estado",
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
-      return <Badge variant={status === 'Resolved' ? 'secondary' : 'default'} className={cn(
-        status === 'Received' && 'bg-blue-500',
-        status === 'In Progress' && 'bg-yellow-500 text-black',
-        status === 'Resolved' && 'bg-green-500'
+      return <Badge variant={status === 'Resuelto' ? 'secondary' : 'default'} className={cn(
+        'text-white',
+        status === 'Recibido' && 'bg-blue-500',
+        status === 'En Progreso' && 'bg-yellow-500 text-black',
+        status === 'Resuelto' && 'bg-green-500'
       )}>{status}</Badge>;
     },
   },
   {
-    accessorKey: "priority",
-    header: "Priority",
+    accessorKey: "urgency",
+    header: "Urgencia",
     cell: ({ row }) => {
-      const priority = row.getValue("priority") as string;
+      const urgency = row.getValue("urgency") as string;
       return <Badge variant="outline" className={cn(
-        priority === 'High' && 'border-red-500 text-red-500',
-        priority === 'Medium' && 'border-yellow-500 text-yellow-500',
-        priority === 'Low' && 'border-green-500 text-green-500'
-      )}>{priority}</Badge>
+        urgency === 'Alta' && 'border-red-500 text-red-500',
+        urgency === 'Media' && 'border-yellow-500 text-yellow-500',
+        urgency === 'Baja' && 'border-green-500 text-green-500'
+      )}>{urgency}</Badge>
     },
   },
    {
     accessorKey: "equipment",
-    header: "Equipment",
+    header: "Equipo",
     cell: ({ row }) => <div>{row.getValue("equipment")}</div>,
   },
   {
     accessorKey: "createdAt",
-    header: "Date",
+    header: "Fecha",
     cell: ({ row }) => <div>{row.getValue("createdAt")}</div>,
   },
   {
@@ -176,17 +171,17 @@ export const columns: ColumnDef<Ticket>[] = [
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
+              <span className="sr-only">Abrir menú</span>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem>View Ticket Details</DropdownMenuItem>
-            <DropdownMenuItem>Assign to Team</DropdownMenuItem>
+            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+            <DropdownMenuItem>Ver Detalles del Ticket</DropdownMenuItem>
+            <DropdownMenuItem>Asignar a Técnico</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Mark as In Progress</DropdownMenuItem>
-            <DropdownMenuItem>Mark as Resolved</DropdownMenuItem>
+            <DropdownMenuItem>Marcar como "En Progreso"</DropdownMenuItem>
+            <DropdownMenuItem>Marcar como "Resuelto"</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )
@@ -223,7 +218,7 @@ export function TicketTable() {
     <div className="w-full">
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filter by user..."
+          placeholder="Filtrar por cliente..."
           value={(table.getColumn("user")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
             table.getColumn("user")?.setFilterValue(event.target.value)
@@ -233,7 +228,7 @@ export function TicketTable() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
+              Columnas <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -300,7 +295,7 @@ export function TicketTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  No se encontraron resultados.
                 </TableCell>
               </TableRow>
             )}
@@ -309,7 +304,7 @@ export function TicketTable() {
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} ticket(s).
+          {table.getFilteredRowModel().rows.length} ticket(s) encontrado(s).
         </div>
         <div className="space-x-2">
           <Button
@@ -318,7 +313,7 @@ export function TicketTable() {
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            Previous
+            Anterior
           </Button>
           <Button
             variant="outline"
@@ -326,7 +321,7 @@ export function TicketTable() {
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            Next
+            Siguiente
           </Button>
         </div>
       </div>

@@ -23,10 +23,12 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 
 const navLinks = [
-  { href: '/services', label: 'Services' },
-  { href: '/tickets/new', label: 'Submit Ticket' },
-  { href: '/faq', label: 'FAQ' },
-  { href: '/quote', label: 'Request a Quote' },
+  { href: '/', label: 'Inicio' },
+  { href: '/about', label: 'Nosotros' },
+  { href: '/services', label: 'Servicios' },
+  { href: '/blog', label: 'Blog' },
+  { href: '/store', label: 'Tienda' },
+  { href: '/contact', label: 'Contacto' },
 ];
 
 export function Header() {
@@ -37,13 +39,11 @@ export function Header() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Reset admin state on user change or while loading
     if (isLoading || !user) {
       setIsAdmin(false);
       return;
     }
 
-    // Only check for admin role if we have a user and auth is settled
     const checkAdminRole = async () => {
       try {
         const userDocRef = doc(db, "users", user.uid);
@@ -59,7 +59,9 @@ export function Header() {
       }
     };
 
-    checkAdminRole();
+    if (user) {
+      checkAdminRole();
+    }
   }, [user, isLoading]);
 
 
@@ -82,7 +84,7 @@ export function Header() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">My Account</p>
+            <p className="text-sm font-medium leading-none">Mi Cuenta</p>
             <p className="text-xs leading-none text-muted-foreground">
               {user?.email}
             </p>
@@ -90,16 +92,19 @@ export function Header() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/profile">Profile</Link>
+          <Link href="/profile">Perfil</Link>
+        </DropdownMenuItem>
+         <DropdownMenuItem asChild>
+          <Link href="/tickets/new">Crear Ticket</Link>
         </DropdownMenuItem>
         {isAdmin && (
            <DropdownMenuItem asChild>
-             <Link href="/admin">Admin</Link>
+             <Link href="/admin">Admin Dashboard</Link>
            </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>
-          Sign out
+          Cerrar Sesión
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -108,44 +113,34 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-sm">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Logo />
-
-        <nav className="hidden md:flex items-center gap-6">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                'text-sm font-medium transition-colors hover:text-primary',
-                pathname === link.href ? 'text-primary' : 'text-muted-foreground'
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
-           {isAdmin && (
-            <Link
-              href="/admin"
-              className={cn(
-                'text-sm font-medium transition-colors hover:text-primary',
-                pathname === '/admin' ? 'text-primary' : 'text-muted-foreground'
-              )}
-            >
-              Admin
-            </Link>
-          )}
-        </nav>
+        <div className="flex items-center gap-6">
+          <Logo />
+           <nav className="hidden md:flex items-center gap-6">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    'text-sm font-medium transition-colors hover:text-primary',
+                    pathname === link.href ? 'text-primary' : 'text-muted-foreground'
+                  )}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+        </div>
 
         <div className="hidden md:flex items-center gap-2">
           {isLoading ? null : user ? (
             <UserMenu />
           ) : (
             <>
-              <Button variant="outline" asChild>
-                <Link href="/login">Login</Link>
+              <Button variant="ghost" asChild>
+                <Link href="/login">Iniciar Sesión</Link>
               </Button>
               <Button asChild className="bg-accent hover:bg-accent/90">
-                <Link href="/signup">Sign Up</Link>
+                <Link href="/signup">Registrarse</Link>
               </Button>
             </>
           )}
@@ -156,7 +151,7 @@ export function Header() {
             <SheetTrigger asChild>
               <Button variant="outline" size="icon">
                 <Menu className="h-4 w-4" />
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">Abrir menú</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="right">
@@ -178,32 +173,20 @@ export function Header() {
                       {link.label}
                     </Link>
                   ))}
-                  {isAdmin && (
-                     <Link
-                        href="/admin"
-                        onClick={() => setSheetOpen(false)}
-                        className={cn(
-                          'text-lg font-medium transition-colors hover:text-primary',
-                           pathname === '/admin' ? 'text-primary' : 'text-foreground'
-                        )}
-                      >
-                        Admin
-                      </Link>
-                  )}
                 </nav>
                 <div className="mt-auto p-4 border-t flex flex-col gap-4">
                   {isLoading ? null : user ? (
                      <div className='flex items-center justify-between'>
                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                       <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
+                       <Button variant="outline" onClick={() => { handleSignOut(); setSheetOpen(false); }}>Cerrar Sesión</Button>
                     </div>
                   ) : (
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2">
                       <Button variant="outline" asChild className="w-full">
-                        <Link href="/login">Login</Link>
+                        <Link href="/login" onClick={() => setSheetOpen(false)}>Iniciar Sesión</Link>
                       </Button>
                        <Button asChild className="bg-accent hover:bg-accent/90 w-full">
-                        <Link href="/signup">Sign Up</Link>
+                        <Link href="/signup" onClick={() => setSheetOpen(false)}>Registrarse</Link>
                       </Button>
                     </div>
                   )}

@@ -8,10 +8,10 @@ export default function NewTicketPage() {
         <div className="text-center mb-12">
             <Ticket className="w-16 h-16 mx-auto text-primary mb-4" />
             <h1 className="text-4xl md:text-5xl font-bold font-headline mb-4">
-              Submit a Support Ticket
+              Levantar un Ticket de Servicio
             </h1>
             <p className="text-lg text-muted-foreground">
-              Please fill out the form below, and our team will get back to you as soon as possible.
+              Por favor, complete el formulario a continuación. Nuestro equipo se pondrá en contacto a la brevedad.
             </p>
         </div>
         <div className="bg-card p-8 rounded-lg shadow-lg">

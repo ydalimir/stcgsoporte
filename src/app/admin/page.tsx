@@ -17,18 +17,15 @@ export default function AdminDashboardPage() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Wait until Firebase auth state is determined
     if (authIsLoading) {
       return; 
     }
 
-    // If no user is logged in after auth check, redirect to login
     if (!user) {
       router.push("/login");
       return;
     }
 
-    // Now that we have a user, check their role from Firestore
     const checkAdminRole = async () => {
       try {
         const userDocRef = doc(db, "users", user.uid);
@@ -39,18 +36,18 @@ export default function AdminDashboardPage() {
         } else {
           setIsAdmin(false);
           toast({
-            title: "Access Denied",
-            description: "You do not have permission to view this page.",
+            title: "Acceso Denegado",
+            description: "No tienes permiso para ver esta página.",
             variant: "destructive",
           });
           router.push("/");
         }
       } catch (error) {
-        console.error("Error fetching user role:", error);
+        console.error("Error al verificar el rol de admin:", error);
         setIsAdmin(false);
         toast({
-          title: "Permission Error",
-          description: "Could not verify your role. Please try again later.",
+          title: "Error de Permisos",
+          description: "No se pudo verificar tu rol. Intenta más tarde.",
           variant: "destructive",
         });
         router.push("/");
@@ -60,27 +57,25 @@ export default function AdminDashboardPage() {
     checkAdminRole();
 
   }, [user, authIsLoading, router, toast]);
-
-  // Show a loader while auth is loading OR admin check is in progress
+  
   if (authIsLoading || isAdmin === null) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-4">Verificando permisos...</p>
       </div>
     );
   }
   
-  // If we reach here and isAdmin is true, render the admin content.
-  // If isAdmin is false, the user will have been redirected by the effect.
   if (isAdmin) {
     return (
       <div className="container mx-auto px-4 py-10">
         <div className="flex items-center gap-4 mb-8">
           <LayoutDashboard className="w-8 h-8 text-primary" />
-          <h1 className="text-3xl md:text-4xl font-bold font-headline">Admin Dashboard</h1>
+          <h1 className="text-3xl md:text-4xl font-bold font-headline">Panel de Administración</h1>
         </div>
         <p className="text-muted-foreground mb-8">
-          View, manage, and assign all support tickets from this central hub.
+          Ver, gestionar y asignar todos los tickets de soporte desde este panel central.
         </p>
         
         <div className="bg-card p-4 sm:p-6 rounded-lg shadow-lg">
@@ -90,7 +85,6 @@ export default function AdminDashboardPage() {
     );
   }
 
-  // Render nothing or a loader while redirection is happening.
   return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

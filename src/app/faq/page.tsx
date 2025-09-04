@@ -4,38 +4,38 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { ShieldQuestion } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
 
 const faqs = [
   {
-    question: 'How do I submit a new support ticket?',
+    question: '¿Cómo puedo levantar un nuevo ticket de servicio?',
     answer:
-      'You can submit a new support ticket by navigating to the "Submit Ticket" page. You will need to fill in details about your equipment, a description of the issue, and the level of urgency. Once submitted, our team will review it promptly.',
+      'Puedes levantar un nuevo ticket navegando a la sección "Crear Ticket" desde el menú de tu perfil o el pie de página. Deberás llenar detalles sobre el tipo de servicio, el equipo, una descripción del problema y el nivel de urgencia. Una vez enviado, nuestro equipo lo revisará a la brevedad.',
   },
   {
-    question: 'What are your response times?',
+    question: '¿Cuáles son los tiempos de respuesta?',
     answer:
-      'Response times vary based on the priority of your ticket. High-priority tickets are typically addressed within 1-2 hours, medium-priority within 4-6 hours, and low-priority within 24 hours. These are estimates and can vary based on current workload.',
+      'Los tiempos de respuesta varían según la prioridad de tu ticket. Los tickets de alta prioridad se atienden típicamente en 1-2 horas, los de prioridad media en 4-6 horas y los de baja prioridad en 24 horas. Estos son estimados y pueden variar según la carga de trabajo actual.',
   },
   {
-    question: 'How can I track the status of my ticket?',
+    question: '¿Cómo puedo revisar el estado de mi ticket?',
     answer:
-      'Once you are logged into your account, you can visit the "My Tickets" section to see a list of all your submitted tickets and their current status (e.g., Received, In Progress, Resolved). You will also receive email notifications for major status changes.',
+      'Una vez que hayas iniciado sesión en tu cuenta, podrás visitar una futura sección de "Mis Tickets" para ver una lista de todos tus tickets enviados y su estado actual (ej., Recibido, En Progreso, Resuelto). También recibirás notificaciones por correo electrónico sobre cambios importantes en el estado.',
   },
   {
-    question: 'What types of equipment do you service?',
+    question: '¿Qué tipos de equipos de cocina reparan?',
     answer:
-      'We service a wide range of equipment across home, commercial, and industrial sectors. This includes everything from home appliances and HVAC systems to commercial kitchen equipment and heavy industrial machinery. Please see our "Services" page for more details.',
+      'Damos servicio a una amplia gama de equipos de cocina industrial y comercial, incluyendo estufas, hornos, freidoras, campanas de extracción, refrigeradores, congeladores y más. Trabajamos con las principales marcas del mercado.',
   },
   {
-    question: 'How do I request a quote for a specific service?',
+    question: '¿Cómo solicito una cotización para un servicio específico?',
     answer:
-      'You can request a quotation by visiting the "Request a Quote" page. Please provide as much detail as possible about your needs so we can give you an accurate estimate. Our team will get back to you with a detailed quote.',
+      'Puedes solicitar una cotización visitando la página "Solicitar Cotización". Proporciona la mayor cantidad de detalles posible sobre tus necesidades para que podamos darte un estimado preciso. Nuestro equipo te responderá con una cotización detallada.',
   },
   {
-    question: 'Do you offer emergency repair services?',
+    question: '¿Ofrecen servicios de reparación de emergencia?',
     answer:
-      'Yes, we offer 24/7 emergency repair services for critical issues, especially for our commercial and industrial clients. Please mark your ticket as "High" urgency or call our emergency hotline for immediate assistance.',
+      'Sí, ofrecemos servicios de reparación de emergencia 24/7 para problemas críticos. Por favor, marca tu ticket como de "Alta" urgencia o llama a nuestra línea directa de emergencia para asistencia inmediata.',
   },
 ];
 
@@ -43,12 +43,12 @@ export default function FaqPage() {
   return (
     <div className="container mx-auto px-4 py-16">
       <div className="text-center max-w-2xl mx-auto mb-12">
-        <ShieldQuestion className="w-16 h-16 mx-auto text-primary mb-4" />
+        <HelpCircle className="w-16 h-16 mx-auto text-primary mb-4" />
         <h1 className="text-4xl md:text-5xl font-bold font-headline mb-4">
-          Frequently Asked Questions
+          Preguntas Frecuentes
         </h1>
         <p className="text-lg text-muted-foreground">
-          Find answers to common questions about our services and processes.
+          Encuentra respuestas a preguntas comunes sobre nuestros servicios y procesos.
         </p>
       </div>
       <div className="max-w-3xl mx-auto">

@@ -8,10 +8,10 @@ export default function RequestQuotePage() {
         <div className="text-center mb-12">
           <FileText className="w-16 h-16 mx-auto text-primary mb-4" />
           <h1 className="text-4xl md:text-5xl font-bold font-headline mb-4">
-            Request a Quote
+            Solicitar una Cotización
           </h1>
           <p className="text-lg text-muted-foreground">
-            Tell us about your needs, and we'll provide you with a detailed, no-obligation quote.
+            Cuéntenos sobre sus necesidades y le proporcionaremos una cotización detallada y sin compromiso.
           </p>
         </div>
         <div className="bg-card p-8 rounded-lg shadow-lg">
