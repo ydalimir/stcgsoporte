@@ -6,6 +6,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Zap, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import React, { Suspense } from 'react';
+import { Loader2 } from 'lucide-react';
+
 
 const allServices = {
   correctivo: {
@@ -66,8 +69,7 @@ type ServiceTypePageProps = {
   }
 }
 
-export default function ServiceTypePage({ params }: ServiceTypePageProps) {
-  const { serviceType } = params;
+function ServiceTypePageContent({ serviceType }: { serviceType: keyof typeof allServices }) {
   const serviceInfo = allServices[serviceType];
 
   if (!serviceInfo) {
@@ -112,4 +114,22 @@ export default function ServiceTypePage({ params }: ServiceTypePageProps) {
         </div>
     </div>
   );
+}
+
+function LoadingComponent() {
+  return (
+    <div className="flex items-center justify-center min-h-[50vh]">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
+
+export default function ServiceTypePage({ params }: ServiceTypePageProps) {
+  const { serviceType } = params;
+  
+  return (
+    <Suspense fallback={<LoadingComponent />}>
+      <ServiceTypePageContent serviceType={serviceType} />
+    </Suspense>
+  )
 }
