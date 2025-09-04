@@ -69,6 +69,7 @@ export type Quote = {
   date: string;
   expirationDate?: string;
   rfc?: string;
+  observations?: string;
   policies?: string;
   subtotal: number;
   total: number;
@@ -85,7 +86,7 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
     
     // Create a detailed description from quote items
     const itemsDescription = quote.items.map(item => `${item.quantity} x ${item.description}`).join(', ');
-    const finalDescription = `${itemsDescription}. --- OBSERVACIONES: ${quote.policies || 'Ninguna.'}`;
+    const finalDescription = `${itemsDescription}. --- OBSERVACIONES: ${quote.observations || 'Ninguna.'}`;
 
     const ticketData = {
       clientName: quote.clientName,
@@ -182,6 +183,15 @@ const downloadPDF = (quote: Quote) => {
     });
 
     yPos = (doc as any).lastAutoTable.finalY + 10;
+
+    if (quote.observations) {
+        doc.setFontSize(10);
+        doc.text("Observaciones:", 14, yPos);
+        yPos += 5;
+        const splitObservations = doc.splitTextToSize(quote.observations, 180);
+        doc.text(splitObservations, 14, yPos);
+        yPos += splitObservations.length * 5 + 5;
+    }
 
     if (quote.policies) {
         doc.setFontSize(10);
@@ -470,3 +480,5 @@ export function QuoteManager() {
     </div>
   );
 }
+
+    

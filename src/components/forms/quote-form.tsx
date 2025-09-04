@@ -50,6 +50,7 @@ const quoteFormSchema = z.object({
   items: z.array(quoteItemSchema).min(1, "Debe agregar al menos un ítem."),
   expirationDate: z.string().optional(),
   rfc: z.string().optional(),
+  observations: z.string().optional(),
   policies: z.string().optional(),
   iva: z.coerce.number().min(0, "El IVA no puede ser negativo.").default(16),
 });
@@ -96,6 +97,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
       items: [],
       expirationDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // Default 15 days
       rfc: "",
+      observations: "",
       policies: "Esta cotización tiene una validez de 15 días a partir de la fecha de emisión. Los precios no incluyen IVA. El tiempo de entrega puede variar.",
       iva: 16,
     },
@@ -125,6 +127,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
             items: [],
             expirationDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
             rfc: "",
+            observations: "",
             policies: "Esta cotización tiene una validez de 15 días a partir de la fecha de emisión. Los precios no incluyen IVA. El tiempo de entrega puede variar.",
             iva: 16,
         });
@@ -270,8 +273,12 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                 {form.formState.errors.items && <p className="text-sm font-medium text-destructive">{form.formState.errors.items?.root?.message || form.formState.errors.items.message}</p>}
             </div>
 
+             <FormField name="observations" control={form.control} render={({ field }) => (
+              <FormItem><FormLabel>Observaciones</FormLabel><FormControl><Textarea placeholder="Añadir notas u observaciones específicas para esta cotización..." className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
+
             <FormField name="policies" control={form.control} render={({ field }) => (
-              <FormItem><FormLabel>Políticas y Términos (Observaciones)</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem><FormLabel>Políticas y Términos</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             
              <div className="flex justify-end">
@@ -312,3 +319,5 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     </Dialog>
   );
 }
+
+    
