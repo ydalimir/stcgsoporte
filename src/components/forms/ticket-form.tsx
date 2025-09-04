@@ -25,6 +25,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useRouter } from "next/navigation";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Input } from "../ui/input";
 
 const ticketSchema = z.object({
   serviceType: z.enum(["correctivo", "preventivo"], {
@@ -48,6 +53,8 @@ type TicketFormValues = z.infer<typeof ticketSchema>;
 export function TicketForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
 
   const form = useForm<TicketFormValues>({
     resolver: zodResolver(ticketSchema),
@@ -57,20 +64,63 @@ export function TicketForm() {
     },
   });
 
-  async function onSubmit(data: TicketFormValues) {
-    setIsSubmitting(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    console.log(data);
-    
-    toast({
-      title: "¡Ticket Enviado!",
-      description: "Hemos recibido su ticket de soporte y nos pondremos en contacto en breve.",
-    });
+  if (isLoading) {
+    return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  }
 
-    form.reset();
-    setIsSubmitting(false);
+  if (!user) {
+     toast({
+        title: "Acceso Denegado",
+        description: "Debes iniciar sesión para crear un ticket.",
+        variant: "destructive",
+      });
+    router.push('/login');
+    return null;
+  }
+
+  async function onSubmit(data: TicketFormValues) {
+    if (!user) {
+       toast({
+        title: "Error",
+        description: "No se pudo obtener la información del usuario. Intente de nuevo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+        const docRef = await addDoc(collection(db, "tickets"), {
+            ...data,
+            userId: user.uid,
+            userEmail: user.email,
+            status: "Recibido",
+            createdAt: serverTimestamp(),
+        });
+      
+        // Update the document with its own ID
+        // await updateDoc(docRef, {
+        //     id: docRef.id
+        // });
+
+      toast({
+        title: "¡Ticket Enviado!",
+        description: "Hemos recibido su ticket de soporte y nos pondremos en contacto en breve.",
+      });
+
+      form.reset();
+      router.push('/profile/my-tickets');
+
+    } catch (error) {
+        console.error("Error al crear el ticket: ", error);
+        toast({
+            title: "Error al Enviar",
+            description: "No se pudo crear el ticket. Por favor, intente más tarde.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (
@@ -104,9 +154,8 @@ export function TicketForm() {
             <FormItem>
               <FormLabel>Tipo de Equipo</FormLabel>
               <FormControl>
-                <Textarea
+                <Input
                   placeholder="Ej: Estufa industrial, Horno de convección, Refrigerador comercial..."
-                  className="min-h-[50px]"
                   {...field}
                 />
               </FormControl>
@@ -150,21 +199,18 @@ export function TicketForm() {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="baja">Baja - Revisión de rutina / problema menor</SelectItem>
+                  <SelectItem value="baja">Baja - Puede esperar</SelectItem>
                   <SelectItem value="media">Media - Afecta la operación</SelectItem>
-                  <SelectItem value="alta">Alta - Falla crítica / Equipo detenido</SelectItem>
+                  <SelectItem value="alta">Alta - Operación detenida</SelectItem>
                 </SelectContent>
               </Select>
-              <FormDescription>
-                Esto nos ayuda a priorizar su solicitud adecuadamente.
-              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto bg-accent hover:bg-accent/90">
-          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isSubmitting ? "Enviando..." : "Enviar Ticket"}
+        <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
+           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+           {isSubmitting ? "Enviando Ticket..." : "Enviar Ticket"}
         </Button>
       </form>
     </Form>
