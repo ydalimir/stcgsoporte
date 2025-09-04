@@ -49,7 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import { QuoteForm } from "@/components/forms/quote-form";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, runTransaction, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, runTransaction, getDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Badge } from "../ui/badge";
 
@@ -64,6 +64,8 @@ export type Quote = {
   id: string;
   quoteNumber: number;
   clientName: string;
+  clientPhone: string;
+  clientAddress: string;
   date: string;
   expirationDate?: string;
   rfc?: string;
@@ -73,48 +75,49 @@ export type Quote = {
   iva?: number;
   status: "Borrador" | "Enviada" | "Aceptada" | "Rechazada";
   items: QuoteItem[];
+  linkedTicketId?: string;
 };
 
-const createTicketFromQuote = async (quote: Quote, toast: (options: any) => void) => {
+const createOrUpdateTicketFromQuote = async (quote: Quote) => {
     if (!quote.items || quote.items.length === 0) {
-      toast({ title: "Error", description: "La cotización no tiene items para crear un ticket.", variant: "destructive" });
-      return;
+      throw new Error("La cotización no tiene items.");
     }
   
     const ticketData = {
-      userId: 'admin_generated', 
       clientName: quote.clientName,
-      clientPhone: "N/A", 
-      clientAddress: "N/A",
+      clientPhone: quote.clientPhone, 
+      clientAddress: quote.clientAddress,
       clientEmail: "N/A", 
       clientRfc: quote.rfc || "N/A",
       serviceType: "correctivo" as "correctivo" | "preventivo", 
       equipmentType: quote.items.map(item => item.description).join(', '),
-      description: `Ticket generado a partir de la cotización #${String(quote.quoteNumber).padStart(3, '0')}. ${quote.policies || ''}`,
+      description: `Servicio basado en cotización #${String(quote.quoteNumber).padStart(3, '0')}. ${quote.policies || ''}`,
       urgency: "media" as "baja" | "media" | "alta",
       status: "Recibido",
       createdAt: serverTimestamp(),
       price: quote.total,
+      userId: 'admin_generated', 
+      quoteId: quote.id,
     };
   
-    try {
-        await addDoc(collection(db, "tickets"), ticketData);
-        toast({ title: "¡Cotización Aceptada!", description: `Se ha generado un nuevo ticket de servicio.`});
-    } catch (error) {
-        console.error("Error creating ticket from quote:", error);
-        toast({ title: "Error", description: "No se pudo generar el ticket a partir de la cotización.", variant: "destructive" });
+    if (quote.linkedTicketId) {
+        // Update existing ticket
+        const ticketRef = doc(db, "tickets", quote.linkedTicketId);
+        await updateDoc(ticketRef, ticketData);
+        return quote.linkedTicketId;
+    } else {
+        // Create new ticket
+        const newTicketRef = await addDoc(collection(db, "tickets"), ticketData);
+        // Link ticket ID back to quote
+        const quoteRef = doc(db, "quotes", quote.id);
+        await updateDoc(quoteRef, { linkedTicketId: newTicketRef.id });
+        return newTicketRef.id;
     }
 };
 
 const downloadPDF = (quote: Quote) => {
     const doc = new jsPDF();
     let yPos = 20;
-
-    // Defensively calculate totals in case they are missing from older records
-    const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
-    const ivaPercentage = quote.iva ?? 16;
-    const ivaAmount = subtotal * (ivaPercentage / 100);
-    const total = quote.total ?? subtotal + ivaAmount;
 
     // Company Name
     doc.setFontSize(16);
@@ -131,6 +134,15 @@ const downloadPDF = (quote: Quote) => {
     doc.text(`Cliente: ${quote.clientName}`, 14, yPos);
     yPos += 7;
 
+    if (quote.clientPhone) {
+      doc.text(`Teléfono: ${quote.clientPhone}`, 14, yPos);
+      yPos += 7;
+    }
+     if (quote.clientAddress) {
+      doc.text(`Dirección: ${quote.clientAddress}`, 14, yPos);
+      yPos += 7;
+    }
+
     if (quote.rfc) {
       doc.text(`RFC: ${quote.rfc}`, 14, yPos);
       yPos += 7;
@@ -142,6 +154,10 @@ const downloadPDF = (quote: Quote) => {
     }
     yPos += 10;
 
+    const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+    const ivaPercentage = quote.iva ?? 16;
+    const ivaAmount = subtotal * (ivaPercentage / 100);
+    const total = quote.total ?? subtotal + ivaAmount;
 
     const foot = [
         ['', '', 'Subtotal', `$${subtotal.toFixed(2)}`],
@@ -152,7 +168,7 @@ const downloadPDF = (quote: Quote) => {
     autoTable(doc, {
       startY: yPos,
       head: [['Descripción', 'Cantidad', 'Precio Unitario', 'Importe']],
-      body: quote.items.map(item => [item.description, item.quantity, `$${item.price.toFixed(2)}`, `$${(item.quantity * item.price).toFixed(2)}`]),
+      body: quote.items.map(item => [item.description, item.quantity, `$${(item.price || 0).toFixed(2)}`, `$${((item.quantity || 0) * (item.price || 0)).toFixed(2)}`]),
       foot: foot,
       headStyles: { fillColor: [46, 154, 254] },
       didDrawPage: (data) => {
@@ -171,7 +187,7 @@ const downloadPDF = (quote: Quote) => {
         doc.text(splitPolicies, 14, yPos);
     }
     
-    doc.save(`cotizacion-${String(quote.quoteNumber).padStart(3, '0')}.pdf`);
+    doc.save(`COT-${String(quote.quoteNumber).padStart(3, '0')}.pdf`);
 }
 
 export function QuoteManager() {
@@ -196,13 +212,21 @@ export function QuoteManager() {
     return () => unsubscribe();
   }, [toast]);
 
-  const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'quoteNumber'>) => {
+  const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'quoteNumber'> & {quoteNumber?: number}) => {
     try {
         if (selectedQuote) {
             // Update existing quote
-            const quoteDoc = doc(db, "quotes", selectedQuote.id);
-            await updateDoc(quoteDoc, quoteData);
+            const quoteRef = doc(db, "quotes", selectedQuote.id);
+            await updateDoc(quoteRef, quoteData);
             toast({ title: "Cotización Actualizada", description: `La cotización para ${quoteData.clientName} ha sido actualizada.` });
+            
+            // If quote is accepted, update the linked ticket
+            if(quoteData.status === 'Aceptada' && selectedQuote.linkedTicketId){
+                const updatedQuote = { ...selectedQuote, ...quoteData };
+                await createOrUpdateTicketFromQuote(updatedQuote);
+                toast({ title: "Ticket Vinculado Actualizado", description: "La orden de servicio ha sido actualizada con los nuevos datos." });
+            }
+
         } else {
             // Create new quote with a numeric ID
             await runTransaction(db, async (transaction) => {
@@ -240,15 +264,19 @@ export function QuoteManager() {
   }, [toast]);
 
   const handleStatusChange = useCallback(async (quote: Quote, newStatus: Quote['status']) => {
-    try {
-        const quoteDoc = doc(db, "quotes", quote.id);
-        await updateDoc(quoteDoc, { status: newStatus });
+    const batch = writeBatch(db);
+    const quoteRef = doc(db, "quotes", quote.id);
 
+    try {
         if (newStatus === "Aceptada") {
-            await createTicketFromQuote(quote, toast);
+            const ticketId = await createOrUpdateTicketFromQuote({ ...quote, status: newStatus });
+            batch.update(quoteRef, { status: newStatus, linkedTicketId: ticketId });
+            toast({ title: "¡Cotización Aceptada!", description: `Se ha generado/actualizado el ticket de servicio.` });
         } else {
+            batch.update(quoteRef, { status: newStatus });
             toast({ title: "Estado Actualizado", description: `La cotización para ${quote.clientName} ahora está ${newStatus}.` });
         }
+        await batch.commit();
     } catch (error) {
         console.error("Error updating status:", error);
         toast({ title: "Error al actualizar", description: "No se pudo cambiar el estado.", variant: "destructive"});
@@ -438,3 +466,5 @@ export function QuoteManager() {
     </div>
   );
 }
+
+    

@@ -67,7 +67,7 @@ export type Ticket = {
   clientName: string,
   clientPhone: string,
   clientAddress: string,
-  serviceType: "Correctivo" | "Preventivo"
+  serviceType: "correctivo" | "preventivo"
   equipmentType: string
   description: string
   urgency: "baja" | "media" | "alta"
@@ -149,7 +149,7 @@ const downloadServiceOrderPDF = (ticket: Ticket) => {
   doc.text("Firma del Técnico", 135, yPos + 5);
 
 
-  doc.save(`orden-servicio-${ticket.id}.pdf`);
+  doc.save(`ORD-${ticket.id}.pdf`);
 }
 
 

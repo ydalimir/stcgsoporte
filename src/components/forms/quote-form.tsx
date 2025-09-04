@@ -43,6 +43,8 @@ const quoteItemSchema = z.object({
 
 const quoteFormSchema = z.object({
   clientName: z.string().min(2, "El nombre del cliente es requerido."),
+  clientPhone: z.string().min(1, "El teléfono es requerido."),
+  clientAddress: z.string().min(1, "La dirección es requerida."),
   date: z.string().min(1, "La fecha es requerida."),
   status: z.enum(["Borrador", "Enviada", "Aceptada", "Rechazada"]),
   items: z.array(quoteItemSchema).min(1, "Debe agregar al menos un ítem."),
@@ -87,6 +89,8 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     resolver: zodResolver(quoteFormSchema),
     defaultValues: {
       clientName: "",
+      clientPhone: "",
+      clientAddress: "",
       date: new Date().toISOString().split("T")[0],
       status: "Borrador",
       items: [],
@@ -114,6 +118,8 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
       } else {
          form.reset({
             clientName: "",
+            clientPhone: "",
+            clientAddress: "",
             date: new Date().toISOString().split("T")[0],
             status: "Borrador",
             items: [],
@@ -169,6 +175,12 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
               )} />
               <FormField name="rfc" control={form.control} render={({ field }) => (
                 <FormItem><FormLabel>RFC (Opcional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField name="clientPhone" control={form.control} render={({ field }) => (
+                  <FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField name="clientAddress" control={form.control} render={({ field }) => (
+                  <FormItem><FormLabel>Dirección</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
               )} />
                <FormField name="date" control={form.control} render={({ field }) => (
                 <FormItem><FormLabel>Fecha de Emisión</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
@@ -301,3 +313,4 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
   );
 }
 
+    
