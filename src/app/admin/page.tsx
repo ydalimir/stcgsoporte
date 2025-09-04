@@ -6,9 +6,13 @@ import { useRouter } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { TicketTable } from "@/components/admin/ticket-table";
-import { LayoutDashboard, Loader2 } from "lucide-react";
+import { LayoutDashboard, Loader2, List, Wrench, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ServiceManager } from "@/components/admin/service-manager";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -74,13 +78,63 @@ export default function AdminDashboardPage() {
           <LayoutDashboard className="w-8 h-8 text-primary" />
           <h1 className="text-3xl md:text-4xl font-bold font-headline">Panel de Administración</h1>
         </div>
-        <p className="text-muted-foreground mb-8">
-          Ver, gestionar y asignar todos los tickets de soporte desde este panel central.
-        </p>
         
-        <div className="bg-card p-4 sm:p-6 rounded-lg shadow-lg">
-          <TicketTable />
-        </div>
+        <Tabs defaultValue="tickets" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="tickets">
+              <List className="mr-2"/>
+              Tickets
+            </TabsTrigger>
+            <TabsTrigger value="services">
+              <Wrench className="mr-2"/>
+              Servicios
+            </TabsTrigger>
+            <TabsTrigger value="quotes">
+              <FileText className="mr-2"/>
+              Cotizaciones
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="tickets">
+             <Card>
+              <CardHeader>
+                <CardTitle>Gestión de Tickets</CardTitle>
+                <CardDescription>Ver, gestionar y asignar todos los tickets de soporte desde este panel central.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <TicketTable />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="services">
+             <Card>
+              <CardHeader>
+                <CardTitle>Gestión de Servicios</CardTitle>
+                <CardDescription>Añadir nuevos servicios a las categorías de mantenimiento preventivo y correctivo.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ServiceManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="quotes">
+             <Card>
+              <CardHeader>
+                <CardTitle>Gestión de Cotizaciones</CardTitle>
+                <CardDescription>Crear y administrar cotizaciones para los clientes basadas en sus tickets de servicio.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                 <div className="text-center py-16 text-muted-foreground">
+                    <FileText className="w-12 h-12 mx-auto mb-4"/>
+                    <p>La funcionalidad para crear y gestionar cotizaciones estará disponible aquí.</p>
+                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+        </Tabs>
       </div>
     );
   }

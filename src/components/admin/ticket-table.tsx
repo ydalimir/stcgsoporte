@@ -8,7 +8,8 @@ import {
   onSnapshot,
   doc,
   updateDoc,
-  Timestamp
+  Timestamp,
+  orderBy
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import {
@@ -83,32 +84,33 @@ export function TicketTable() {
   const { toast } = useToast()
 
   React.useEffect(() => {
-    setIsLoading(true)
-    const q = query(collection(db, "tickets"))
-
+    setIsLoading(true);
+    const q = query(collection(db, "tickets"), orderBy("createdAt", "desc"));
+  
     const unsubscribe = onSnapshot(
       q,
       (querySnapshot) => {
         const fetchedTickets = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        })) as Ticket[]
-        setTickets(fetchedTickets)
-        setIsLoading(false)
+        })) as Ticket[];
+        setTickets(fetchedTickets);
+        setIsLoading(false);
       },
       (error) => {
-        console.error("Error fetching tickets:", error)
+        console.error("Error fetching tickets:", error);
         toast({
           title: "Error al cargar los tickets",
           description: "No se pudieron obtener los datos. Intente de nuevo.",
           variant: "destructive",
-        })
-        setIsLoading(false)
+        });
+        setIsLoading(false);
       }
-    )
-
-    return () => unsubscribe()
-  }, [toast])
+    );
+  
+    return () => unsubscribe();
+  }, [toast]);
+  
 
   const updateTicketStatus = async (ticketId: string, status: string) => {
     const ticketRef = doc(db, "tickets", ticketId)
@@ -201,7 +203,7 @@ export function TicketTable() {
         cell: ({ row }) => {
           const timestamp = row.getValue("createdAt") as Timestamp
           return (
-            <div>{timestamp?.toDate().toLocaleDateString() || "N/A"}</div>
+            <div>{timestamp?.toDate().toLocaleDateString('es-MX') || "N/A"}</div>
           )
         },
       },
