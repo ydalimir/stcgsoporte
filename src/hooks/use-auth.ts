@@ -19,7 +19,5 @@ export function useAuth() {
     return () => unsubscribe();
   }, []);
 
-  // Expose only the user and the loading state.
-  // Role verification will be handled by specific pages that need it.
   return { user, isLoading };
 }

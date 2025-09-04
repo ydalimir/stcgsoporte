@@ -33,30 +33,33 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const [isSheetOpen, setSheetOpen] = React.useState(false);
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Reset admin state on user change
-    setIsAdmin(false);
+    // Reset admin state on user change or while loading
+    if (isLoading || !user) {
+      setIsAdmin(false);
+      return;
+    }
 
-    if (user) {
-      const checkAdminRole = async () => {
-        try {
-          const userDocRef = doc(db, "users", user.uid);
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists() && userDoc.data().role === 'admin') {
-            setIsAdmin(true);
-          }
-        } catch (error) {
-          // This can happen if the client is offline. We'll just assume not admin.
-          console.error("Could not check admin role, maybe offline:", error);
+    const checkAdminRole = async () => {
+      try {
+        const userDocRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists() && userDoc.data().role === 'admin') {
+          setIsAdmin(true);
+        } else {
           setIsAdmin(false);
         }
-      };
-      checkAdminRole();
-    }
-  }, [user]);
+      } catch (error) {
+        // This can happen if the client is offline. We'll just assume not admin.
+        console.error("Could not check admin role, maybe offline:", error);
+        setIsAdmin(false);
+      }
+    };
+    checkAdminRole();
+  }, [user, isLoading]);
 
 
   const handleSignOut = async () => {
