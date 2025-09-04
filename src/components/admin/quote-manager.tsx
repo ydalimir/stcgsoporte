@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   ColumnDef,
   flexRender,
@@ -71,24 +71,20 @@ export type Quote = {
   items: QuoteItem[];
 };
 
-const createTicketFromQuote = async (quote: Quote) => {
+const createTicketFromQuote = async (quote: Quote, toast: (options: any) => void) => {
     if (!quote.items || quote.items.length === 0) {
-      console.error("Quote has no items to create a ticket from.");
+      toast({ title: "Error", description: "La cotización no tiene items para crear un ticket.", variant: "destructive" });
       return;
     }
   
-    // Find client information from the users collection if possible, or use quote data.
-    // For now, we will use data from the quote as a fallback.
-    // This part can be enhanced later.
-  
     const ticketData = {
-      userId: 'admin_generated', // Or find a real user ID
+      userId: 'admin_generated', 
       clientName: quote.clientName,
-      clientPhone: "N/A", // Not in quote, needs to be added or handled
-      clientAddress: "N/A", // Not in quote
-      clientEmail: "N/A", // Not in quote
+      clientPhone: "N/A", 
+      clientAddress: "N/A",
+      clientEmail: "N/A", 
       clientRfc: quote.rfc || "N/A",
-      serviceType: "correctivo" as "correctivo" | "preventivo", // Or determine from items
+      serviceType: "correctivo" as "correctivo" | "preventivo", 
       equipmentType: quote.items.map(item => item.description).join(', '),
       description: `Ticket generado a partir de la cotización #${quote.id.substring(0,7)}. ${quote.policies || ''}`,
       urgency: "media" as "baja" | "media" | "alta",
@@ -97,76 +93,16 @@ const createTicketFromQuote = async (quote: Quote) => {
       price: quote.total,
     };
   
-    await addDoc(collection(db, "tickets"), ticketData);
+    try {
+        await addDoc(collection(db, "tickets"), ticketData);
+        toast({ title: "¡Cotización Aceptada!", description: `Se ha generado un nuevo ticket de servicio.`});
+    } catch (error) {
+        console.error("Error creating ticket from quote:", error);
+        toast({ title: "Error", description: "No se pudo generar el ticket a partir de la cotización.", variant: "destructive" });
+    }
 };
 
-
-export function QuoteManager() {
-  const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState("");
-  const { toast } = useToast();
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
-
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "quotes"), (snapshot) => {
-        const quotesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
-        setQuotes(quotesData);
-        setIsLoading(false);
-    }, (error) => {
-        console.error("Error fetching quotes:", error);
-        toast({ title: "Error al cargar", description: "No se pudieron cargar las cotizaciones.", variant: "destructive"});
-        setIsLoading(false);
-    });
-    return () => unsubscribe();
-  }, [toast]);
-
-  const handleSave = async (quoteData: Omit<Quote, 'id' | 'total'> & { total: number }) => {
-    try {
-        if (selectedQuote) {
-            const quoteDoc = doc(db, "quotes", selectedQuote.id);
-            await updateDoc(quoteDoc, quoteData);
-            toast({ title: "Cotización Actualizada", description: `La cotización para ${quoteData.clientName} ha sido actualizada.` });
-        } else {
-            const newDocRef = await addDoc(collection(db, "quotes"), quoteData);
-            toast({ title: "Cotización Creada", description: `La cotización ${newDocRef.id.substring(0,7)} ha sido creada.` });
-        }
-        setSelectedQuote(null);
-    } catch (error) {
-        console.error("Error saving quote:", error);
-        toast({ title: "Error al guardar", description: "No se pudo guardar la cotización.", variant: "destructive"});
-    }
-  };
-  
-  const handleDelete = async (id: string) => {
-    try {
-        await deleteDoc(doc(db, "quotes", id));
-        toast({ title: "Cotización Eliminada", description: `La cotización ${id.substring(0,7)} ha sido eliminada.` });
-    } catch (error) {
-        console.error("Error deleting quote:", error);
-        toast({ title: "Error al eliminar", description: "No se pudo eliminar la cotización.", variant: "destructive" });
-    }
-  };
-
-  const handleStatusChange = async (quote: Quote, newStatus: Quote['status']) => {
-    try {
-        const quoteDoc = doc(db, "quotes", quote.id);
-        await updateDoc(quoteDoc, { status: newStatus });
-
-        if (newStatus === "Aceptada") {
-            await createTicketFromQuote(quote);
-            toast({ title: "¡Cotización Aceptada!", description: `Se ha generado un nuevo ticket de servicio.`});
-        } else {
-            toast({ title: "Estado Actualizado", description: `La cotización para ${quote.clientName} ahora está ${newStatus}.` });
-        }
-    } catch (error) {
-        console.error("Error updating status:", error);
-        toast({ title: "Error al actualizar", description: "No se pudo cambiar el estado.", variant: "destructive"});
-    }
-  };
-
-  const downloadPDF = (quote: Quote) => {
+const downloadPDF = (quote: Quote) => {
     const doc = new jsPDF();
     let yPos = 22;
     
@@ -212,7 +148,71 @@ export function QuoteManager() {
     }
     
     doc.save(`cotizacion-${quote.id.substring(0,7)}.pdf`);
-  }
+}
+
+export function QuoteManager() {
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [filter, setFilter] = useState("");
+  const { toast } = useToast();
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "quotes"), (snapshot) => {
+        const quotesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
+        setQuotes(quotesData);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching quotes:", error);
+        toast({ title: "Error al cargar", description: "No se pudieron cargar las cotizaciones.", variant: "destructive"});
+        setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, [toast]);
+
+  const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'total'> & { total: number }) => {
+    try {
+        if (selectedQuote) {
+            const quoteDoc = doc(db, "quotes", selectedQuote.id);
+            await updateDoc(quoteDoc, quoteData);
+            toast({ title: "Cotización Actualizada", description: `La cotización para ${quoteData.clientName} ha sido actualizada.` });
+        } else {
+            const newDocRef = await addDoc(collection(db, "quotes"), quoteData);
+            toast({ title: "Cotización Creada", description: `La cotización ${newDocRef.id.substring(0,7)} ha sido creada.` });
+        }
+        setSelectedQuote(null);
+    } catch (error) {
+        console.error("Error saving quote:", error);
+        toast({ title: "Error al guardar", description: "No se pudo guardar la cotización.", variant: "destructive"});
+    }
+  }, [selectedQuote, toast]);
+  
+  const handleDelete = useCallback(async (id: string) => {
+    try {
+        await deleteDoc(doc(db, "quotes", id));
+        toast({ title: "Cotización Eliminada", description: `La cotización ${id.substring(0,7)} ha sido eliminada.` });
+    } catch (error) {
+        console.error("Error deleting quote:", error);
+        toast({ title: "Error al eliminar", description: "No se pudo eliminar la cotización.", variant: "destructive" });
+    }
+  }, [toast]);
+
+  const handleStatusChange = useCallback(async (quote: Quote, newStatus: Quote['status']) => {
+    try {
+        const quoteDoc = doc(db, "quotes", quote.id);
+        await updateDoc(quoteDoc, { status: newStatus });
+
+        if (newStatus === "Aceptada") {
+            await createTicketFromQuote(quote, toast);
+        } else {
+            toast({ title: "Estado Actualizado", description: `La cotización para ${quote.clientName} ahora está ${newStatus}.` });
+        }
+    } catch (error) {
+        console.error("Error updating status:", error);
+        toast({ title: "Error al actualizar", description: "No se pudo cambiar el estado.", variant: "destructive"});
+    }
+  }, [toast]);
 
   const columns: ColumnDef<Quote>[] = useMemo(
     () => [
@@ -283,7 +283,7 @@ export function QuoteManager() {
         ),
       },
     ],
-    []
+    [handleDelete, handleStatusChange]
   );
 
   const table = useReactTable({
@@ -382,5 +382,3 @@ export function QuoteManager() {
     </div>
   );
 }
-
-    
