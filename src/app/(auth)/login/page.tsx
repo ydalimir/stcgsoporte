@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -27,7 +28,7 @@ export default function LoginPage() {
         title: "Login Successful",
         description: "You have been successfully logged in.",
       });
-      router.push("/");
+      router.push("/profile");
     } catch (error: any) {
       console.error("Error signing in: ", error);
       toast({

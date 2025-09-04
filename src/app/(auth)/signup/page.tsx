@@ -37,7 +37,7 @@ export default function SignUpPage() {
         title: "Account Created",
         description: "Your account has been successfully created.",
       });
-      router.push("/");
+      router.push("/profile");
     } catch (error: any) {
       console.error("Error signing up: ", error);
       let description = "An unexpected error occurred. Please try again.";
