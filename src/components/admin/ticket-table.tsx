@@ -60,6 +60,8 @@ import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useRouter } from "next/navigation";
+
 
 export type Ticket = {
   id: string
@@ -164,7 +166,9 @@ export function TicketTable() {
   )
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
-  const { toast } = useToast()
+  const { toast } = useToast();
+  const router = useRouter();
+
 
   React.useEffect(() => {
     setIsLoading(true);
@@ -252,7 +256,7 @@ export function TicketTable() {
         accessorKey: "urgency",
         header: "Urgencia",
         cell: ({ row }) => {
-          const urgency = row.getValue("urgency") as string
+          const urgency = row.getValue("urgency") as Ticket['urgency'];
           return (
             <Badge
               variant="outline"
@@ -320,7 +324,7 @@ export function TicketTable() {
                   Descargar Orden
                 </DropdownMenuItem>
                  <DropdownMenuItem
-                  onClick={() => alert(`Detalles para ${ticket.id}`)}
+                  onClick={() => router.push(`/admin/tickets/${ticket.id}`)}
                 >
                   Ver Detalles del Ticket
                 </DropdownMenuItem>
@@ -362,7 +366,7 @@ export function TicketTable() {
         },
       },
     ],
-    [toast]
+    [toast, router]
   )
 
   const table = useReactTable({
@@ -457,6 +461,8 @@ export function TicketTable() {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                   onDoubleClick={() => router.push(`/admin/tickets/${row.original.id}`)}
+                   className="cursor-pointer"
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -507,5 +513,3 @@ export function TicketTable() {
     </div>
   )
 }
-
-    
