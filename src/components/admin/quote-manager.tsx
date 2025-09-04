@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   ColumnDef,
   flexRender,
@@ -28,7 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, PlusCircle, Download, Trash2, Edit } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,48 +41,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { QuoteForm } from "@/components/forms/quote-form"; // We will create this
+import { QuoteForm } from "@/components/forms/quote-form";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
-// Mock data, to be replaced with Firestore data
-const initialData: Quote[] = [
-  {
-    id: "QUO-001",
-    clientName: "La Trattoria",
-    date: "2024-07-20",
-    total: 4500,
-    status: "Enviada",
-    items: [
-      {
-        description: "Mantenimiento Preventivo de Horno",
-        quantity: 1,
-        price: 1500,
-      },
-      {
-        description: "Limpieza de Campana de Extracción",
-        quantity: 2,
-        price: 1500,
-      },
-    ],
-  },
-  {
-    id: "QUO-002",
-    clientName: "Mariscos El Faro",
-    date: "2024-07-18",
-    total: 1200,
-    status: "Aceptada",
-    items: [
-      {
-        description: "Reparación Urgente de Refrigerador",
-        quantity: 1,
-        price: 1200,
-      },
-    ],
-  },
-];
 
-type QuoteItem = {
+export type QuoteItem = {
   description: string;
   quantity: number;
   price: number;
@@ -98,57 +64,72 @@ export type Quote = {
 };
 
 export function QuoteManager() {
-  const [quotes, setQuotes] = useState<Quote[]>(initialData);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState("");
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
 
-  const handleSave = (quoteData: Quote) => {
-    if (selectedQuote) {
-      // Update existing quote
-      setQuotes(
-        quotes.map((q) => (q.id === quoteData.id ? quoteData : q))
-      );
-      toast({ title: "Cotización Actualizada", description: `La cotización ${quoteData.id} ha sido actualizada.` });
-    } else {
-      // Create new quote
-      setQuotes([...quotes, quoteData]);
-      toast({ title: "Cotización Creada", description: `La cotización ${quoteData.id} ha sido creada.` });
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "quotes"), (snapshot) => {
+        const quotesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
+        setQuotes(quotesData);
+        setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleSave = async (quoteData: Omit<Quote, 'id'>) => {
+    try {
+        if (selectedQuote) {
+            const quoteDoc = doc(db, "quotes", selectedQuote.id);
+            await updateDoc(quoteDoc, quoteData);
+            toast({ title: "Cotización Actualizada", description: `La cotización para ${quoteData.clientName} ha sido actualizada.` });
+        } else {
+            const newDoc = await addDoc(collection(db, "quotes"), quoteData);
+            toast({ title: "Cotización Creada", description: `La cotización ${newDoc.id} ha sido creada.` });
+        }
+        setSelectedQuote(null);
+    } catch (error) {
+        console.error("Error saving quote:", error);
+        toast({ title: "Error al guardar", description: "No se pudo guardar la cotización.", variant: "destructive"});
     }
-    setSelectedQuote(null);
   };
   
-  const handleDelete = (id: string) => {
-    setQuotes(quotes.filter((q) => q.id !== id));
-    toast({ title: "Cotización Eliminada", description: `La cotización ${id} ha sido eliminada.` });
+  const handleDelete = async (id: string) => {
+    try {
+        await deleteDoc(doc(db, "quotes", id));
+        toast({ title: "Cotización Eliminada", description: `La cotización ${id} ha sido eliminada.` });
+    } catch (error) {
+        console.error("Error deleting quote:", error);
+        toast({ title: "Error al eliminar", description: "No se pudo eliminar la cotización.", variant: "destructive" });
+    }
   };
 
   const downloadPDF = (quote: Quote) => {
     const doc = new jsPDF();
     
-    // Header
     doc.setFontSize(20);
-    doc.text(`Cotización #${quote.id}`, 14, 22);
+    doc.text(`Cotización #${quote.id.substring(0, 7)}`, 14, 22);
     doc.setFontSize(12);
     doc.text(`Cliente: ${quote.clientName}`, 14, 32);
     doc.text(`Fecha: ${new Date(quote.date).toLocaleDateString('es-MX')}`, 14, 42);
     
-    // Table
     autoTable(doc, {
       startY: 50,
       head: [['Descripción', 'Cantidad', 'Precio Unitario', 'Importe']],
       body: quote.items.map(item => [item.description, item.quantity, `$${item.price.toFixed(2)}`, `$${(item.quantity * item.price).toFixed(2)}`]),
       foot: [['', '', 'Total', `$${quote.total.toFixed(2)}`]],
-      headStyles: { fillColor: [46, 154, 254] }, // Primary color
+      headStyles: { fillColor: [46, 154, 254] },
     });
     
-    doc.save(`cotizacion-${quote.id}.pdf`);
+    doc.save(`cotizacion-${quote.id.substring(0,7)}.pdf`);
   }
 
   const columns: ColumnDef<Quote>[] = useMemo(
     () => [
-      { accessorKey: "id", header: "ID" },
+      { accessorKey: "id", header: "ID", cell: ({ row }) => <span className="font-mono text-xs">{row.original.id.substring(0, 7)}</span> },
       { accessorKey: "clientName", header: "Cliente" },
       { accessorKey: "date", header: "Fecha" },
       {
@@ -211,6 +192,10 @@ export function QuoteManager() {
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
   });
+  
+  if (isLoading) {
+    return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  }
 
   return (
     <div>
@@ -245,15 +230,23 @@ export function QuoteManager() {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
+             {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                    ))}
+                </TableRow>
+                ))
+            ) : (
+                <TableRow>
+                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                        No hay cotizaciones. Empieza creando una.
+                    </TableCell>
+                </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
@@ -285,3 +278,4 @@ export function QuoteManager() {
   );
 }
 
+    

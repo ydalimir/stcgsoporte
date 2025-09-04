@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Loader2, PlusCircle, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import {
   Table,
@@ -55,6 +55,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const serviceSchema = z.object({
   id: z.string().optional(),
@@ -65,42 +67,57 @@ const serviceSchema = z.object({
   serviceType: z.enum(["correctivo", "preventivo"], { required_error: "Debe seleccionar un tipo de servicio." }),
 });
 
-type ServiceFormValues = z.infer<typeof serviceSchema>;
-
-const initialServices: ServiceFormValues[] = [
-    { id: '1', title: 'Diagnóstico y Reparación de Estufas', sku: 'CORR-EST-01', price: 'Desde $800 MXN', description: 'Servicio completo para identificar y reparar cualquier tipo de falla en estufas industriales y comerciales.', serviceType: 'correctivo' },
-    { id: '2', title: 'Plan de Mantenimiento Anual para Cocinas', sku: 'PREV-FULL-12', price: 'Cotización Personalizada', description: 'Paquete integral que incluye revisiones trimestrales de todos sus equipos.', serviceType: 'preventivo' },
-];
+export type Service = z.infer<typeof serviceSchema>;
 
 
 export function ServiceManager() {
-  const [services, setServices] = useState<ServiceFormValues[]>(initialServices);
+  const [services, setServices] = useState<Service[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState<ServiceFormValues | null>(null);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
   const { toast } = useToast();
 
-  const handleSaveService = (data: ServiceFormValues) => {
-    if (selectedService) {
-      // Update
-      setServices(services.map(s => s.id === selectedService.id ? { ...data, id: s.id } : s));
-      toast({ title: "Servicio Actualizado", description: `El servicio "${data.title}" fue actualizado.` });
-    } else {
-      // Create
-      const newService = { ...data, id: String(Date.now()) };
-      setServices([...services, newService]);
-      toast({ title: "Servicio Creado", description: `El servicio "${data.title}" ha sido añadido.` });
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "services"), (snapshot) => {
+        const servicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
+        setServices(servicesData);
+        setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleSaveService = async (data: Service) => {
+    try {
+        if (selectedService && selectedService.id) {
+            // Update
+            const serviceDoc = doc(db, "services", selectedService.id);
+            await updateDoc(serviceDoc, data);
+            toast({ title: "Servicio Actualizado", description: `El servicio "${data.title}" fue actualizado.` });
+        } else {
+            // Create
+            await addDoc(collection(db, "services"), data);
+            toast({ title: "Servicio Creado", description: `El servicio "${data.title}" ha sido añadido.` });
+        }
+        setIsFormOpen(false);
+        setSelectedService(null);
+    } catch(error) {
+        console.error("Error saving service:", error);
+        toast({ title: "Error al guardar", description: "No se pudo guardar el servicio.", variant: "destructive" });
     }
-    setIsFormOpen(false);
-    setSelectedService(null);
   };
 
-  const handleDeleteService = (id?: string) => {
+  const handleDeleteService = async (id?: string) => {
       if(!id) return;
-      setServices(services.filter(s => s.id !== id));
-      toast({ title: "Servicio Eliminado", variant: "destructive" });
+      try {
+        await deleteDoc(doc(db, "services", id));
+        toast({ title: "Servicio Eliminado", variant: "destructive" });
+      } catch(error) {
+         console.error("Error deleting service:", error);
+         toast({ title: "Error al eliminar", description: "No se pudo eliminar el servicio.", variant: "destructive" });
+      }
   };
   
-  const columns: ColumnDef<ServiceFormValues>[] = useMemo(() => [
+  const columns: ColumnDef<Service>[] = useMemo(() => [
       { accessorKey: "title", header: "Título" },
       { accessorKey: "serviceType", header: "Tipo" },
       { accessorKey: "sku", header: "SKU" },
@@ -141,6 +158,10 @@ export function ServiceManager() {
   ], []);
   
   const table = useReactTable({ data: services, columns, getCoreRowModel: getCoreRowModel() });
+  
+  if (isLoading) {
+    return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  }
 
   return (
     <div>
@@ -159,15 +180,23 @@ export function ServiceManager() {
                     ))}
                 </TableHeader>
                 <TableBody>
-                    {table.getRowModel().rows.map(row => (
-                        <TableRow key={row.id}>
-                            {row.getVisibleCells().map(cell => (
-                                <TableCell key={cell.id}>
-                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                </TableCell>
-                            ))}
+                    {table.getRowModel().rows?.length ? (
+                        table.getRowModel().rows.map(row => (
+                            <TableRow key={row.id}>
+                                {row.getVisibleCells().map(cell => (
+                                    <TableCell key={cell.id}>
+                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={columns.length} className="h-24 text-center">
+                                No hay servicios. Empieza creando uno.
+                            </TableCell>
                         </TableRow>
-                    ))}
+                    )}
                 </TableBody>
             </Table>
         </div>
@@ -187,28 +216,29 @@ export function ServiceManager() {
 interface ServiceFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (data: ServiceFormValues) => void;
-  service: ServiceFormValues | null;
+  onSave: (data: Service) => void;
+  service: Service | null;
 }
 
 function ServiceFormDialog({ isOpen, onOpenChange, onSave, service }: ServiceFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const form = useForm<ServiceFormValues>({
+    const form = useForm<Service>({
         resolver: zodResolver(serviceSchema),
     });
 
-    useState(() => {
-        if(service) {
+    useEffect(() => {
+        if (isOpen) {
+          if (service) {
             form.reset(service);
-        } else {
-            form.reset({ title: "", sku: "", price: "", description: "" });
+          } else {
+            form.reset({ title: "", sku: "", price: "", description: "", serviceType: undefined });
+          }
         }
-    }, [service, isOpen, form]);
+      }, [service, isOpen, form]);
 
-    const handleSubmit = async (data: ServiceFormValues) => {
+    const handleSubmit = async (data: Service) => {
         setIsSubmitting(true);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        onSave(data);
+        await onSave(data);
         setIsSubmitting(false);
     }
 
@@ -278,3 +308,5 @@ function ServiceFormDialog({ isOpen, onOpenChange, onSave, service }: ServiceFor
         </Dialog>
     )
 }
+
+    

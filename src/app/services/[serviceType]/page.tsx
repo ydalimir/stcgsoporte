@@ -5,75 +5,61 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Zap, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import React, { Suspense } from 'react';
+import { notFound, useParams } from 'next/navigation';
+import React, { Suspense, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Service } from '@/components/admin/service-manager';
 
 
-const allServices = {
+const serviceCategories = {
   correctivo: {
     title: "Mantenimiento Correctivo",
     description: "Servicios enfocados en reparar averías o fallos cuando ocurren, minimizando así el tiempo de inactividad de sus equipos. Respuesta rápida para emergencias.",
     icon: <Zap className="w-8 h-8 text-primary" />,
-    items: [
-       {
-        title: "Diagnóstico y Reparación de Estufas",
-        sku: "CORR-EST-01",
-        price: "Desde $800 MXN",
-        description: "Servicio completo para identificar y reparar cualquier tipo de falla en estufas industriales y comerciales.",
-      },
-      {
-        title: "Reparación Urgente de Sistemas de Refrigeración",
-        sku: "CORR-REF-01",
-        price: "Desde $1,200 MXN",
-        description: "Atención prioritaria para fallas críticas en refrigeradores y congeladores comerciales para evitar pérdidas de producto.",
-      },
-      {
-        title: "Arreglo de Freidoras Industriales",
-        sku: "CORR-FRE-01",
-        price: "Desde $950 MXN",
-        description: "Solución a problemas de calentamiento, termostatos y componentes eléctricos en freidoras de alto rendimiento.",
-      },
-    ]
   },
   preventivo: {
     title: "Mantenimiento Preventivo",
     description: "Consiste en realizar inspecciones regulares y tareas de mantenimiento programadas para garantizar que los equipos funcionen correctamente y evitar fallos futuros.",
     icon: <ShieldCheck className="w-8 h-8 text-primary" />,
-    items: [
-       {
-        title: "Plan de Mantenimiento Anual para Cocinas",
-        sku: "PREV-FULL-12",
-        price: "Cotización Personalizada",
-        description: "Paquete integral que incluye revisiones trimestrales de todos sus equipos para garantizar su óptimo funcionamiento.",
-      },
-      {
-        title: "Limpieza y Calibración de Hornos de Convección",
-        sku: "PREV-HOR-01",
-        price: "$1,500 MXN",
-        description: "Mantenimiento profundo para asegurar una cocción uniforme y eficiente, prolongando la vida útil del horno.",
-      },
-      {
-        title: "Inspección y Limpieza de Campanas de Extracción",
-        sku: "PREV-CAM-01",
-        price: "$1,800 MXN",
-        description: "Servicio esencial para la seguridad, eliminando grasa acumulada y asegurando la correcta extracción de humos.",
-      },
-    ]
   },
 };
 
-type ServiceTypePageProps = {
-  params: {
-    serviceType: keyof typeof allServices;
-  }
-}
+type ServiceType = keyof typeof serviceCategories;
 
-function ServiceTypePageContent({ serviceType }: { serviceType: keyof typeof allServices }) {
-  const serviceInfo = allServices[serviceType];
+function ServiceTypePageContent() {
+  const params = useParams();
+  const serviceType = params.serviceType as ServiceType;
+  const [services, setServices] = useState<Service[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const serviceInfo = serviceCategories[serviceType];
+
+  useEffect(() => {
+    if (!serviceType) return;
+    
+    setIsLoading(true);
+    const q = query(collection(db, "services"), where("serviceType", "==", serviceType));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const servicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
+        setServices(servicesData);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching services: ", error);
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [serviceType]);
 
   if (!serviceInfo) {
     notFound();
+  }
+
+  if (isLoading) {
+    return <LoadingComponent />;
   }
 
   return (
@@ -87,8 +73,8 @@ function ServiceTypePageContent({ serviceType }: { serviceType: keyof typeof all
                 {serviceInfo.description}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {serviceInfo.items.map((service) => (
-                    <Card key={service.sku} className="flex flex-col hover:shadow-xl transition-shadow duration-300">
+                {services.length > 0 ? services.map((service) => (
+                    <Card key={service.id} className="flex flex-col hover:shadow-xl transition-shadow duration-300">
                         <CardHeader>
                             <CardTitle>{service.title}</CardTitle>
                             <CardDescription className="text-primary font-bold text-lg pt-2">{service.price}</CardDescription>
@@ -104,7 +90,9 @@ function ServiceTypePageContent({ serviceType }: { serviceType: keyof typeof all
                             </Button>
                         </CardFooter>
                     </Card>
-                ))}
+                )) : (
+                    <p className="text-muted-foreground col-span-full">No hay servicios disponibles en esta categoría por el momento.</p>
+                )}
             </div>
         </section>
         <div className="mt-16 text-center">
@@ -124,12 +112,12 @@ function LoadingComponent() {
   );
 }
 
-export default function ServiceTypePage({ params }: ServiceTypePageProps) {
-  const { serviceType } = params;
-  
+export default function ServiceTypePage() {
   return (
     <Suspense fallback={<LoadingComponent />}>
-      <ServiceTypePageContent serviceType={serviceType} />
+      <ServiceTypePageContent />
     </Suspense>
   )
 }
+
+    

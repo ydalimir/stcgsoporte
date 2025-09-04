@@ -21,20 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import type { Quote } from "@/components/admin/quote-manager";
+import type { Quote, QuoteItem } from "@/components/admin/quote-manager";
+import type { Service } from "@/components/admin/service-manager";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
-// Mock services, to be replaced with Firestore data
-const mockServices = [
-    { id: "CORR-EST-01", title: "Diagnóstico y Reparación de Estufas", price: 800 },
-    { id: "CORR-REF-01", title: "Reparación Urgente de Sistemas de Refrigeración", price: 1200 },
-    { id: "CORR-FRE-01", title: "Arreglo de Freidoras Industriales", price: 950 },
-    { id: "PREV-HOR-01", title: "Limpieza y Calibración de Hornos de Convección", price: 1500 },
-    { id: "PREV-CAM-01", title: "Inspección y Limpieza de Campanas de Extracción", price: 1800 },
-];
 
 const quoteItemSchema = z.object({
   description: z.string().min(1, "La descripción es requerida."),
@@ -43,7 +37,6 @@ const quoteItemSchema = z.object({
 });
 
 const quoteFormSchema = z.object({
-  id: z.string().optional(),
   clientName: z.string().min(2, "El nombre del cliente es requerido."),
   date: z.string().min(1, "La fecha es requerida."),
   status: z.enum(["Borrador", "Enviada", "Aceptada", "Rechazada"]),
@@ -55,12 +48,21 @@ type QuoteFormValues = z.infer<typeof quoteFormSchema>;
 interface QuoteFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (quote: Quote) => void;
+  onSave: (quote: Omit<Quote, 'id'>) => void;
   quote: Quote | null;
 }
 
 export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProps) {
-  const { toast } = useToast();
+  const [services, setServices] = useState<Service[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+      const unsubscribe = onSnapshot(collection(db, "services"), (snapshot) => {
+          const servicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
+          setServices(servicesData);
+      });
+      return () => unsubscribe();
+  }, []);
 
   const form = useForm<QuoteFormValues>({
     resolver: zodResolver(quoteFormSchema),
@@ -78,35 +80,42 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
   });
 
   useEffect(() => {
-    if (quote) {
-      form.reset({
-        id: quote.id,
-        clientName: quote.clientName,
-        date: new Date(quote.date).toISOString().split("T")[0],
-        status: quote.status,
-        items: quote.items.map(item => ({...item}))
-      });
-    } else {
-      form.reset({
-        clientName: "",
-        date: new Date().toISOString().split("T")[0],
-        status: "Borrador",
-        items: [],
-        id: `QUO-${String(Date.now()).slice(-4)}`
-      });
+    if (isOpen) {
+      if (quote) {
+        form.reset({
+          clientName: quote.clientName,
+          date: new Date(quote.date).toISOString().split("T")[0],
+          status: quote.status,
+          items: quote.items.map(item => ({...item}))
+        });
+      } else {
+        form.reset({
+          clientName: "",
+          date: new Date().toISOString().split("T")[0],
+          status: "Borrador",
+          items: [],
+        });
+      }
     }
   }, [quote, isOpen, form]);
 
-  const onSubmit = (data: QuoteFormValues) => {
+  const onSubmit = async (data: QuoteFormValues) => {
+    setIsSubmitting(true);
     const total = data.items.reduce((sum, item) => sum + item.quantity * item.price, 0);
-    onSave({ ...data, total, id: data.id || `QUO-ERR` });
+    await onSave({ ...data, total });
+    setIsSubmitting(false);
     onOpenChange(false);
   };
   
   const handleServiceSelect = (serviceId: string) => {
-    const service = mockServices.find(s => s.id === serviceId);
+    const service = services.find(s => s.id === serviceId);
     if (service) {
-      append({ description: service.title, quantity: 1, price: service.price });
+        let price = 0;
+        const priceMatch = service.price.match(/(\d+)/);
+        if (priceMatch) {
+            price = parseInt(priceMatch[0], 10);
+        }
+      append({ description: service.title, quantity: 1, price: price });
     }
   };
 
@@ -166,8 +175,8 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                             <SelectValue placeholder="Agregar servicio existente" />
                         </SelectTrigger>
                         <SelectContent>
-                            {mockServices.map(service => (
-                                <SelectItem key={service.id} value={service.id}>{service.title}</SelectItem>
+                            {services.map(service => (
+                                <SelectItem key={service.id} value={service.id!}>{service.title}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
@@ -186,8 +195,8 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                 <DialogClose asChild>
                     <Button type="button" variant="ghost">Cancelar</Button>
                 </DialogClose>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Guardar Cotización
               </Button>
             </DialogFooter>
@@ -197,3 +206,5 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     </Dialog>
   );
 }
+
+    
