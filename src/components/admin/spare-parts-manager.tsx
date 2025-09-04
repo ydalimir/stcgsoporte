@@ -30,7 +30,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
@@ -49,6 +48,7 @@ import { ColumnDef, flexRender, getCoreRowModel, useReactTable, getFilteredRowMo
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { Textarea } from "../ui/textarea";
 
 
 const sparePartSchema = z.object({
@@ -56,6 +56,8 @@ const sparePartSchema = z.object({
   name: z.string().min(3, { message: "El nombre debe tener al menos 3 caracteres." }),
   brand: z.string().min(2, { message: "La marca es requerida." }),
   sku: z.string().min(3, { message: "El SKU es requerido." }),
+  price: z.coerce.number().min(0, { message: "El precio es requerido y no puede ser negativo." }),
+  description: z.string().min(10, { message: "La descripción debe tener al menos 10 caracteres." }),
 });
 
 export type SparePart = z.infer<typeof sparePartSchema>;
@@ -115,6 +117,7 @@ export function SparePartsManager() {
       { accessorKey: "name", header: "Nombre" },
       { accessorKey: "brand", header: "Marca" },
       { accessorKey: "sku", header: "SKU" },
+      { accessorKey: "price", header: "Precio", cell: ({ row }) => `$${row.original.price.toFixed(2)}` },
       { id: "actions",
         cell: ({ row }) => (
             <DropdownMenu>
@@ -231,7 +234,7 @@ function SparePartFormDialog({ isOpen, onOpenChange, onSave, part }: SparePartFo
     const [isSubmitting, setIsSubmitting] = useState(false);
     const form = useForm<z.infer<typeof sparePartSchema>>({
         resolver: zodResolver(sparePartSchema),
-        defaultValues: { name: "", brand: "", sku: "" }
+        defaultValues: { name: "", brand: "", sku: "", price: 0, description: "" }
     });
 
     useEffect(() => {
@@ -239,7 +242,7 @@ function SparePartFormDialog({ isOpen, onOpenChange, onSave, part }: SparePartFo
           if (part) {
             form.reset(part);
           } else {
-            form.reset({ name: "", brand: "", sku: "" });
+            form.reset({ name: "", brand: "", sku: "", price: 0, description: "" });
           }
         }
       }, [part, isOpen, form]);
@@ -252,30 +255,48 @@ function SparePartFormDialog({ isOpen, onOpenChange, onSave, part }: SparePartFo
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>{part ? 'Editar Refacción' : 'Agregar Nueva Refacción'}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                        <FormField control={form.control} name="name" render={({ field }) => (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                             <FormField control={form.control} name="name" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Nombre de la Refacción</FormLabel>
+                                    <FormControl><Input placeholder="Ej: Termostato" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                             <FormField control={form.control} name="brand" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Marca</FormLabel>
+                                    <FormControl><Input placeholder="Ej: Robertshaw" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        </div>
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField control={form.control} name="sku" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>SKU</FormLabel>
+                                    <FormControl><Input placeholder="Ej: RS-5300-123" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                             <FormField control={form.control} name="price" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Precio</FormLabel>
+                                    <FormControl><Input type="number" step="0.01" placeholder="Ej: 550.00" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        </div>
+                        <FormField control={form.control} name="description" render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Nombre de la Refacción</FormLabel>
-                                <FormControl><Input placeholder="Ej: Termostato" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={form.control} name="brand" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Marca</FormLabel>
-                                <FormControl><Input placeholder="Ej: Robertshaw" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={form.control} name="sku" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>SKU</FormLabel>
-                                <FormControl><Input placeholder="Ej: RS-5300-123" {...field} /></FormControl>
+                                <FormLabel>Descripción</FormLabel>
+                                <FormControl><Textarea placeholder="Describa la refacción, para qué equipos funciona, etc." {...field} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
@@ -294,3 +315,5 @@ function SparePartFormDialog({ isOpen, onOpenChange, onSave, part }: SparePartFo
         </Dialog>
     )
 }
+
+    
