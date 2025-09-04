@@ -108,12 +108,25 @@ const createTicketFromQuote = async (quote: Quote, toast: (options: any) => void
 
 const downloadPDF = (quote: Quote) => {
     const doc = new jsPDF();
-    let yPos = 22;
+    let yPos = 20;
+
+    // Defensively calculate totals in case they are missing from older records
+    const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+    const ivaPercentage = quote.iva ?? 16;
+    const ivaAmount = subtotal * (ivaPercentage / 100);
+    const total = quote.total ?? subtotal + ivaAmount;
+
+    // Company Name
+    doc.setFontSize(16);
+    doc.text("Servicio Técnico, Industrial y Comercial de Gastronomía S.A. De C.V.", 14, yPos);
+    yPos += 8;
     
-    doc.setFontSize(20);
+    // Quote Title
+    doc.setFontSize(14);
     doc.text(`Cotización #${String(quote.quoteNumber).padStart(3, '0')}`, 14, yPos);
     yPos += 10;
     
+    // Client Info
     doc.setFontSize(12);
     doc.text(`Cliente: ${quote.clientName}`, 14, yPos);
     yPos += 7;
@@ -128,12 +141,6 @@ const downloadPDF = (quote: Quote) => {
         doc.text(`Válida hasta: ${new Date(quote.expirationDate).toLocaleDateString('es-MX')}`, 120, yPos);
     }
     yPos += 10;
-
-    // Defensively calculate totals in case they are missing from older records
-    const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
-    const ivaPercentage = quote.iva ?? 16;
-    const ivaAmount = subtotal * (ivaPercentage / 100);
-    const total = quote.total ?? subtotal + ivaAmount;
 
 
     const foot = [
