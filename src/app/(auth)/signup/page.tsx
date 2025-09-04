@@ -3,7 +3,8 @@
 
 import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,9 +24,17 @@ export default function SignUpPage() {
   const handleSignUp = async () => {
     setIsSubmitting(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Create user document in Firestore right after creation
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        role: "user",
+        createdAt: new Date().toISOString(),
+      });
       
-      // Redirect immediately after successful user creation
+      // Redirect immediately after successful user and document creation
       router.push("/profile");
       
       // Show toast after redirection attempt

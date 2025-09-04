@@ -4,8 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -22,34 +21,7 @@ export default function ProfilePage() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        // We have the user, so stop the main loading state.
         setIsLoading(false);
-        
-        // Handle Firestore document creation in the background.
-        const ensureUserDocument = async () => {
-          const userDocRef = doc(db, "users", currentUser.uid);
-          try {
-            const userDoc = await getDoc(userDocRef);
-            if (!userDoc.exists()) {
-              // Document doesn't exist, create it.
-              await setDoc(userDocRef, {
-                email: currentUser.email,
-                role: "user",
-                createdAt: new Date().toISOString(),
-              });
-            }
-          } catch (error) {
-             console.error("Error ensuring user document:", error);
-             toast({
-              title: "Profile Sync Error",
-              description: "Could not sync your profile with our database. Some features might not work correctly.",
-              variant: "destructive",
-            });
-          }
-        };
-
-        ensureUserDocument();
-
       } else {
         // No user found, redirect to login page.
         router.push("/login");
@@ -57,7 +29,7 @@ export default function ProfilePage() {
     });
 
     return () => unsubscribe();
-  }, [router, toast]);
+  }, [router]);
 
   const handleSignOut = async () => {
     try {
@@ -87,9 +59,9 @@ export default function ProfilePage() {
   if (!user) {
     // This state will be brief before the redirect in useEffect kicks in.
     return (
-        <div className="flex items-center justify-center min-h-screen">
-            <p>Redirecting to login...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Redirecting to login...</p>
+      </div>
     );
   }
 
