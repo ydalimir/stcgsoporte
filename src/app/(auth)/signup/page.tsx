@@ -3,8 +3,7 @@
 
 import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,15 +23,8 @@ export default function SignUpPage() {
   const handleSignUp = async () => {
     setIsSubmitting(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      await createUserWithEmailAndPassword(auth, email, password);
       
-      // Add user to Firestore with default role
-      await setDoc(doc(db, "users", user.uid), {
-        email: user.email,
-        role: "user", // Default role
-      });
-
       toast({
         title: "Account Created",
         description: "Your account has been successfully created.",
