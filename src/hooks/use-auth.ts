@@ -20,6 +20,6 @@ export function useAuth() {
   }, []);
 
   // Expose only the user and the loading state.
-  // The role verification will be handled by specific pages that need it.
+  // Role verification will be handled by specific pages that need it.
   return { user, isLoading };
 }
