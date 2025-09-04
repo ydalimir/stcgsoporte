@@ -1,10 +1,36 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write access to all users for development purposes.
-    // You should secure these rules before moving to production.
-    match /{document=**} {
-      allow read, write: if true;
+    // Helper function to check if a user is an admin
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    match /users/{userId} {
+      // Allow users to create their own document upon signup
+      allow create: if request.auth.uid == userId;
+      
+      // Allow users to read their own document, or allow admins to read any document
+      allow read: if request.auth.uid == userId || isAdmin();
+      
+      // Allow admins to update any user document
+      allow update: if isAdmin();
+      
+      // Only admins can delete user documents
+      allow delete: if isAdmin();
+    }
+
+    // Rules for tickets (assuming a 'tickets' collection will be added later)
+    // This is a placeholder for future functionality
+    match /tickets/{ticketId} {
+      // Users can create tickets
+      allow create: if request.auth != null;
+      
+      // Users can read their own tickets, admins can read all tickets
+      allow read: if request.auth.uid == resource.data.userId || isAdmin();
+      
+      // Only admins can update tickets
+      allow update: if isAdmin();
     }
   }
 }
