@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ServiceManager } from "@/components/admin/service-manager";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { QuoteManager } from "@/components/admin/quote-manager";
 
 
 export default function AdminDashboardPage() {
@@ -111,7 +112,7 @@ export default function AdminDashboardPage() {
              <Card>
               <CardHeader>
                 <CardTitle>Gestión de Servicios</CardTitle>
-                <CardDescription>Añadir nuevos servicios a las categorías de mantenimiento preventivo y correctivo.</CardDescription>
+                <CardDescription>Añadir, editar y eliminar servicios de mantenimiento preventivo y correctivo.</CardDescription>
               </CardHeader>
               <CardContent>
                 <ServiceManager />
@@ -123,13 +124,10 @@ export default function AdminDashboardPage() {
              <Card>
               <CardHeader>
                 <CardTitle>Gestión de Cotizaciones</CardTitle>
-                <CardDescription>Crear y administrar cotizaciones para los clientes basadas en sus tickets de servicio.</CardDescription>
+                <CardDescription>Crear, ver, editar y eliminar cotizaciones para los clientes.</CardDescription>
               </CardHeader>
               <CardContent>
-                 <div className="text-center py-16 text-muted-foreground">
-                    <FileText className="w-12 h-12 mx-auto mb-4"/>
-                    <p>La funcionalidad para crear y gestionar cotizaciones estará disponible aquí.</p>
-                 </div>
+                <QuoteManager />
               </CardContent>
             </Card>
           </TabsContent>

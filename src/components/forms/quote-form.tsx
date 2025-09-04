@@ -1,13 +1,13 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -21,129 +21,179 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
+import { Loader2, PlusCircle, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import type { Quote } from "@/components/admin/quote-manager";
 
-const quoteSchema = z.object({
-  name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
-  email: z.string().email({ message: "Por favor ingrese un correo electrónico válido." }),
-  service: z.string({ required_error: "Por favor seleccione un servicio." }),
-  message: z.string().min(20, {
-    message: "El mensaje debe tener al menos 20 caracteres.",
-  }).max(500, {
-    message: "El mensaje no debe exceder los 500 caracteres."
-  }),
+// Mock services, to be replaced with Firestore data
+const mockServices = [
+    { id: "CORR-EST-01", title: "Diagnóstico y Reparación de Estufas", price: 800 },
+    { id: "CORR-REF-01", title: "Reparación Urgente de Sistemas de Refrigeración", price: 1200 },
+    { id: "CORR-FRE-01", title: "Arreglo de Freidoras Industriales", price: 950 },
+    { id: "PREV-HOR-01", title: "Limpieza y Calibración de Hornos de Convección", price: 1500 },
+    { id: "PREV-CAM-01", title: "Inspección y Limpieza de Campanas de Extracción", price: 1800 },
+];
+
+const quoteItemSchema = z.object({
+  description: z.string().min(1, "La descripción es requerida."),
+  quantity: z.coerce.number().min(1, "La cantidad debe ser al menos 1."),
+  price: z.coerce.number().min(0, "El precio no puede ser negativo."),
 });
 
-type QuoteFormValues = z.infer<typeof quoteSchema>;
+const quoteFormSchema = z.object({
+  id: z.string().optional(),
+  clientName: z.string().min(2, "El nombre del cliente es requerido."),
+  date: z.string().min(1, "La fecha es requerida."),
+  status: z.enum(["Borrador", "Enviada", "Aceptada", "Rechazada"]),
+  items: z.array(quoteItemSchema).min(1, "Debe agregar al menos un ítem."),
+});
 
-export function QuoteForm() {
+type QuoteFormValues = z.infer<typeof quoteFormSchema>;
+
+interface QuoteFormProps {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  onSave: (quote: Quote) => void;
+  quote: Quote | null;
+}
+
+export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProps) {
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<QuoteFormValues>({
-    resolver: zodResolver(quoteSchema),
+    resolver: zodResolver(quoteFormSchema),
     defaultValues: {
-      name: "",
-      email: "",
-      message: "",
+      clientName: "",
+      date: new Date().toISOString().split("T")[0],
+      status: "Borrador",
+      items: [],
     },
   });
+  
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "items"
+  });
 
-  async function onSubmit(data: QuoteFormValues) {
-    setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    console.log(data);
-    
-    toast({
-      title: "¡Solicitud Enviada!",
-      description: "Nuestro equipo revisará su solicitud y se pondrá en contacto con usted pronto.",
-    });
+  useEffect(() => {
+    if (quote) {
+      form.reset({
+        id: quote.id,
+        clientName: quote.clientName,
+        date: new Date(quote.date).toISOString().split("T")[0],
+        status: quote.status,
+        items: quote.items.map(item => ({...item}))
+      });
+    } else {
+      form.reset({
+        clientName: "",
+        date: new Date().toISOString().split("T")[0],
+        status: "Borrador",
+        items: [],
+        id: `QUO-${String(Date.now()).slice(-4)}`
+      });
+    }
+  }, [quote, isOpen, form]);
 
-    form.reset();
-    setIsSubmitting(false);
-  }
+  const onSubmit = (data: QuoteFormValues) => {
+    const total = data.items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+    onSave({ ...data, total, id: data.id || `QUO-ERR` });
+    onOpenChange(false);
+  };
+  
+  const handleServiceSelect = (serviceId: string) => {
+    const service = mockServices.find(s => s.id === serviceId);
+    if (service) {
+      append({ description: service.title, quantity: 1, price: service.price });
+    }
+  };
+
+  const total = form.watch('items').reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nombre Completo</FormLabel>
-                <FormControl>
-                  <Input placeholder="Juan Pérez" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Correo Electrónico</FormLabel>
-                <FormControl>
-                  <Input placeholder="juan.perez@example.com" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <FormField
-          control={form.control}
-          name="service"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Servicio de Interés</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione un servicio" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="reparacion">Reparación</SelectItem>
-                  <SelectItem value="mantenimiento_preventivo">Mantenimiento Preventivo</SelectItem>
-                  <SelectItem value="mantenimiento_correctivo">Mantenimiento Correctivo</SelectItem>
-                  <SelectItem value="asesoria">Asesoría Técnica</SelectItem>
-                  <SelectItem value="otro">Otro</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="message"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Detalles del Proyecto o Necesidad</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Por favor, brinde detalles sobre su proyecto o la falla de su equipo..."
-                  className="min-h-[150px]"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
-          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isSubmitting ? "Enviando..." : "Enviar Solicitud"}
-        </Button>
-      </form>
-    </Form>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>{quote ? "Editar Cotización" : "Crear Cotización"}</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField name="clientName" control={form.control} render={({ field }) => (
+                <FormItem><FormLabel>Cliente</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField name="date" control={form.control} render={({ field }) => (
+                <FormItem><FormLabel>Fecha</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField name="status" control={form.control} render={({ field }) => (
+                <FormItem><FormLabel>Estado</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="Borrador">Borrador</SelectItem>
+                      <SelectItem value="Enviada">Enviada</SelectItem>
+                      <SelectItem value="Aceptada">Aceptada</SelectItem>
+                      <SelectItem value="Rechazada">Rechazada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                <FormMessage /></FormItem>
+              )} />
+            </div>
+
+            <div className="space-y-4">
+                <FormLabel>Items de la Cotización</FormLabel>
+                <div className="space-y-2">
+                    {fields.map((field, index) => (
+                        <div key={field.id} className="flex items-end gap-2">
+                            <FormField name={`items.${index}.description`} control={form.control} render={({ field }) => (
+                                <FormItem className="flex-grow"><FormControl><Input placeholder="Descripción" {...field} /></FormControl></FormItem>
+                            )} />
+                             <FormField name={`items.${index}.quantity`} control={form.control} render={({ field }) => (
+                                <FormItem className="w-24"><FormControl><Input type="number" placeholder="Cant." {...field} /></FormControl></FormItem>
+                            )} />
+                             <FormField name={`items.${index}.price`} control={form.control} render={({ field }) => (
+                                <FormItem className="w-32"><FormControl><Input type="number" placeholder="Precio" {...field} /></FormControl></FormItem>
+                            )} />
+                            <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                    ))}
+                </div>
+                 <div className="flex items-center gap-4">
+                    <Select onValueChange={handleServiceSelect}>
+                        <SelectTrigger className="w-[300px]">
+                            <SelectValue placeholder="Agregar servicio existente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {mockServices.map(service => (
+                                <SelectItem key={service.id} value={service.id}>{service.title}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                     <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, price: 0 })}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Agregar Item Manual
+                    </Button>
+                </div>
+                {form.formState.errors.items && <p className="text-sm font-medium text-destructive">{form.formState.errors.items.message}</p>}
+            </div>
+
+            <div className="text-right text-xl font-bold">
+                Total: ${total.toFixed(2)}
+            </div>
+
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button type="button" variant="ghost">Cancelar</Button>
+                </DialogClose>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Guardar Cotización
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }
