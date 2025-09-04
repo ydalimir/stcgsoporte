@@ -1,3 +1,4 @@
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Zap, ShieldCheck } from 'lucide-react';
@@ -60,7 +61,7 @@ export default function ServicesPage() {
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full bg-accent hover:bg-accent/90">
-                <Link href="/quote">Solicitar Servicio</Link>
+                <Link href="/tickets/new">Solicitar Servicio</Link>
               </Button>
             </CardFooter>
           </Card>
