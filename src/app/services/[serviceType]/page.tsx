@@ -28,12 +28,6 @@ const serviceCategories = {
 
 type ServiceType = keyof typeof serviceCategories;
 
-// Helper to extract number from price string
-const getPriceAsNumber = (priceString: string) => {
-    const numbers = priceString.replace(/[^0-9.]/g, '');
-    return parseFloat(numbers) || 0;
-}
-
 
 function ServiceTypePageContent() {
   const params = useParams();
@@ -84,14 +78,14 @@ function ServiceTypePageContent() {
                     <Card key={service.id} className="flex flex-col hover:shadow-xl transition-shadow duration-300">
                         <CardHeader>
                             <CardTitle>{service.title}</CardTitle>
-                            <CardDescription className="text-primary font-bold text-lg pt-2">{service.price}</CardDescription>
+                            <CardDescription className="text-primary font-bold text-lg pt-2">${service.price.toFixed(2)} MXN</CardDescription>
                         </CardHeader>
                         <CardContent className="flex-grow">
                             <p className="text-muted-foreground">{service.description}</p>
                         </CardContent>
                         <CardFooter>
                             <Button asChild className="w-full bg-accent hover:bg-accent/90">
-                                <Link href={`/tickets/new?serviceType=${serviceType}&equipmentType=${encodeURIComponent(service.title)}&price=${getPriceAsNumber(service.price)}`}>
+                                <Link href={`/tickets/new?serviceType=${serviceType}&equipmentType=${encodeURIComponent(service.title)}&price=${service.price}`}>
                                     Solicitar Servicio
                                 </Link>
                             </Button>

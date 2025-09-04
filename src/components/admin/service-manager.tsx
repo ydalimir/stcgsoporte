@@ -62,7 +62,7 @@ const serviceSchema = z.object({
   id: z.string().optional(),
   title: z.string().min(5, { message: "El título debe tener al menos 5 caracteres." }),
   sku: z.string().min(3, { message: "El SKU es requerido." }),
-  price: z.string().min(1, { message: "El precio es requerido." }),
+  price: z.coerce.number().min(0, { message: "El precio es requerido." }),
   description: z.string().min(20, { message: "La descripción debe tener al menos 20 caracteres." }),
   serviceType: z.enum(["correctivo", "preventivo"], { required_error: "Debe seleccionar un tipo de servicio." }),
 });
@@ -86,7 +86,7 @@ export function ServiceManager() {
     return () => unsubscribe();
   }, []);
 
-  const handleSaveService = async (data: Service) => {
+  const handleSaveService = async (data: Omit<Service, 'id'>) => {
     try {
         if (selectedService && selectedService.id) {
             // Update
@@ -121,7 +121,7 @@ export function ServiceManager() {
       { accessorKey: "title", header: "Título" },
       { accessorKey: "serviceType", header: "Tipo" },
       { accessorKey: "sku", header: "SKU" },
-      { accessorKey: "price", header: "Precio" },
+      { accessorKey: "price", header: "Precio", cell: ({ row }) => `$${row.original.price.toFixed(2)}` },
       { id: "actions",
         cell: ({ row }) => (
             <DropdownMenu>
@@ -216,14 +216,21 @@ export function ServiceManager() {
 interface ServiceFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (data: Service) => void;
+  onSave: (data: Omit<Service, 'id'>) => void;
   service: Service | null;
 }
 
 function ServiceFormDialog({ isOpen, onOpenChange, onSave, service }: ServiceFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const form = useForm<Service>({
+    const form = useForm<z.infer<typeof serviceSchema>>({
         resolver: zodResolver(serviceSchema),
+        defaultValues: {
+            title: "",
+            sku: "",
+            price: 0,
+            description: "",
+            serviceType: undefined,
+        }
     });
 
     useEffect(() => {
@@ -231,12 +238,12 @@ function ServiceFormDialog({ isOpen, onOpenChange, onSave, service }: ServiceFor
           if (service) {
             form.reset(service);
           } else {
-            form.reset({ title: "", sku: "", price: "", description: "", serviceType: undefined });
+            form.reset({ title: "", sku: "", price: 0, description: "", serviceType: undefined });
           }
         }
       }, [service, isOpen, form]);
 
-    const handleSubmit = async (data: Service) => {
+    const handleSubmit = async (data: z.infer<typeof serviceSchema>) => {
         setIsSubmitting(true);
         await onSave(data);
         setIsSubmitting(false);
@@ -282,7 +289,7 @@ function ServiceFormDialog({ isOpen, onOpenChange, onSave, service }: ServiceFor
                         <FormField control={form.control} name="price" render={({ field }) => (
                             <FormItem>
                             <FormLabel>Precio</FormLabel>
-                            <FormControl><Input placeholder="Ej: $1,800 MXN o Cotización Personalizada" {...field} /></FormControl>
+                            <FormControl><Input type="number" step="0.01" placeholder="Ej: 1800.00" {...field} /></FormControl>
                             <FormMessage />
                             </FormItem>
                         )} />
@@ -308,5 +315,3 @@ function ServiceFormDialog({ isOpen, onOpenChange, onSave, service }: ServiceFor
         </Dialog>
     )
 }
-
-    

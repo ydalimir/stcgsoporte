@@ -119,12 +119,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
   const handleServiceSelect = (serviceId: string) => {
     const service = services.find(s => s.id === serviceId);
     if (service) {
-        let price = 0;
-        const priceMatch = service.price.match(/(\d+)/);
-        if (priceMatch) {
-            price = parseInt(priceMatch[0], 10);
-        }
-      append({ description: service.title, quantity: 1, price: price });
+      append({ description: service.title, quantity: 1, price: service.price });
     }
   };
 
