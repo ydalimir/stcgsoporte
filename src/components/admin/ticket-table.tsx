@@ -17,6 +17,7 @@ import {
   ChevronDown,
   MoreHorizontal,
   Loader2,
+  Download,
 } from "lucide-react"
 import {
   ColumnDef,
@@ -57,20 +58,100 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export type Ticket = {
   id: string
   userId: string
   clientName: string,
   clientPhone: string,
+  clientAddress: string,
   serviceType: "Correctivo" | "Preventivo"
   equipmentType: string
   description: string
-  urgency: "Baja" | "Media" | "Alta"
+  urgency: "baja" | "media" | "alta"
   status: "Recibido" | "En Progreso" | "Resuelto"
   createdAt: Timestamp
   price?: number
 }
+
+const downloadServiceOrderPDF = (ticket: Ticket) => {
+  const doc = new jsPDF();
+  let yPos = 20;
+
+  // Company Name & Title
+  doc.setFontSize(16);
+  doc.text("Servicio Técnico, Industrial y Comercial de Gastronomía S.A. De C.V.", 14, yPos);
+  yPos += 8;
+  doc.setFontSize(14);
+  doc.text(`Orden de Servicio - Ticket #${ticket.id}`, 14, yPos);
+  yPos += 12;
+
+  // Client Info
+  doc.setFontSize(12);
+  doc.text("Información del Cliente", 14, yPos);
+  yPos += 7;
+  doc.setFontSize(10);
+  doc.text(`Nombre: ${ticket.clientName}`, 14, yPos);
+  yPos += 6;
+  doc.text(`Teléfono: ${ticket.clientPhone}`, 14, yPos);
+  yPos += 6;
+  doc.text(`Dirección: ${ticket.clientAddress}`, 14, yPos);
+  yPos += 12;
+  
+  // Service Details
+  doc.setFontSize(12);
+  doc.text("Detalles del Servicio", 14, yPos);
+  yPos += 7;
+  doc.setFontSize(10);
+  
+  const details = [
+    ["Fecha de Creación", ticket.createdAt?.toDate().toLocaleDateString('es-MX') || "N/A"],
+    ["Tipo de Servicio", ticket.serviceType],
+    ["Nivel de Urgencia", ticket.urgency.charAt(0).toUpperCase() + ticket.urgency.slice(1)],
+    ["Asunto / Equipo", ticket.equipmentType],
+  ];
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [['Campo', 'Valor']],
+    body: details,
+    theme: 'striped',
+    headStyles: { fillColor: [46, 154, 254] },
+  });
+
+  yPos = (doc as any).lastAutoTable.finalY + 10;
+  
+  // Description
+  doc.setFontSize(12);
+  doc.text("Descripción del Problema / Necesidad:", 14, yPos);
+  yPos += 6;
+  doc.setFontSize(10);
+  const splitDescription = doc.splitTextToSize(ticket.description, 180);
+  doc.rect(14, yPos, 182, 40); // Draw a box for the description
+  doc.text(splitDescription, 15, yPos + 5);
+  yPos += 50;
+
+  // Technician Notes
+  doc.setFontSize(12);
+  doc.text("Notas del Técnico:", 14, yPos);
+  yPos += 6;
+  doc.rect(14, yPos, 182, 60); // Box for technician notes
+  yPos += 70;
+
+  // Client Signature
+  doc.line(14, yPos, 80, yPos);
+  doc.setFontSize(10);
+  doc.text("Firma del Cliente", 35, yPos + 5);
+  
+  doc.line(116, yPos, 182, yPos);
+  doc.text("Firma del Técnico", 135, yPos + 5);
+
+
+  doc.save(`orden-servicio-${ticket.id}.pdf`);
+}
+
 
 export function TicketTable() {
   const [tickets, setTickets] = React.useState<Ticket[]>([])
@@ -233,6 +314,12 @@ export function TicketTable() {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                 <DropdownMenuItem
+                  onClick={() => downloadServiceOrderPDF(ticket)}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Descargar Orden
+                </DropdownMenuItem>
+                 <DropdownMenuItem
                   onClick={() => alert(`Detalles para ${ticket.id}`)}
                 >
                   Ver Detalles del Ticket
@@ -420,3 +507,5 @@ export function TicketTable() {
     </div>
   )
 }
+
+    
