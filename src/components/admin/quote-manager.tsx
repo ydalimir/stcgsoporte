@@ -67,7 +67,9 @@ export type Quote = {
   expirationDate?: string;
   rfc?: string;
   policies?: string;
+  subtotal: number;
   total: number;
+  iva?: number;
   status: "Borrador" | "Enviada" | "Aceptada" | "Rechazada";
   items: QuoteItem[];
 };
@@ -125,12 +127,21 @@ const downloadPDF = (quote: Quote) => {
         doc.text(`Válida hasta: ${new Date(quote.expirationDate).toLocaleDateString('es-MX')}`, 120, yPos);
     }
     yPos += 10;
+
+    const ivaPercentage = quote.iva ?? 16;
+    const ivaAmount = quote.subtotal * (ivaPercentage / 100);
+
+    const foot = [
+        ['', '', 'Subtotal', `$${quote.subtotal.toFixed(2)}`],
+        ['', '', `IVA (${ivaPercentage}%)`, `$${ivaAmount.toFixed(2)}`],
+        [{ content: 'Total', styles: { fontStyle: 'bold' } }, '', '', { content: `$${quote.total.toFixed(2)}`, styles: { fontStyle: 'bold' } }],
+    ];
     
     autoTable(doc, {
       startY: yPos,
       head: [['Descripción', 'Cantidad', 'Precio Unitario', 'Importe']],
       body: quote.items.map(item => [item.description, item.quantity, `$${item.price.toFixed(2)}`, `$${(item.quantity * item.price).toFixed(2)}`]),
-      foot: [['', '', 'Total', `$${quote.total.toFixed(2)}`]],
+      foot: foot,
       headStyles: { fillColor: [46, 154, 254] },
       didDrawPage: (data) => {
         const cursorY = data.cursor?.y;
@@ -160,6 +171,7 @@ export function QuoteManager() {
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
 
   useEffect(() => {
+    setIsLoading(true);
     const unsubscribe = onSnapshot(collection(db, "quotes"), (snapshot) => {
         const quotesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
         setQuotes(quotesData);
@@ -172,7 +184,7 @@ export function QuoteManager() {
     return () => unsubscribe();
   }, [toast]);
 
-  const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'total'> & { total: number }) => {
+  const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'total'> & { total: number; subtotal: number }) => {
     try {
         if (selectedQuote) {
             const quoteDoc = doc(db, "quotes", selectedQuote.id);
@@ -182,6 +194,7 @@ export function QuoteManager() {
             const newDocRef = await addDoc(collection(db, "quotes"), quoteData);
             toast({ title: "Cotización Creada", description: `La cotización ${newDocRef.id.substring(0,7)} ha sido creada.` });
         }
+        setIsFormOpen(false);
         setSelectedQuote(null);
     } catch (error) {
         console.error("Error saving quote:", error);

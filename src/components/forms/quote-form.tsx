@@ -45,6 +45,7 @@ const quoteFormSchema = z.object({
   expirationDate: z.string().optional(),
   rfc: z.string().optional(),
   policies: z.string().optional(),
+  iva: z.coerce.number().min(0, "El IVA no puede ser negativo.").default(16),
 });
 
 type QuoteFormValues = z.infer<typeof quoteFormSchema>;
@@ -78,6 +79,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
       expirationDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // Default 15 days
       rfc: "",
       policies: "Esta cotización tiene una validez de 15 días a partir de la fecha de emisión. Los precios no incluyen IVA. El tiempo de entrega puede variar.",
+      iva: 16,
     },
   });
   
@@ -93,6 +95,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
           ...quote,
           date: new Date(quote.date).toISOString().split("T")[0],
           expirationDate: quote.expirationDate ? new Date(quote.expirationDate).toISOString().split("T")[0] : undefined,
+          iva: quote.iva ?? 16,
         });
       } else {
          form.reset({
@@ -103,15 +106,22 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
             expirationDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
             rfc: "",
             policies: "Esta cotización tiene una validez de 15 días a partir de la fecha de emisión. Los precios no incluyen IVA. El tiempo de entrega puede variar.",
+            iva: 16,
         });
       }
     }
   }, [quote, isOpen, form]);
 
+  const items = form.watch('items');
+  const ivaPercentage = form.watch('iva');
+  
+  const subtotal = items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+  const ivaAmount = subtotal * (ivaPercentage / 100);
+  const total = subtotal + ivaAmount;
+
   const onSubmit = async (data: QuoteFormValues) => {
     setIsSubmitting(true);
-    const total = data.items.reduce((sum, item) => sum + item.quantity * item.price, 0);
-    await onSave({ ...data, total });
+    await onSave({ ...data, subtotal, total });
     setIsSubmitting(false);
     onOpenChange(false);
   };
@@ -122,8 +132,6 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
       append({ description: service.title, quantity: 1, price: service.price });
     }
   };
-
-  const total = form.watch('items').reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -200,9 +208,28 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
             <FormField name="policies" control={form.control} render={({ field }) => (
               <FormItem><FormLabel>Políticas y Términos</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
-
-            <div className="text-right text-xl font-bold">
-                Total: ${total.toFixed(2)}
+            
+             <div className="flex justify-end">
+                <div className="w-full max-w-sm space-y-2">
+                    <FormField name="iva" control={form.control} render={({ field }) => (
+                        <FormItem className="flex items-center justify-between">
+                            <FormLabel>IVA (%)</FormLabel>
+                            <FormControl><Input type="number" className="w-24" {...field} /></FormControl>
+                        </FormItem>
+                    )} />
+                    <div className="flex justify-between font-medium">
+                        <span>Subtotal:</span>
+                        <span>${subtotal.toFixed(2)}</span>
+                    </div>
+                     <div className="flex justify-between">
+                        <span>IVA ({ivaPercentage}%):</span>
+                        <span>${ivaAmount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-xl font-bold border-t pt-2">
+                        <span>Total:</span>
+                        <span>${total.toFixed(2)}</span>
+                    </div>
+                </div>
             </div>
 
             <DialogFooter className="pt-4">
