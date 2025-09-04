@@ -227,60 +227,63 @@ export function QuoteManager() {
       { accessorKey: "status", header: "Estado", cell: ({row}) => <Badge>{row.original.status}</Badge> },
       {
         id: "actions",
-        cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => { setSelectedQuote(row.original); setIsFormOpen(true); }}>
-                <Edit className="mr-2 h-4 w-4" /> Editar
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => downloadPDF(row.original)}>
-                <Download className="mr-2 h-4 w-4" /> Descargar PDF
-              </DropdownMenuItem>
-              <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>Cambiar Estado</DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                      <DropdownMenuRadioGroup 
-                          value={row.original.status} 
-                          onValueChange={(newStatus) => handleStatusChange(row.original, newStatus as Quote['status'])}
-                       >
-                           <DropdownMenuRadioItem value="Borrador">Borrador</DropdownMenuRadioItem>
-                           <DropdownMenuRadioItem value="Enviada">Enviada</DropdownMenuRadioItem>
-                           <DropdownMenuRadioItem value="Aceptada">Aceptada</DropdownMenuRadioItem>
-                           <DropdownMenuRadioItem value="Rechazada">Rechazada</DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuSeparator />
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-500">
-                    <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Esta acción no se puede deshacer. Esto eliminará permanentemente la cotización.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDelete(row.original.id)} className="bg-destructive hover:bg-destructive/90">
-                      Eliminar
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ),
+        cell: ({ row }) => {
+           const quote = row.original;
+           return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => { setSelectedQuote(quote); setIsFormOpen(true); }}>
+                  <Edit className="mr-2 h-4 w-4" /> Editar
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => downloadPDF(quote)}>
+                  <Download className="mr-2 h-4 w-4" /> Descargar PDF
+                </DropdownMenuItem>
+                <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>Cambiar Estado</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                        <DropdownMenuRadioGroup 
+                            value={quote.status} 
+                            onValueChange={(newStatus) => handleStatusChange(quote, newStatus as Quote['status'])}
+                         >
+                             <DropdownMenuRadioItem value="Borrador">Borrador</DropdownMenuRadioItem>
+                             <DropdownMenuRadioItem value="Enviada">Enviada</DropdownMenuRadioItem>
+                             <DropdownMenuRadioItem value="Aceptada">Aceptada</DropdownMenuRadioItem>
+                             <DropdownMenuRadioItem value="Rechazada">Rechazada</DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                    </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSeparator />
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-500">
+                      <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                    </DropdownMenuItem>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta acción no se puede deshacer. Esto eliminará permanentemente la cotización.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDelete(quote.id)} className="bg-destructive hover:bg-destructive/90">
+                        Eliminar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </DropdownMenuContent>
+            </DropdownMenu>
+           );
+        },
       },
     ],
     [handleDelete, handleStatusChange]
@@ -296,10 +299,12 @@ export function QuoteManager() {
         pagination: {
             pageSize: 5,
         }
-    }
+    },
+    state: {
+      globalFilter: filter,
+    },
+    onGlobalFilterChange: setFilter,
   });
-  
-  table.getColumn("clientName")?.setFilterValue(filter);
 
   if (isLoading) {
     return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -382,3 +387,6 @@ export function QuoteManager() {
     </div>
   );
 }
+
+
+    
