@@ -49,7 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import { QuoteForm } from "@/components/forms/quote-form";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, runTransaction, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Badge } from "../ui/badge";
 
@@ -62,6 +62,7 @@ export type QuoteItem = {
 
 export type Quote = {
   id: string;
+  quoteNumber: number;
   clientName: string;
   date: string;
   expirationDate?: string;
@@ -89,7 +90,7 @@ const createTicketFromQuote = async (quote: Quote, toast: (options: any) => void
       clientRfc: quote.rfc || "N/A",
       serviceType: "correctivo" as "correctivo" | "preventivo", 
       equipmentType: quote.items.map(item => item.description).join(', '),
-      description: `Ticket generado a partir de la cotización #${quote.id.substring(0,7)}. ${quote.policies || ''}`,
+      description: `Ticket generado a partir de la cotización #${quote.quoteNumber}. ${quote.policies || ''}`,
       urgency: "media" as "baja" | "media" | "alta",
       status: "Recibido",
       createdAt: serverTimestamp(),
@@ -110,7 +111,7 @@ const downloadPDF = (quote: Quote) => {
     let yPos = 22;
     
     doc.setFontSize(20);
-    doc.text(`Cotización #${quote.id.substring(0, 7)}`, 14, yPos);
+    doc.text(`Cotización #${quote.quoteNumber}`, 14, yPos);
     yPos += 10;
     
     doc.setFontSize(12);
@@ -163,7 +164,7 @@ const downloadPDF = (quote: Quote) => {
         doc.text(splitPolicies, 14, yPos);
     }
     
-    doc.save(`cotizacion-${quote.id.substring(0,7)}.pdf`);
+    doc.save(`cotizacion-${quote.quoteNumber}.pdf`);
 }
 
 export function QuoteManager() {
@@ -178,7 +179,7 @@ export function QuoteManager() {
     setIsLoading(true);
     const unsubscribe = onSnapshot(collection(db, "quotes"), (snapshot) => {
         const quotesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
-        setQuotes(quotesData);
+        setQuotes(quotesData.sort((a, b) => (b.quoteNumber || 0) - (a.quoteNumber || 0)));
         setIsLoading(false);
     }, (error) => {
         console.error("Error fetching quotes:", error);
@@ -188,15 +189,30 @@ export function QuoteManager() {
     return () => unsubscribe();
   }, [toast]);
 
-  const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'total'> & { total: number; subtotal: number }) => {
+  const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'quoteNumber' | 'total'> & { total: number; subtotal: number }) => {
     try {
         if (selectedQuote) {
+            // Update existing quote
             const quoteDoc = doc(db, "quotes", selectedQuote.id);
             await updateDoc(quoteDoc, quoteData);
             toast({ title: "Cotización Actualizada", description: `La cotización para ${quoteData.clientName} ha sido actualizada.` });
         } else {
-            const newDocRef = await addDoc(collection(db, "quotes"), quoteData);
-            toast({ title: "Cotización Creada", description: `La cotización ${newDocRef.id.substring(0,7)} ha sido creada.` });
+            // Create new quote with a numeric ID
+            await runTransaction(db, async (transaction) => {
+                const counterRef = doc(db, "counters", "quotes");
+                const counterDoc = await transaction.get(counterRef);
+
+                let newQuoteNumber = 1;
+                if (counterDoc.exists()) {
+                    newQuoteNumber = counterDoc.data().lastNumber + 1;
+                }
+                
+                transaction.set(counterRef, { lastNumber: newQuoteNumber });
+                
+                const newQuoteRef = doc(collection(db, "quotes"));
+                transaction.set(newQuoteRef, { ...quoteData, quoteNumber: newQuoteNumber });
+            });
+            toast({ title: "Cotización Creada", description: `Una nueva cotización ha sido creada.` });
         }
         setIsFormOpen(false);
         setSelectedQuote(null);
@@ -209,7 +225,7 @@ export function QuoteManager() {
   const handleDelete = useCallback(async (id: string) => {
     try {
         await deleteDoc(doc(db, "quotes", id));
-        toast({ title: "Cotización Eliminada", description: `La cotización ${id.substring(0,7)} ha sido eliminada.` });
+        toast({ title: "Cotización Eliminada", description: `La cotización ha sido eliminada.` });
     } catch (error) {
         console.error("Error deleting quote:", error);
         toast({ title: "Error al eliminar", description: "No se pudo eliminar la cotización.", variant: "destructive" });
@@ -234,7 +250,7 @@ export function QuoteManager() {
 
   const columns: ColumnDef<Quote>[] = useMemo(
     () => [
-      { accessorKey: "id", header: "ID", cell: ({ row }) => <span className="font-mono text-xs">{row.original.id.substring(0, 7)}</span> },
+      { accessorKey: "quoteNumber", header: "ID" },
       { accessorKey: "clientName", header: "Cliente" },
       { accessorKey: "date", header: "Fecha", cell: ({ row }) => new Date(row.original.date).toLocaleDateString('es-MX') },
       {
@@ -405,5 +421,3 @@ export function QuoteManager() {
     </div>
   );
 }
-
-    
