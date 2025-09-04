@@ -22,17 +22,25 @@ export default function ProfilePage() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        // Ensure user document exists in Firestore
+        // Ensure user document exists in Firestore, create it if it doesn't.
+        // This is a "write-if-not-exists" operation.
         const userDocRef = doc(db, "users", currentUser.uid);
         const userDoc = await getDoc(userDocRef);
         if (!userDoc.exists()) {
           try {
+            // We set a default role 'user' upon first profile visit after signup.
             await setDoc(userDocRef, {
               email: currentUser.email,
-              role: "user", // Default role
+              role: "user", 
+              createdAt: new Date().toISOString(),
             });
           } catch (error) {
             console.error("Error creating user document:", error);
+             toast({
+              title: "Profile Error",
+              description: "Could not create your user profile data.",
+              variant: "destructive",
+            });
           }
         }
       } else {
@@ -42,7 +50,7 @@ export default function ProfilePage() {
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, toast]);
 
   const handleSignOut = async () => {
     try {
@@ -70,7 +78,12 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    return null; // or a message indicating no user is logged in
+    // This will be briefly visible before the redirect in useEffect kicks in.
+    return (
+        <div className="flex items-center justify-center min-h-screen">
+            <p>Redirecting to login...</p>
+        </div>
+    );
   }
 
   return (

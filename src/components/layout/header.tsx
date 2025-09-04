@@ -43,6 +43,7 @@ export function Header() {
       return;
     }
 
+    // Only check for admin role if we have a user and auth is settled
     const checkAdminRole = async () => {
       try {
         const userDocRef = doc(db, "users", user.uid);
@@ -53,11 +54,11 @@ export function Header() {
           setIsAdmin(false);
         }
       } catch (error) {
-        // This can happen if the client is offline. We'll just assume not admin.
-        console.error("Could not check admin role, maybe offline:", error);
+        console.error("Could not check admin role:", error);
         setIsAdmin(false);
       }
     };
+
     checkAdminRole();
   }, [user, isLoading]);
 
@@ -136,7 +137,7 @@ export function Header() {
         </nav>
 
         <div className="hidden md:flex items-center gap-2">
-          {user ? (
+          {isLoading ? null : user ? (
             <UserMenu />
           ) : (
             <>
@@ -191,7 +192,7 @@ export function Header() {
                   )}
                 </nav>
                 <div className="mt-auto p-4 border-t flex flex-col gap-4">
-                  {user ? (
+                  {isLoading ? null : user ? (
                      <div className='flex items-center justify-between'>
                        <p className="text-sm text-muted-foreground">{user.email}</p>
                        <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>

@@ -17,12 +17,14 @@ export default function AdminDashboardPage() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
+    // Wait until Firebase auth state is determined
     if (authIsLoading) {
-      return; // Wait until Firebase auth state is determined
+      return; 
     }
 
+    // If no user is logged in after auth check, redirect to login
     if (!user) {
-      router.push("/login"); // If no user, redirect to login
+      router.push("/login");
       return;
     }
 
@@ -45,7 +47,7 @@ export default function AdminDashboardPage() {
         }
       } catch (error) {
         console.error("Error fetching user role:", error);
-        setIsAdmin(false); // Assume not admin on error
+        setIsAdmin(false);
         toast({
           title: "Permission Error",
           description: "Could not verify your role. Please try again later.",
@@ -68,21 +70,30 @@ export default function AdminDashboardPage() {
     );
   }
   
-  // If the user is not an admin, they will have been redirected.
-  // We can safely render the admin content.
+  // If we reach here and isAdmin is true, render the admin content.
+  // If isAdmin is false, the user will have been redirected by the effect.
+  if (isAdmin) {
+    return (
+      <div className="container mx-auto px-4 py-10">
+        <div className="flex items-center gap-4 mb-8">
+          <LayoutDashboard className="w-8 h-8 text-primary" />
+          <h1 className="text-3xl md:text-4xl font-bold font-headline">Admin Dashboard</h1>
+        </div>
+        <p className="text-muted-foreground mb-8">
+          View, manage, and assign all support tickets from this central hub.
+        </p>
+        
+        <div className="bg-card p-4 sm:p-6 rounded-lg shadow-lg">
+          <TicketTable />
+        </div>
+      </div>
+    );
+  }
+
+  // Render nothing or a loader while redirection is happening.
   return (
-    <div className="container mx-auto px-4 py-10">
-      <div className="flex items-center gap-4 mb-8">
-        <LayoutDashboard className="w-8 h-8 text-primary" />
-        <h1 className="text-3xl md:text-4xl font-bold font-headline">Admin Dashboard</h1>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
-      <p className="text-muted-foreground mb-8">
-        View, manage, and assign all support tickets from this central hub.
-      </p>
-      
-      <div className="bg-card p-4 sm:p-6 rounded-lg shadow-lg">
-        <TicketTable />
-      </div>
-    </div>
-  );
+    );
 }
