@@ -4,49 +4,44 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    function getRole(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.role;
-    }
-
+    // Helper function to check for admin role
     function isAdmin() {
-      return isSignedIn() && getRole(request.auth.uid) == 'admin';
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Rules for collections
+    // Users can only read/update their own profile
     match /users/{userId} {
-      allow read, update: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn();
-      allow delete: if isAdmin();
-      allow list: if isAdmin();
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      // Admins can read/write any user profile
+      allow read, write: if isAdmin();
+      // Allow user creation for signup
+      allow create: if request.auth != null;
     }
 
+    // Tickets
     match /tickets/{ticketId} {
-      allow create: if isSignedIn();
-      allow read, list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+       // A user can create a ticket for themselves
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // A user can only read their own tickets
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Admins can manage all tickets
+      allow read, write: if isAdmin();
     }
     
+    // Services can be read by anyone, but only managed by admins
     match /services/{serviceId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin();
+        allow read: if true;
+        allow write: if isAdmin();
     }
 
+    // Quotes can only be managed by admins
     match /quotes/{quoteId} {
-        allow read, create, update, delete: if isAdmin();
+        allow read, write: if isAdmin();
     }
 
+    // Spare parts can only be managed by admins
     match /spare_parts/{partId} {
-      allow read, create, update, delete: if isAdmin();
+      allow read, write: if isAdmin();
     }
   }
 }
