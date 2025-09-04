@@ -16,24 +16,27 @@ export function useAuth() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setIsLoading(true); // Set loading to true when auth state changes
+      setIsLoading(true);
       if (firebaseUser) {
+        // Set the basic user information first.
+        // The role will be undefined initially.
+        setUser(firebaseUser); 
+
         try {
+          // Now, try to fetch the user role from Firestore.
           const userDocRef = doc(db, "users", firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);
 
           if (userDoc.exists()) {
+            // If the role is found, update the user state with the role.
+            // This will trigger a re-render in components using the hook.
             setUser({ ...firebaseUser, role: userDoc.data().role });
-          } else {
-            // User is authenticated but no document in Firestore yet.
-            // This can happen right after sign-up before the doc is created.
-            setUser(firebaseUser); 
           }
         } catch (error) {
-           console.error("Error fetching user role:", error);
-           // If Firestore fails (e.g., offline), set the basic user info anyway.
-           // The app can function, and role-based features will be unavailable.
-           setUser(firebaseUser);
+           console.error("Error fetching user role (may be offline):", error);
+           // If Firestore fails (e.g., offline), we don't crash.
+           // The app continues with the basic user info.
+           // Role-based features will be unavailable until connection is restored.
         }
       } else {
         setUser(null);
