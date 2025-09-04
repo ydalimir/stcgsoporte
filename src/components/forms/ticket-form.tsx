@@ -27,7 +27,7 @@ import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter, useSearchParams } from "next/navigation";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, runTransaction, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Input } from "../ui/input";
 
@@ -136,14 +136,29 @@ export function TicketForm() {
     setIsSubmitting(true);
     try {
         const finalPrice = data.price ? data.price * (data.quantity || 1) : undefined;
-        await addDoc(collection(db, "tickets"), {
-            ...data,
-            price: finalPrice, // Save the calculated total price
-            userId: user.uid,
-            status: "Recibido",
-            createdAt: serverTimestamp(),
+        
+        await runTransaction(db, async (transaction) => {
+            const counterRef = doc(db, "counters", "tickets");
+            const counterDoc = await transaction.get(counterRef);
+
+            let newTicketNumber = 1;
+            if (counterDoc.exists()) {
+                newTicketNumber = counterDoc.data().lastNumber + 1;
+            }
+            
+            transaction.set(counterRef, { lastNumber: newTicketNumber }, { merge: true });
+            
+            const newTicketRef = doc(collection(db, "tickets"));
+            transaction.set(newTicketRef, {
+                ...data,
+                price: finalPrice,
+                userId: user.uid,
+                status: "Recibido",
+                createdAt: serverTimestamp(),
+                ticketNumber: newTicketNumber,
+            });
         });
-      
+
       toast({
         title: "¡Ticket Enviado!",
         description: "Hemos recibido su ticket de soporte y nos pondremos en contacto en breve.",

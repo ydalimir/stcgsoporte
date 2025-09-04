@@ -64,7 +64,8 @@ import { useRouter } from "next/navigation";
 
 
 export type Ticket = {
-  id: string
+  id: string;
+  ticketNumber?: number;
   userId: string
   clientName: string,
   clientPhone: string,
@@ -82,13 +83,14 @@ export type Ticket = {
 const downloadServiceOrderPDF = (ticket: Ticket) => {
   const doc = new jsPDF();
   let yPos = 20;
+  const ticketId = ticket.ticketNumber ? `ORD-${String(ticket.ticketNumber).padStart(3, '0')}` : ticket.id;
 
-  // Company Name & Title
-  doc.setFontSize(16);
+
+  doc.setFontSize(14);
   doc.text("Servicio Técnico, Industrial y Comercial de Gastronomía S.A. De C.V.", 14, yPos);
   yPos += 8;
-  doc.setFontSize(14);
-  doc.text(`Orden de Servicio - Ticket #${ticket.id}`, 14, yPos);
+  doc.setFontSize(12);
+  doc.text(`Orden de Servicio #${ticketId}`, 14, yPos);
   yPos += 12;
 
   // Client Info
@@ -152,7 +154,7 @@ const downloadServiceOrderPDF = (ticket: Ticket) => {
   doc.text("Firma del Técnico", 135, yPos + 5);
 
 
-  doc.save(`ORD-${ticket.id}.pdf`);
+  doc.save(`${ticketId}.pdf`);
 }
 
 
@@ -220,6 +222,14 @@ export function TicketTable() {
 
   const columns: ColumnDef<Ticket>[] = React.useMemo(
     () => [
+      {
+        accessorKey: "ticketNumber",
+        header: "ID",
+        cell: ({ row }) => {
+            const ticketNumber = row.original.ticketNumber;
+            return ticketNumber ? `ORD-${String(ticketNumber).padStart(3, '0')}` : row.original.id.substring(0, 7);
+        }
+      },
       {
         accessorKey: "clientName",
         header: ({ column }) => (

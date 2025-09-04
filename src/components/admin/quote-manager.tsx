@@ -111,12 +111,23 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
         await updateDoc(ticketRef, ticketData);
         return quote.linkedTicketId;
     } else {
-        // Create new ticket
-        const newTicketRef = await addDoc(collection(db, "tickets"), ticketData);
-        // Link ticket ID back to quote
-        const quoteRef = doc(db, "quotes", quote.id);
-        await updateDoc(quoteRef, { linkedTicketId: newTicketRef.id });
-        return newTicketRef.id;
+        return await runTransaction(db, async (transaction) => {
+            const counterRef = doc(db, "counters", "tickets");
+            const counterDoc = await transaction.get(counterRef);
+            let newTicketNumber = 1;
+            if (counterDoc.exists()) {
+                newTicketNumber = counterDoc.data().lastNumber + 1;
+            }
+            transaction.set(counterRef, { lastNumber: newTicketNumber }, { merge: true });
+
+            const newTicketRef = doc(collection(db, "tickets"));
+            transaction.set(newTicketRef, { ...ticketData, ticketNumber: newTicketNumber });
+            
+            const quoteRef = doc(db, "quotes", quote.id);
+            transaction.update(quoteRef, { linkedTicketId: newTicketRef.id });
+
+            return newTicketRef.id;
+        });
     }
 };
 
@@ -125,12 +136,12 @@ const downloadPDF = (quote: Quote) => {
     let yPos = 20;
 
     // Company Name
-    doc.setFontSize(16);
+    doc.setFontSize(14);
     doc.text("Servicio Técnico, Industrial y Comercial de Gastronomía S.A. De C.V.", 14, yPos);
     yPos += 8;
     
     // Quote Title
-    doc.setFontSize(14);
+    doc.setFontSize(12);
     doc.text(`Cotización #${String(quote.quoteNumber).padStart(3, '0')}`, 14, yPos);
     yPos += 10;
     

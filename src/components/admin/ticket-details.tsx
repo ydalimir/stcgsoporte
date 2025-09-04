@@ -22,12 +22,14 @@ type TicketDetailsProps = {
 const downloadServiceOrderPDF = (ticket: Ticket) => {
   const doc = new jsPDF();
   let yPos = 20;
+  const ticketId = ticket.ticketNumber ? `ORD-${String(ticket.ticketNumber).padStart(3, '0')}` : ticket.id;
 
-  doc.setFontSize(16);
+
+  doc.setFontSize(14);
   doc.text("Servicio Técnico, Industrial y Comercial de Gastronomía S.A. De C.V.", 14, yPos);
   yPos += 8;
-  doc.setFontSize(14);
-  doc.text(`Orden de Servicio - Ticket #${ticket.id}`, 14, yPos);
+  doc.setFontSize(12);
+  doc.text(`Orden de Servicio #${ticketId}`, 14, yPos);
   yPos += 12;
 
   doc.setFontSize(12);
@@ -67,11 +69,13 @@ const downloadServiceOrderPDF = (ticket: Ticket) => {
   doc.line(116, yPos, 182, yPos);
   doc.text("Firma del Técnico", 135, yPos + 5);
 
-  doc.save(`ORD-${ticket.id}.pdf`);
+  doc.save(`${ticketId}.pdf`);
 }
 
 export function TicketDetails({ ticket }: TicketDetailsProps) {
     const { toast } = useToast();
+    const ticketId = ticket.ticketNumber ? `ORD-${String(ticket.ticketNumber).padStart(3, '0')}` : ticket.id.substring(0, 7) + '...';
+
 
     const updateStatus = async (newStatus: Ticket['status']) => {
         const ticketRef = doc(db, "tickets", ticket.id);
@@ -106,7 +110,7 @@ export function TicketDetails({ ticket }: TicketDetailsProps) {
       <CardHeader>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                 <CardTitle className="text-2xl font-headline">Detalles del Ticket #{ticket.id.substring(0, 7)}...</CardTitle>
+                 <CardTitle className="text-2xl font-headline">Detalles del Ticket #{ticketId}</CardTitle>
                  <CardDescription>Creado el {ticket.createdAt.toDate().toLocaleString('es-MX')}</CardDescription>
             </div>
              <div className="flex items-center gap-2">
