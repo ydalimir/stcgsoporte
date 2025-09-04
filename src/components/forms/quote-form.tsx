@@ -20,18 +20,19 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SelectGroup,
-  SelectLabel,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useEffect, useState } from "react";
-import { Loader2, PlusCircle, Trash2 } from "lucide-react";
+import { Loader2, PlusCircle, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import type { Quote, QuoteItem } from "@/components/admin/quote-manager";
+import type { Quote } from "@/components/admin/quote-manager";
 import type { Service } from "@/components/admin/service-manager";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { SparePart } from "../admin/spare-parts-manager";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 
 const quoteItemSchema = z.object({
@@ -64,6 +65,8 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
   const [services, setServices] = useState<Service[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isComboboxOpen, setIsComboboxOpen] = useState(false);
+
 
   useEffect(() => {
       const unsubscribeServices = onSnapshot(collection(db, "services"), (snapshot) => {
@@ -137,16 +140,19 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     onOpenChange(false);
   };
   
-  const handleItemSelect = (itemId: string) => {
-    const service = services.find(s => s.id === itemId);
-    if (service) {
-      append({ description: service.title, quantity: 1, price: service.price });
-      return;
+  const handleItemSelect = (itemId: string, type: 'service' | 'part') => {
+    if (type === 'service') {
+        const service = services.find(s => s.id === itemId);
+        if (service) {
+          append({ description: service.title, quantity: 1, price: service.price });
+        }
+    } else {
+        const part = spareParts.find(p => p.id === itemId);
+        if (part) {
+            append({ description: part.name, quantity: 1, price: part.price });
+        }
     }
-    const part = spareParts.find(p => p.id === itemId);
-    if (part) {
-        append({ description: part.name, quantity: 1, price: part.price });
-    }
+    setIsComboboxOpen(false);
   };
 
   return (
@@ -204,25 +210,47 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                     ))}
                 </div>
                  <div className="flex items-center gap-4">
-                    <Select onValueChange={handleItemSelect}>
-                        <SelectTrigger className="w-[300px]">
-                            <SelectValue placeholder="Agregar item existente" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectGroup>
-                                <SelectLabel>Servicios</SelectLabel>
-                                {services.map(service => (
-                                    <SelectItem key={service.id} value={service.id!}>{service.title}</SelectItem>
-                                ))}
-                            </SelectGroup>
-                            <SelectGroup>
-                                 <SelectLabel>Refacciones</SelectLabel>
-                                {spareParts.map(part => (
-                                    <SelectItem key={part.id} value={part.id!}>{part.name}</SelectItem>
-                                ))}
-                            </SelectGroup>
-                        </SelectContent>
-                    </Select>
+                    <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" role="combobox" aria-expanded={isComboboxOpen} className="w-[300px] justify-between">
+                                Agregar item existente...
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                                <CommandInput placeholder="Buscar por nombre o SKU..." />
+                                <CommandList>
+                                    <CommandEmpty>No se encontraron items.</CommandEmpty>
+                                    <CommandGroup heading="Servicios">
+                                        {services.map((service) => (
+                                            <CommandItem
+                                                key={service.id}
+                                                value={`${service.title} ${service.sku}`}
+                                                onSelect={() => handleItemSelect(service.id!, 'service')}
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", "opacity-0")} />
+                                                {service.title}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                    <CommandGroup heading="Refacciones">
+                                        {spareParts.map((part) => (
+                                            <CommandItem
+                                                key={part.id}
+                                                value={`${part.name} ${part.brand} ${part.sku}`}
+                                                onSelect={() => handleItemSelect(part.id!, 'part')}
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", "opacity-0")} />
+                                                {part.name} ({part.brand})
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+
                      <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, price: 0 })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Agregar Item Manual
                     </Button>
@@ -272,3 +300,4 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     </Dialog>
   );
 }
+
