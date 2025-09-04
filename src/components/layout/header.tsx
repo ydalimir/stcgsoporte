@@ -49,6 +49,7 @@ export function Header() {
             setIsAdmin(true);
           }
         } catch (error) {
+          // This can happen if the client is offline. We'll just assume not admin.
           console.error("Could not check admin role, maybe offline:", error);
           setIsAdmin(false);
         }

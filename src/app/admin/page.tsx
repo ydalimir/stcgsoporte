@@ -17,42 +17,38 @@ export default function AdminDashboardPage() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // No hacer nada hasta que la autenticación inicial termine.
     if (authIsLoading) {
-      return;
+      return; // Wait until Firebase auth state is determined
     }
 
-    // Si no hay usuario, redirigir a login.
     if (!user) {
-      router.push("/login");
+      router.push("/login"); // If no user, redirect to login
       return;
     }
 
-    // Si hay usuario, verificar su rol desde Firestore.
+    // Now that we have a user, check their role from Firestore
     const checkAdminRole = async () => {
       try {
         const userDocRef = doc(db, "users", user.uid);
         const userDoc = await getDoc(userDocRef);
         
-        const userRole = userDoc.exists() ? userDoc.data().role : 'user';
-        
-        if (userRole === 'admin') {
+        if (userDoc.exists() && userDoc.data().role === 'admin') {
           setIsAdmin(true);
         } else {
           setIsAdmin(false);
           toast({
-            title: "Acceso Denegado",
-            description: "No tienes permiso para ver esta página.",
+            title: "Access Denied",
+            description: "You do not have permission to view this page.",
             variant: "destructive",
           });
           router.push("/");
         }
       } catch (error) {
         console.error("Error fetching user role:", error);
-        setIsAdmin(false);
+        setIsAdmin(false); // Assume not admin on error
         toast({
-          title: "Error de Permisos",
-          description: "No se pudo verificar tu rol. Es posible que no tengas conexión.",
+          title: "Permission Error",
+          description: "Could not verify your role. Please try again later.",
           variant: "destructive",
         });
         router.push("/");
@@ -63,7 +59,7 @@ export default function AdminDashboardPage() {
 
   }, [user, authIsLoading, router, toast]);
 
-  // Mostrar un loader mientras se carga la autenticación O se verifica el rol.
+  // Show a loader while auth is loading OR admin check is in progress
   if (authIsLoading || isAdmin === null) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -71,9 +67,9 @@ export default function AdminDashboardPage() {
       </div>
     );
   }
-
-  // En este punto, sabemos que el usuario es un admin.
-  // Si no lo fuera, ya habría sido redirigido.
+  
+  // If the user is not an admin, they will have been redirected.
+  // We can safely render the admin content.
   return (
     <div className="container mx-auto px-4 py-10">
       <div className="flex items-center gap-4 mb-8">
