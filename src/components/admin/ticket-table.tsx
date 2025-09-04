@@ -9,7 +9,8 @@ import {
   doc,
   updateDoc,
   Timestamp,
-  orderBy
+  orderBy,
+  deleteDoc
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import {
@@ -18,6 +19,7 @@ import {
   MoreHorizontal,
   Loader2,
   Download,
+  Trash2,
 } from "lucide-react"
 import {
   ColumnDef,
@@ -61,6 +63,17 @@ import { useToast } from "@/hooks/use-toast"
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useRouter } from "next/navigation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 
 export type Ticket = {
@@ -219,6 +232,25 @@ export function TicketTable() {
       })
     }
   }
+  
+  const handleDeleteTicket = async (ticketId: string) => {
+    try {
+      await deleteDoc(doc(db, "tickets", ticketId));
+      toast({
+        title: "Ticket Eliminado",
+        description: "El ticket ha sido eliminado permanentemente.",
+        variant: "destructive",
+      });
+    } catch (error) {
+      console.error("Error deleting ticket:", error);
+      toast({
+        title: "Error al eliminar",
+        description: "No se pudo eliminar el ticket.",
+        variant: "destructive",
+      });
+    }
+  };
+
 
   const columns: ColumnDef<Ticket>[] = React.useMemo(
     () => [
@@ -361,16 +393,28 @@ export function TicketTable() {
                     </DropdownMenuRadioGroup>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
-                 <DropdownMenuItem
-                  onClick={() => alert(`Asignar ticket ${ticket.id}`)}
-                >
-                  Asignar a Técnico
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => alert(`Crear cotización para ${ticket.id}`)}
-                >
-                  Crear Cotización
-                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                 <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-500">
+                      <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                    </DropdownMenuItem>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta acción no se puede deshacer. Esto eliminará permanentemente el ticket y todos sus datos asociados.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDeleteTicket(ticket.id)} className="bg-destructive hover:bg-destructive/90">
+                        Sí, eliminar ticket
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </DropdownMenuContent>
             </DropdownMenu>
           )
