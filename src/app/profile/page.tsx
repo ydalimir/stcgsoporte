@@ -2,34 +2,60 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, LogOut, Loader2 } from "lucide-react";
+import { User, LogOut, Loader2, Ticket, List } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isLoading: authIsLoading } = useAuth();
+  const [isSyncing, setIsSyncing] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        setIsLoading(false);
-      } else {
-        // No user found, redirect to login page.
-        router.push("/login");
+    if (authIsLoading) {
+      return; 
+    }
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    
+    const syncUserProfile = async () => {
+      setIsSyncing(true);
+      const userDocRef = doc(db, "users", user.uid);
+      try {
+        const userDoc = await getDoc(userDocRef);
+        if (!userDoc.exists()) {
+          // Document doesn't exist, so create it.
+          await setDoc(userDocRef, {
+            email: user.email,
+            role: "user", // Default role
+            createdAt: new Date().toISOString(),
+          });
+        }
+      } catch (error) {
+        console.error("Error syncing user profile:", error);
+        toast({
+          title: "Profile Sync Failed",
+          description: "Could not sync your profile with our database. Some features might not work correctly.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSyncing(false);
       }
-    });
+    };
+    
+    syncUserProfile();
 
-    return () => unsubscribe();
-  }, [router]);
+  }, [user, authIsLoading, router, toast]);
 
   const handleSignOut = async () => {
     try {
@@ -48,7 +74,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (isLoading) {
+  if (authIsLoading || isSyncing) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -57,7 +83,6 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    // This state will be brief before the redirect in useEffect kicks in.
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p>Redirecting to login...</p>
@@ -67,7 +92,7 @@ export default function ProfilePage() {
 
   return (
     <div className="container mx-auto px-4 py-16">
-      <div className="max-w-md mx-auto">
+      <div className="max-w-2xl mx-auto">
         <Card>
           <CardHeader className="text-center">
             <Avatar className="mx-auto h-20 w-20 mb-4">
@@ -75,23 +100,35 @@ export default function ProfilePage() {
                 <User className="h-10 w-10" />
               </AvatarFallback>
             </Avatar>
-            <CardTitle className="text-2xl font-headline">User Profile</CardTitle>
-            <CardDescription>View and manage your account details.</CardDescription>
+            <CardTitle className="text-2xl font-headline">Panel de Cliente</CardTitle>
+            <CardDescription>Gestiona tu información, tickets de servicio y más.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Email</p>
+          <CardContent className="space-y-6">
+            <div className="border-b pb-4">
+              <p className="text-sm font-medium text-muted-foreground">Correo Electrónico</p>
               <p className="text-lg font-semibold">{user.email}</p>
             </div>
-             <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">User ID</p>
-              <p className="text-sm text-muted-foreground break-all">{user.uid}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <Button asChild variant="outline">
+                   <Link href="/profile/my-tickets">
+                       <List className="mr-2 h-4 w-4" />
+                       Ver Mis Tickets
+                   </Link>
+                </Button>
+                <Button asChild className="bg-accent hover:bg-accent/90">
+                    <Link href="/tickets/new">
+                        <Ticket className="mr-2 h-4 w-4"/>
+                        Crear Nuevo Ticket
+                    </Link>
+                </Button>
             </div>
-            <Button variant="outline" className="w-full" onClick={handleSignOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </Button>
           </CardContent>
+          <CardFooter>
+            <Button variant="ghost" className="w-full" onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Cerrar Sesión
+            </Button>
+          </CardFooter>
         </Card>
       </div>
     </div>

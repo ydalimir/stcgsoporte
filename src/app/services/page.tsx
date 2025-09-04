@@ -35,7 +35,7 @@ export default function ServicesPage() {
       <div className="text-center max-w-2xl mx-auto mb-12">
         <h1 className="text-4xl md:text-5xl font-bold font-headline mb-4">Nuestros Servicios</h1>
         <p className="text-lg text-muted-foreground">
-          Ofrecemos soluciones integrales para el cuidado y funcionamiento óptimo de su equipo gastronómico.
+          Ofrecemos soluciones integrales para el cuidado y funcionamiento óptimo de su equipo gastronómico. Elija un servicio para levantar un ticket.
         </p>
       </div>
 

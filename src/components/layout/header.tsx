@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, User } from 'lucide-react';
+import { Menu, User, List } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -27,7 +27,6 @@ const navLinks = [
   { href: '/about', label: 'Nosotros' },
   { href: '/services', label: 'Servicios' },
   { href: '/blog', label: 'Blog' },
-  { href: '/store', label: 'Tienda' },
   { href: '/contact', label: 'Contacto' },
 ];
 
@@ -95,7 +94,7 @@ export function Header() {
           <Link href="/profile">Perfil</Link>
         </DropdownMenuItem>
          <DropdownMenuItem asChild>
-          <Link href="/tickets/new">Crear Ticket</Link>
+          <Link href="/profile/my-tickets">Mis Tickets</Link>
         </DropdownMenuItem>
         {isAdmin && (
            <DropdownMenuItem asChild>
