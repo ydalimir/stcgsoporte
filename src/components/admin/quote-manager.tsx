@@ -139,11 +139,6 @@ const downloadPDF = (quote: Quote) => {
     // Company Name
     doc.setFontSize(14);
     doc.text("Servicio Técnico, Industrial y Comercial de Gastronomía S.A. De C.V.", 105, yPos, { align: 'center' });
-    yPos += 8;
-    
-    // Quote Title
-    doc.setFontSize(16);
-    doc.text(`Cotización #${quoteId}`, 105, yPos, { align: 'center' });
     yPos += 12;
     
     // Client Info
@@ -167,9 +162,13 @@ const downloadPDF = (quote: Quote) => {
 
     yPos += 3;
     doc.setFontSize(10);
+    // Header row: Emission Date, Quote ID, Expiration Date
     doc.text(`Fecha de Emisión: ${new Date(quote.date).toLocaleDateString('es-MX')}`, 14, yPos);
-    if(quote.expirationDate) {
-        doc.text(`Válida hasta: ${new Date(quote.expirationDate).toLocaleDateString('es-MX')}`, 196, yPos, { align: 'right' });
+    doc.setFontSize(12).setFont(undefined, 'bold');
+    doc.text(`Cotización #${quoteId}`, 105, yPos, { align: 'center' });
+    doc.setFontSize(10).setFont(undefined, 'normal');
+    if (quote.expirationDate) {
+      doc.text(`Válida hasta: ${new Date(quote.expirationDate).toLocaleDateString('es-MX')}`, 196, yPos, { align: 'right' });
     }
     yPos += 10;
 
