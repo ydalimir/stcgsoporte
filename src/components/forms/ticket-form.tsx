@@ -167,7 +167,7 @@ ${data.quantity ? `*Cantidad:* ${data.quantity}` : ''}
 ${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toFixed(2)} MXN` : ''}
     `.trim().replace(/\n\s*\n/g, '\n');
 
-    const whatsappUrl = `https://wa.me/529992903152?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://wa.me/529993101452?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   }
 
