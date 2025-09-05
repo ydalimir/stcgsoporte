@@ -162,11 +162,11 @@ const downloadPDF = (quote: Quote) => {
 
     yPos += 3;
     doc.setFontSize(10);
-    // Header row: Emission Date, Quote ID, Expiration Date
-    doc.text(`Fecha de Emisión: ${new Date(quote.date).toLocaleDateString('es-MX')}`, 14, yPos);
+    // Header row: Quote ID, Emission Date, Expiration Date
     doc.setFontSize(12).setFont(undefined, 'bold');
-    doc.text(`Cotización #${quoteId}`, 105, yPos, { align: 'center' });
+    doc.text(`Cotización #${quoteId}`, 14, yPos);
     doc.setFontSize(10).setFont(undefined, 'normal');
+    doc.text(`Fecha de Emisión: ${new Date(quote.date).toLocaleDateString('es-MX')}`, 105, yPos, { align: 'center' });
     if (quote.expirationDate) {
       doc.text(`Válida hasta: ${new Date(quote.expirationDate).toLocaleDateString('es-MX')}`, 196, yPos, { align: 'right' });
     }
