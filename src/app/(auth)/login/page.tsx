@@ -31,9 +31,15 @@ export default function LoginPage() {
       router.push("/profile");
     } catch (error: any) {
       console.error("Error signing in: ", error);
+      let description = "An unexpected error occurred.";
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        description = "Credenciales inválidas. Por favor, verifique su correo y contraseña.";
+      } else if (error.message) {
+        description = error.message;
+      }
       toast({
         title: "Login Failed",
-        description: error.message || "An unexpected error occurred.",
+        description: description,
         variant: "destructive",
       });
     } finally {
