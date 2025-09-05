@@ -24,12 +24,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, MessageSquare, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { addDoc, collection, serverTimestamp, runTransaction, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Input } from "../ui/input";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 
 const ticketSchema = z.object({
   serviceType: z.enum(["correctivo", "preventivo"], {
@@ -48,7 +49,6 @@ const ticketSchema = z.object({
   }),
   price: z.number().optional(),
   quantity: z.coerce.number().min(1, "La cantidad debe ser al menos 1.").optional(),
-  // New client fields
   clientName: z.string().min(1, { message: "El nombre es obligatorio." }),
   clientPhone: z.string().min(10, { message: "El teléfono debe tener al menos 10 dígitos." }),
   clientAddress: z.string().min(1, { message: "La dirección es obligatoria." }),
@@ -61,11 +61,12 @@ type TicketFormValues = z.infer<typeof ticketSchema>;
 export function TicketForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [formData, setFormData] = useState<TicketFormValues | null>(null);
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // Check if serviceType is coming from URL to disable the field
   const preselectedServiceType = searchParams.get('serviceType');
 
   const form = useForm<TicketFormValues>({
@@ -105,59 +106,35 @@ export function TicketForm() {
     if (user?.email) {
         form.setValue('clientEmail', user.email);
     }
-
   }, [searchParams, form, user]);
 
-
-  if (isLoading) {
-    return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
-  }
-
-  if (!user) {
-     toast({
-        title: "Acceso Denegado",
-        description: "Debes iniciar sesión para crear un ticket.",
-        variant: "destructive",
-      });
-    router.push('/login');
-    return null;
-  }
-
-  async function onSubmit(data: TicketFormValues) {
+  async function createTicketInApp(data: TicketFormValues) {
     if (!user) {
-       toast({
-        title: "Error",
-        description: "No se pudo obtener la información del usuario. Intente de nuevo.",
-        variant: "destructive",
-      });
+      // This is a fallback, main logic is handled by the button click
+      toast({ title: "Error", description: "Debe estar registrado para crear un ticket en la app.", variant: "destructive" });
       return;
     }
-
     setIsSubmitting(true);
     try {
-        const finalPrice = data.price ? data.price * (data.quantity || 1) : undefined;
-        
-        await runTransaction(db, async (transaction) => {
-            const counterRef = doc(db, "counters", "tickets");
-            const counterDoc = await transaction.get(counterRef);
-
-            let newTicketNumber = 1;
-            if (counterDoc.exists()) {
-                newTicketNumber = counterDoc.data().lastNumber + 1;
-            }
-            
-            transaction.set(counterRef, { lastNumber: newTicketNumber }, { merge: true });
-            
-            const newTicketRef = doc(collection(db, "tickets"));
-            transaction.set(newTicketRef, {
-                ...data,
-                price: finalPrice,
-                userId: user.uid,
-                status: "Recibido",
-                createdAt: serverTimestamp(),
-                ticketNumber: newTicketNumber,
-            });
+      const finalPrice = data.price ? data.price * (data.quantity || 1) : undefined;
+      await runTransaction(db, async (transaction) => {
+        const counterRef = doc(db, "counters", "tickets");
+        const counterDoc = await transaction.get(counterRef);
+        let newTicketNumber = 1;
+        if (counterDoc.exists()) {
+          newTicketNumber = counterDoc.data().lastNumber + 1;
+        }
+        transaction.set(counterRef, { lastNumber: newTicketNumber }, { merge: true });
+        const newTicketRef = doc(collection(db, "tickets"));
+        transaction.set(newTicketRef, {
+          ...data,
+          price: finalPrice,
+          userId: user.uid,
+          status: "Recibido",
+          createdAt: serverTimestamp(),
+          ticketNumber: newTicketNumber,
         });
+      });
 
       toast({
         title: "¡Ticket Enviado!",
@@ -168,21 +145,81 @@ export function TicketForm() {
       router.push('/profile/my-tickets');
 
     } catch (error) {
-        console.error("Error al crear el ticket: ", error);
-        toast({
-            title: "Error al Enviar",
-            description: "No se pudo crear el ticket. Por favor, intente más tarde.",
-            variant: "destructive",
-        });
+      console.error("Error al crear el ticket: ", error);
+      toast({ title: "Error al Enviar", description: "No se pudo crear el ticket. Por favor, intente más tarde.", variant: "destructive" });
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
+  }
+
+  function handleWhatsAppRedirect(data: TicketFormValues) {
+    const message = `
+*Nueva Solicitud de Servicio*
+
+*Cliente:* ${data.clientName}
+*Teléfono:* ${data.clientPhone}
+*Dirección:* ${data.clientAddress}
+*Tipo de Servicio:* ${data.serviceType}
+*Equipo/Asunto:* ${data.equipmentType}
+*Descripción:* ${data.description}
+*Urgencia:* ${data.urgency}
+${data.quantity ? `*Cantidad:* ${data.quantity}` : ''}
+${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toFixed(2)} MXN` : ''}
+    `.trim().replace(/\n\s*\n/g, '\n');
+
+    const whatsappUrl = `https://wa.me/529992903152?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  }
+
+  function onSubmit(data: TicketFormValues) {
+    if (user) {
+      // If user is logged in, create ticket directly
+      createTicketInApp(data);
+    } else {
+      // If user is not logged in, show options
+      setFormData(data);
+      setIsSubmitted(true);
+    }
+  }
+  
+  if (isLoading) {
+    return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  }
+
+  if (isSubmitted && formData) {
+    return (
+        <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+                <CardTitle className="text-xl font-headline">¡Información Recibida!</CardTitle>
+                <FormDescription>
+                    Ya casi terminamos. ¿Cómo te gustaría proceder?
+                </FormDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <p className="text-sm">
+                    Revisa los detalles de tu solicitud. Puedes enviarla directamente a nuestro WhatsApp o crear una cuenta para darle seguimiento y ver tu historial.
+                </p>
+                 <div className="p-4 bg-muted/50 rounded-lg text-sm space-y-1">
+                    <p><strong>Cliente:</strong> {formData.clientName}</p>
+                    <p><strong>Asunto:</strong> {formData.equipmentType}</p>
+                    <p><strong>Urgencia:</strong> {formData.urgency}</p>
+                </div>
+            </CardContent>
+            <CardFooter className="flex flex-col sm:flex-row gap-4">
+                <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => handleWhatsAppRedirect(formData)}>
+                    <MessageSquare className="mr-2"/> Enviar por WhatsApp
+                </Button>
+                 <Button variant="secondary" className="w-full" onClick={() => router.push('/signup')}>
+                    <UserPlus className="mr-2"/> Registrarse y Guardar Ticket
+                </Button>
+            </CardFooter>
+        </Card>
+    );
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-
         <div className="space-y-4 border-b pb-6">
              <h3 className="text-lg font-medium">Información del Cliente</h3>
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -315,9 +352,11 @@ export function TicketForm() {
 
         <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-           {isSubmitting ? "Enviando Ticket..." : "Enviar Ticket"}
+           {isSubmitting ? "Enviando..." : (user ? "Enviar Ticket" : "Siguiente")}
         </Button>
       </form>
     </Form>
   );
 }
+
+    
