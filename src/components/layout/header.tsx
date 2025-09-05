@@ -26,6 +26,8 @@ const navLinks = [
   { href: '/', label: 'Inicio' },
   { href: '/about', label: 'Nosotros' },
   { href: '/services', label: 'Servicios' },
+  { href: '/blog', label: 'Blog' },
+  { href: '/shop', label: 'Tienda en Linea' },
   { href: '/contact', label: 'Contacto' },
 ];
 

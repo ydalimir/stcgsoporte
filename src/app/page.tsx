@@ -19,7 +19,7 @@ export default function Home() {
     },
     {
       icon: <HardHat className="w-8 h-8 text-primary" />,
-      title: 'Asesoría Técnica',
+      title: 'Asesoría técnica',
       description: 'Será un placer asesorarlo para que su proyecto se convierta en nuestro proyecto también.',
     },
   ];
@@ -30,17 +30,14 @@ export default function Home() {
         <div className="container mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
           <div className="space-y-6">
             <h1 className="font-headline text-4xl md:text-6xl font-bold tracking-tighter">
-              Reparación y mantenimiento de equipos de cocina en Mérida, Yucatán
+              Reparación y mantenimiento de equipos de cocina en Ciudad de Mérida Yucatán
             </h1>
             <p className="text-lg text-muted-foreground">
               Soluciones expertas para mantener tu cocina funcionando sin contratiempos.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Button asChild size="lg" className="bg-accent hover:bg-accent/90">
-                <Link href="/quote">Empezar</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="/services">Ver Servicios</Link>
+                <Link href="/shop">Get Started</Link>
               </Button>
             </div>
           </div>
@@ -94,13 +91,16 @@ export default function Home() {
               Expertos en servicios para estufas, freidoras, campanas, hornos y refrigeradores.
             </p>
             <p className="text-muted-foreground">
-              En Equipo Técnico Gastronómico sticgsa SA de CV tenemos más de 30 años de experiencia dentro del ramo industrial, brindando los mejores servicios de reparación, mantenimiento preventivo y correctivo de diferentes equipos de cocina industrial. Nos ubicamos en la Ciudad de Mérida Yucatán.
+             En Equipo Técnico Gastronómico sticgsa SA de CV tenemos más de 30 años de experiencia dentro del ramo industrial, brindando los mejores servicios de reparación, mantenimiento preventivo y correctivo de diferentes equipos de cocina industrial. Nos ubicamos en la Ciudad de Mérida Yucatán.
+            </p>
+             <p className="text-muted-foreground">
+             Atendemos de manera integral cada una de las necesidades y requerimientos de nuestros clientes, ofrecemos soluciones técnicas asertivas en el manejo, diagnóstico y reparación de distintos equipos de cocina. Disponemos de la infraestructura comercial necesaria para la resolución efectiva de cada servicio.
             </p>
             <p className="text-muted-foreground">
               Manejamos excelentes relaciones comerciales permitiéndonos ofrecer soluciones prácticas a la medida de manera rápida y oportuna. Nuestro personal es profesional, está capacitado y son especialistas para la realización de cualquier servicio, trabajando con las marcas más importantes del mercado.
             </p>
             <Button asChild size="lg" variant="link" className="p-0 text-accent">
-              <Link href="/quote">Contáctanos &rarr;</Link>
+              <Link href="/contact">Contáctanos &rarr;</Link>
             </Button>
           </div>
         </div>
