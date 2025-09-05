@@ -110,26 +110,27 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-sm">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-6">
+      <div className="container mx-auto flex h-16 items-center px-4">
+        <div className="flex items-center gap-6 md:w-1/3">
           <Logo />
-           <nav className="hidden md:flex items-center gap-6">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    'text-sm font-medium transition-colors hover:text-primary',
-                    pathname === link.href ? 'text-primary' : 'text-muted-foreground'
-                  )}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
         </div>
 
-        <div className="hidden md:flex items-center gap-2">
+        <nav className="hidden md:flex items-center justify-center gap-6 w-1/3">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn(
+                'text-sm font-medium transition-colors hover:text-primary',
+                pathname === link.href ? 'text-primary' : 'text-muted-foreground'
+              )}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="hidden md:flex items-center justify-end gap-2 w-1/3">
           {isLoading ? null : user ? (
             <UserMenu />
           ) : (
@@ -144,7 +145,7 @@ export function Header() {
           )}
         </div>
 
-        <div className="md:hidden">
+        <div className="md:hidden ml-auto">
           <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon">
