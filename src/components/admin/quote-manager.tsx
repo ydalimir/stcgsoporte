@@ -138,13 +138,13 @@ const downloadPDF = (quote: Quote) => {
 
     // Company Name
     doc.setFontSize(14);
-    doc.text("Servicio Técnico, Industrial y Comercial de Gastronomía S.A. De C.V.", 14, yPos);
+    doc.text("Servicio Técnico, Industrial y Comercial de Gastronomía S.A. De C.V.", 105, yPos, { align: 'center' });
     yPos += 8;
     
     // Quote Title
-    doc.setFontSize(12);
-    doc.text(`Cotización #${quoteId}`, 14, yPos);
-    yPos += 10;
+    doc.setFontSize(16);
+    doc.text(`Cotización #${quoteId}`, 105, yPos, { align: 'center' });
+    yPos += 12;
     
     // Client Info
     doc.setFontSize(12);
@@ -165,9 +165,11 @@ const downloadPDF = (quote: Quote) => {
       yPos += 7;
     }
 
+    yPos += 3;
+    doc.setFontSize(10);
     doc.text(`Fecha de Emisión: ${new Date(quote.date).toLocaleDateString('es-MX')}`, 14, yPos);
     if(quote.expirationDate) {
-        doc.text(`Válida hasta: ${new Date(quote.expirationDate).toLocaleDateString('es-MX')}`, 120, yPos);
+        doc.text(`Válida hasta: ${new Date(quote.expirationDate).toLocaleDateString('es-MX')}`, 196, yPos, { align: 'right' });
     }
     yPos += 10;
 
@@ -187,7 +189,7 @@ const downloadPDF = (quote: Quote) => {
       head: [['Descripción', 'Cantidad', 'Precio Unitario', 'Importe']],
       body: quote.items.map(item => [item.description, item.quantity, `$${(item.price || 0).toFixed(2)}`, `$${((item.quantity || 0) * (item.price || 0)).toFixed(2)}`]),
       foot: foot,
-      headStyles: { fillColor: [46, 154, 254] },
+      headStyles: { fillColor: [41, 71, 121] },
       didDrawPage: (data) => {
         const cursorY = data.cursor?.y;
         if(cursorY) yPos = cursorY;
