@@ -61,8 +61,6 @@ type TicketFormValues = z.infer<typeof ticketSchema>;
 export function TicketForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [formData, setFormData] = useState<TicketFormValues | null>(null);
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -110,9 +108,9 @@ export function TicketForm() {
 
   async function createTicketInApp(data: TicketFormValues) {
     if (!user) {
-      // This is a fallback, main logic is handled by the button click
-      toast({ title: "Error", description: "Debe estar registrado para crear un ticket en la app.", variant: "destructive" });
-      return;
+        // This should not happen if the logic is correct, but as a fallback
+        router.push('/signup');
+        return;
     }
     setIsSubmitting(true);
     try {
@@ -171,50 +169,31 @@ ${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toFixed(2)} MXN` : '
     window.open(whatsappUrl, '_blank');
   }
 
+  const handleWhatsAppClick = async () => {
+    const isValid = await form.trigger();
+    if (isValid) {
+      handleWhatsAppRedirect(form.getValues());
+    } else {
+      toast({
+        title: "Formulario Incompleto",
+        description: "Por favor, llene todos los campos requeridos antes de enviar por WhatsApp.",
+        variant: "destructive"
+      });
+    }
+  };
+
   function onSubmit(data: TicketFormValues) {
     if (user) {
-      // If user is logged in, create ticket directly
       createTicketInApp(data);
     } else {
-      // If user is not logged in, show options
-      setFormData(data);
-      setIsSubmitted(true);
+      // If user is not logged in, redirect to sign up
+      // Future enhancement: pass form data through query params or state management
+      router.push('/signup');
     }
   }
   
   if (isLoading) {
     return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-  }
-
-  if (isSubmitted && formData) {
-    return (
-        <Card className="max-w-2xl mx-auto">
-            <CardHeader>
-                <CardTitle className="text-xl font-headline">¡Información Recibida!</CardTitle>
-                <FormDescription>
-                    Ya casi terminamos. ¿Cómo te gustaría proceder?
-                </FormDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <p className="text-sm">
-                    Revisa los detalles de tu solicitud. Puedes enviarla directamente a nuestro WhatsApp o crear una cuenta para darle seguimiento y ver tu historial.
-                </p>
-                 <div className="p-4 bg-muted/50 rounded-lg text-sm space-y-1">
-                    <p><strong>Cliente:</strong> {formData.clientName}</p>
-                    <p><strong>Asunto:</strong> {formData.equipmentType}</p>
-                    <p><strong>Urgencia:</strong> {formData.urgency}</p>
-                </div>
-            </CardContent>
-            <CardFooter className="flex flex-col sm:flex-row gap-4">
-                <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => handleWhatsAppRedirect(formData)}>
-                    <MessageSquare className="mr-2"/> Enviar por WhatsApp
-                </Button>
-                 <Button variant="secondary" className="w-full" onClick={() => router.push('/signup')}>
-                    <UserPlus className="mr-2"/> Registrarse y Guardar Ticket
-                </Button>
-            </CardFooter>
-        </Card>
-    );
   }
 
   return (
@@ -350,10 +329,25 @@ ${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toFixed(2)} MXN` : '
             />
         </div>
 
-        <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
-           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-           {isSubmitting ? "Enviando..." : (user ? "Enviar Ticket" : "Siguiente")}
-        </Button>
+        {user ? (
+            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting ? "Enviando..." : "Enviar Ticket"}
+            </Button>
+        ) : (
+            <div className="flex flex-col sm:flex-row gap-4">
+                <Button type="submit" disabled={isSubmitting} className="w-full">
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <UserPlus className="mr-2" />
+                    Crear Ticket en la App
+                </Button>
+                <Button type="button" variant="outline" onClick={handleWhatsAppClick} className="w-full">
+                    <MessageSquare className="mr-2" />
+                    Enviar por WhatsApp
+                </Button>
+            </div>
+        )}
+        
       </form>
     </Form>
   );
