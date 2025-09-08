@@ -41,7 +41,7 @@ export default function AboutPage() {
         <div className="container mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
            <div className="relative h-80 md:h-full min-h-[400px] rounded-lg overflow-hidden shadow-2xl">
             <Image
-              src="https://www.sticgsa.com/assets/img/aaaIMG_6564.jpg"
+              src="https://ucarecdn.com/3336978a-7b33-42e1-a423-02631b746583/aaaIMG_6564.jpg"
               alt="Taller de sticgsa"
               data-ai-hint="workshop tools"
               fill
