@@ -79,7 +79,7 @@ export default function Home() {
           <div className="relative h-80 md:h-[500px] rounded-lg overflow-hidden shadow-2xl order-last md:order-first">
             <Image
               src="https://ucarecdn.com/3336978a-7b33-42e1-a423-02631b746583/aaaIMG_6564.jpg"
-              alt="Equipo de sticgsa"
+              alt="Equipo de sticgsa en el taller"
               data-ai-hint="team workshop"
               fill
               className="object-cover"
