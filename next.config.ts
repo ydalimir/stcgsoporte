@@ -33,7 +33,7 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'ucarecdn.com',
         port: '',
-        pathname: '/**',
+        pathname: '/3336978a-7b33-42e1-a423-02631b746583/**',
       }
     ],
   },
