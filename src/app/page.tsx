@@ -43,9 +43,9 @@ export default function Home() {
           </div>
           <div className="relative h-64 md:h-96 rounded-lg overflow-hidden shadow-2xl">
             <Image
-              src="https://picsum.photos/800/600"
-              alt="Técnico reparando equipo de cocina"
-              data-ai-hint="kitchen repair"
+              src="https://www.sticgsa.com/assets/img/electrolux.jpg"
+              alt="Equipos de cocina profesional Electrolux"
+              data-ai-hint="professional kitchen"
               fill
               className="object-cover"
             />
