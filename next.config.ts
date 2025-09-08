@@ -28,6 +28,12 @@ const nextConfig: NextConfig = {
         hostname: 'www.sticgsa.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ucarecdn.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
