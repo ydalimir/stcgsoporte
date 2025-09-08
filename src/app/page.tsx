@@ -78,7 +78,7 @@ export default function Home() {
         <div className="container mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
           <div className="relative h-80 md:h-[500px] rounded-lg overflow-hidden shadow-2xl order-last md:order-first">
             <Image
-              src="https://ucarecdn.com/a077af19-6cad-44b3-8730-f75ce7b703af/dordalmantenimiento.jpg"
+              src="https://ucarecdn.com/2e73c219-cd6c-4d47-abfd-e4b2a36f286b/normal_65b16ffde4984.webp"
               alt="Equipo de sticgsa en el taller"
               data-ai-hint="team workshop"
               fill
