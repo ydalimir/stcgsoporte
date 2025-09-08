@@ -43,7 +43,7 @@ export default function Home() {
           </div>
           <div className="relative h-64 md:h-96 rounded-lg overflow-hidden shadow-2xl">
             <Image
-              src="https://www.sticgsa.com/assets/img/electrolux.jpg"
+              src="https://ucarecdn.com/3336978a-7b33-42e1-a423-02631b746583/aaaIMG_6564.jpg"
               alt="Equipos de cocina profesional Electrolux"
               data-ai-hint="professional kitchen"
               fill
