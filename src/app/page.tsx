@@ -30,7 +30,7 @@ export default function LoginPage() {
         title: "Inicio de sesión exitoso",
         description: "Has sido redirigido a tu panel.",
       });
-      router.push("/profile");
+      router.push("/admin");
     } catch (error: any) {
       console.error("Error signing in: ", error);
       let description = "Ocurrió un error inesperado.";
