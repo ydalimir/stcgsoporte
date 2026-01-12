@@ -6,13 +6,14 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserPlus, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
+import { Logo } from "@/components/logo";
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
@@ -21,44 +22,39 @@ export default function SignUpPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleSignUp = async () => {
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsSubmitting(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Create user document in Firestore right after creation
       await setDoc(doc(db, "users", user.uid), {
         email: user.email,
         role: "user",
         createdAt: new Date().toISOString(),
       });
       
-      // Redirect immediately after successful user and document creation
       router.push("/profile");
       
-      // Show toast after redirection attempt
       toast({
-        title: "Account Created",
-        description: "Your account has been successfully created. Redirecting to your profile...",
+        title: "Cuenta Creada",
+        description: "Tu cuenta ha sido creada exitosamente. Redirigiendo a tu panel...",
       });
 
     } catch (error: any) {
       console.error("Error signing up: ", error);
-      let description = "An unexpected error occurred. Please try again.";
-      // Handle specific Firebase errors for better user feedback
+      let description = "Ocurrió un error inesperado. Por favor, intente de nuevo.";
       if (error.code === 'auth/email-already-in-use') {
-        description = "This email is already registered. Please try logging in or use a different email.";
+        description = "Este correo ya está registrado. Por favor, intenta iniciar sesión.";
       } else if (error.code === 'auth/weak-password') {
-        description = "The password is too weak. Please choose a stronger password.";
-      } else if (error.code === 'auth/network-request-failed') {
-        description = "A network error occurred. Please check your internet connection and try again.";
+        description = "La contraseña es muy débil. Por favor, elige una más segura.";
       } else if (error.message) {
         description = error.message;
       }
       
       toast({
-        title: "Sign Up Failed",
+        title: "Fallo en el Registro",
         description: description,
         variant: "destructive",
       });
@@ -68,48 +64,62 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen py-12">
-      <Card className="w-full max-w-md mx-4">
-        <CardHeader className="text-center">
-          <div className="mx-auto w-fit mb-4">
-             <UserPlus className="w-10 h-10 text-primary"/>
-          </div>
-          <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
-          <CardDescription>Enter your email and password to get started.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input 
-              id="email" 
-              type="email" 
-              placeholder="m@example.com" 
-              required 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input 
-              id="password" 
-              type="password" 
-              required 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button className="w-full" onClick={handleSignUp} disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isSubmitting ? "Creating Account..." : "Sign Up"}
-          </Button>
-          <p className="text-xs text-muted-foreground text-center">
-             Already have an account? <Link href="/login" className="underline hover:text-primary">Log in</Link>
-          </p>
-        </CardFooter>
-      </Card>
+     <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-2">
+       <div className="flex items-center justify-center bg-background p-8 order-2 md:order-1">
+        <div className="w-full max-w-sm">
+            <div className="text-center mb-8">
+                <div className="mx-auto bg-primary/10 text-primary w-fit p-3 rounded-full mb-4">
+                    <UserPlus className="w-8 h-8"/>
+                </div>
+                <h1 className="text-2xl font-bold font-headline">Crear una Cuenta</h1>
+                <p className="text-muted-foreground">Ingresa tus datos para registrarte.</p>
+            </div>
+          <form onSubmit={handleSignUp} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="email">Correo Electrónico</Label>
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="correo@ejemplo.com" 
+                required 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input 
+                id="password" 
+                type="password" 
+                placeholder="Mínimo 6 caracteres"
+                required 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <Button className="w-full" type="submit" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? "Creando cuenta..." : "Registrarse"}
+            </Button>
+            <p className="text-sm text-muted-foreground text-center">
+               ¿Ya tienes una cuenta? <Link href="/" className="font-semibold text-primary hover:underline">Inicia Sesión</Link>
+            </p>
+          </form>
+        </div>
+      </div>
+       <div className="relative flex-col items-center justify-center bg-gray-900 text-white p-8 hidden md:flex order-1 md:order-2">
+         <Image
+            src="https://ucarecdn.com/2e73c219-cd6c-4d47-abfd-e4b2a36f286b/normal_65b16ffde4984.webp"
+            alt="Mantenimiento de equipo de cocina"
+            fill
+            className="object-cover opacity-20"
+            data-ai-hint="kitchen maintenance"
+        />
+        <div className="relative z-10 text-center space-y-4">
+            <Logo className="justify-center text-4xl" />
+            <p className="text-lg text-muted-foreground">La solución definitiva para la gestión de servicios técnicos.</p>
+        </div>
+      </div>
     </div>
   );
 }

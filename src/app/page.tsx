@@ -5,13 +5,14 @@ import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogIn, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
+import { Logo } from "@/components/logo";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -20,25 +21,26 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleSignIn = async () => {
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsSubmitting(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({
-        title: "Login Successful",
-        description: "You have been successfully logged in.",
+        title: "Inicio de sesión exitoso",
+        description: "Has sido redirigido a tu panel.",
       });
       router.push("/profile");
     } catch (error: any) {
       console.error("Error signing in: ", error);
-      let description = "An unexpected error occurred.";
+      let description = "Ocurrió un error inesperado.";
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         description = "Credenciales inválidas. Por favor, verifique su correo y contraseña.";
       } else if (error.message) {
         description = error.message;
       }
       toast({
-        title: "Login Failed",
+        title: "Fallo en el inicio de sesión",
         description: description,
         variant: "destructive",
       });
@@ -48,48 +50,62 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen py-12">
-      <Card className="w-full max-w-md mx-4">
-        <CardHeader className="text-center">
-          <div className="mx-auto w-fit mb-4">
-             <LogIn className="w-10 h-10 text-primary"/>
-          </div>
-          <CardTitle className="text-2xl font-headline">Welcome Back</CardTitle>
-          <CardDescription>Enter your credentials to access your account.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input 
-              id="email" 
-              type="email" 
-              placeholder="m@example.com" 
-              required 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input 
-              id="password" 
-              type="password" 
-              required 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button className="w-full" onClick={handleSignIn} disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isSubmitting ? "Signing In..." : "Sign In"}
-          </Button>
-          <p className="text-xs text-muted-foreground text-center">
-             Don't have an account? <Link href="/signup" className="underline hover:text-primary">Sign up</Link>
-          </p>
-        </CardFooter>
-      </Card>
+    <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-2">
+      <div className="relative flex flex-col items-center justify-center bg-gray-900 text-white p-8">
+         <Image
+            src="https://ucarecdn.com/3336978a-7b33-42e1-a423-02631b746583/aaaIMG_6564.jpg"
+            alt="Taller de mantenimiento"
+            fill
+            className="object-cover opacity-20"
+            data-ai-hint="workshop tools"
+        />
+        <div className="relative z-10 text-center space-y-4">
+            <Logo className="justify-center text-4xl" />
+            <p className="text-lg text-muted-foreground">Expertos en gestión y mantenimiento de equipos.</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-center bg-background p-8">
+        <div className="w-full max-w-sm">
+            <div className="text-center mb-8">
+                <div className="mx-auto bg-primary/10 text-primary w-fit p-3 rounded-full mb-4">
+                    <LogIn className="w-8 h-8"/>
+                </div>
+                <h1 className="text-2xl font-bold font-headline">Inicio de Sesión</h1>
+                <p className="text-muted-foreground">Ingresa tus credenciales para acceder.</p>
+            </div>
+          <form onSubmit={handleSignIn} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="email">Correo Electrónico</Label>
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="correo@ejemplo.com" 
+                required 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input 
+                id="password" 
+                type="password" 
+                placeholder="********"
+                required 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <Button className="w-full" type="submit" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? "Ingresando..." : "Ingresar"}
+            </Button>
+            <p className="text-sm text-muted-foreground text-center">
+               ¿No tienes cuenta? <Link href="/signup" className="font-semibold text-primary hover:underline">Regístrate</Link>
+            </p>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
