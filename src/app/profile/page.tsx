@@ -29,6 +29,7 @@ export default function ProfilePage() {
     }
     
     const syncUserProfile = async () => {
+      if (!user) return;
       setIsSyncing(true);
       const userDocRef = doc(db, "users", user.uid);
       try {

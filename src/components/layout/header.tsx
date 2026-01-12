@@ -23,10 +23,8 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 
 const navLinks = [
-  { href: '/', label: 'Inicio' },
-  { href: '/about', label: 'Nosotros' },
+  { href: '/profile', label: 'Dashboard' },
   { href: '/services', label: 'Servicios' },
-  { href: '/contact', label: 'Contacto' },
 ];
 
 export function Header() {
@@ -35,6 +33,7 @@ export function Header() {
   const [isSheetOpen, setSheetOpen] = React.useState(false);
   const { user, isLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
+  const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/';
 
   useEffect(() => {
     if (isLoading || !user) {
@@ -107,6 +106,28 @@ export function Header() {
       </DropdownMenuContent>
     </DropdownMenu>
   );
+  
+  if (isAuthPage && !user) {
+      return (
+         <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-sm">
+            <div className="container mx-auto flex h-16 items-center justify-between px-4">
+                 <Logo />
+                 <div className="flex items-center gap-2">
+                    {pathname !== '/login' && (
+                        <Button variant="ghost" asChild>
+                            <Link href="/login">Iniciar Sesión</Link>
+                        </Button>
+                    )}
+                    {pathname !== '/signup' && (
+                         <Button asChild className="bg-accent hover:bg-accent/90">
+                            <Link href="/signup">Registrarse</Link>
+                        </Button>
+                    )}
+                 </div>
+            </div>
+        </header>
+      )
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-sm">
