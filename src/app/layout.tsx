@@ -7,8 +7,8 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 
 export const metadata: Metadata = {
-  title: 'sticgsa | Reparación y Mantenimiento Gastronómico',
-  description: 'Expertos en reparación y mantenimiento de equipos de cocina industrial en Mérida, Yucatán.',
+  title: 'TECHFLOW CRM',
+  description: 'Expertos en gestión y mantenimiento de equipos a través de nuestro CRM.',
 };
 
 export default function RootLayout({
