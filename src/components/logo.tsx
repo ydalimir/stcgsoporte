@@ -1,5 +1,4 @@
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -10,13 +9,7 @@ export function Logo({className}: {className?: string}) {
       className={cn('flex items-center gap-2', className)}
       aria-label="TECHFLOW CRM Home"
     >
-      <Image
-        src="https://www.sticgsa.com/assets/img/logosticgsa.png"
-        alt="TECHFLOW CRM Logo"
-        width={100}
-        height={40}
-        className="object-contain"
-      />
+      <span className="font-bold text-xl font-headline">TECHFLOW CRM</span>
     </Link>
   );
 }
