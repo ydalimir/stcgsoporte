@@ -57,6 +57,7 @@ import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/hooks/use-auth";
 
 const serviceSchema = z.object({
   id: z.string().optional(),
@@ -64,13 +65,14 @@ const serviceSchema = z.object({
   sku: z.string().min(3, { message: "El SKU es requerido." }),
   price: z.coerce.number().min(0, { message: "El precio es requerido." }),
   description: z.string().min(20, { message: "La descripción debe tener al menos 20 caracteres." }),
-  serviceType: z.enum(["correctivo", "preventivo"], { required_error: "Debe seleccionar un tipo de servicio." }),
+  serviceType: z.enum(["correctivo", "preventivo", "instalacion"], { required_error: "Debe seleccionar un tipo de servicio." }),
 });
 
 export type Service = z.infer<typeof serviceSchema>;
 
 
 export function ServiceManager() {
+  const { user, isLoading: authIsLoading } = useAuth();
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -78,13 +80,25 @@ export function ServiceManager() {
   const { toast } = useToast();
 
   useEffect(() => {
+    if (authIsLoading) {
+      setIsLoading(true);
+      return;
+    }
+    if (!user) {
+      setIsLoading(false);
+      setServices([]);
+      return;
+    }
     const unsubscribe = onSnapshot(collection(db, "services"), (snapshot) => {
         const servicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
         setServices(servicesData);
         setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching services: ", error);
+      setIsLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user, authIsLoading]);
 
   const handleSaveService = async (data: Omit<Service, 'id'>) => {
     try {
@@ -159,7 +173,7 @@ export function ServiceManager() {
   
   const table = useReactTable({ data: services, columns, getCoreRowModel: getCoreRowModel() });
   
-  if (isLoading) {
+  if (isLoading && authIsLoading) {
     return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
 
@@ -273,6 +287,7 @@ function ServiceFormDialog({ isOpen, onOpenChange, onSave, service }: ServiceFor
                                     <SelectContent>
                                     <SelectItem value="correctivo">Correctivo</SelectItem>
                                     <SelectItem value="preventivo">Preventivo</SelectItem>
+                                    <SelectItem value="instalacion">Instalación</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />

@@ -9,17 +9,24 @@ import { Loader2, ArrowLeft } from 'lucide-react';
 import { Ticket } from '@/components/admin/ticket-table';
 import { TicketDetails } from '@/components/admin/ticket-details';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function TicketDetailPage() {
   const params = useParams();
   const router = useRouter();
   const ticketId = params.ticketId as string;
+  const { user, isLoading: authIsLoading } = useAuth();
   
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (authIsLoading) return;
+    if (!user) {
+      router.push('/');
+      return;
+    }
     if (!ticketId) return;
 
     setIsLoading(true);
@@ -41,9 +48,9 @@ export default function TicketDetailPage() {
     });
 
     return () => unsubscribe();
-  }, [ticketId]);
+  }, [ticketId, user, authIsLoading, router]);
 
-  if (isLoading) {
+  if (authIsLoading || isLoading) {
     return (
       <div className="flex min-h-[calc(100vh-theme(spacing.16))] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

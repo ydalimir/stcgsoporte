@@ -49,6 +49,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Textarea } from "../ui/textarea";
+import { useAuth } from "@/hooks/use-auth";
 
 
 const sparePartSchema = z.object({
@@ -64,6 +65,7 @@ export type SparePart = z.infer<typeof sparePartSchema>;
 
 
 export function SparePartsManager() {
+  const { user, isLoading: authIsLoading } = useAuth();
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -72,6 +74,15 @@ export function SparePartsManager() {
   const { toast } = useToast();
 
   useEffect(() => {
+    if (authIsLoading) {
+      setIsLoading(true);
+      return;
+    }
+    if (!user) {
+      setIsLoading(false);
+      setSpareParts([]);
+      return;
+    }
     const unsubscribe = onSnapshot(collection(db, "spare_parts"), (snapshot) => {
         const partsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SparePart));
         setSpareParts(partsData);
@@ -82,7 +93,7 @@ export function SparePartsManager() {
         setIsLoading(false);
     });
     return () => unsubscribe();
-  }, [toast]);
+  }, [user, authIsLoading, toast]);
 
   const handleSavePart = useCallback(async (data: Omit<SparePart, 'id'>) => {
     try {
@@ -164,7 +175,7 @@ export function SparePartsManager() {
     onGlobalFilterChange: setFilter,
 });
   
-  if (isLoading) {
+  if (isLoading && authIsLoading) {
     return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
 

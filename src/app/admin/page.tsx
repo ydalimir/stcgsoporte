@@ -48,6 +48,7 @@ export default function AdminDashboardPage() {
         return;
     }
 
+    setIsLoading(true);
     const q = query(collection(db, "tickets"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const tickets = snapshot.docs.map(doc => doc.data());
@@ -56,10 +57,11 @@ export default function AdminDashboardPage() {
       
       setStats(prev => ({ ...prev, tickets: tickets.length, pendingTickets, completedTickets }));
       setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching ticket stats:", error);
+        setIsLoading(false);
     });
 
-    // You can add listeners for other collections here if needed, e.g., services, quotes
-    // For simplicity, we'll just get the tickets stats for now.
 
     return () => unsubscribe();
   }, [user, authIsLoading, router]);

@@ -52,6 +52,7 @@ import autoTable from "jspdf-autotable";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, runTransaction, getDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Badge } from "../ui/badge";
+import { useAuth } from "@/hooks/use-auth";
 
 
 export type QuoteItem = {
@@ -233,6 +234,7 @@ const downloadPDF = (quote: Quote) => {
 }
 
 export function QuoteManager() {
+  const { user, isLoading: authIsLoading } = useAuth();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState("");
@@ -241,6 +243,16 @@ export function QuoteManager() {
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
 
   useEffect(() => {
+    if (authIsLoading) {
+      setIsLoading(true);
+      return;
+    }
+    if (!user) {
+      setIsLoading(false);
+      setQuotes([]);
+      return;
+    }
+
     setIsLoading(true);
     const unsubscribe = onSnapshot(collection(db, "quotes"), (snapshot) => {
         const quotesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
@@ -252,7 +264,7 @@ export function QuoteManager() {
         setIsLoading(false);
     });
     return () => unsubscribe();
-  }, [toast]);
+  }, [user, authIsLoading, toast]);
 
   const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'quoteNumber'>) => {
     try {
@@ -427,7 +439,7 @@ export function QuoteManager() {
     onGlobalFilterChange: setFilter,
   });
 
-  if (isLoading) {
+  if (isLoading && authIsLoading) {
     return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
 

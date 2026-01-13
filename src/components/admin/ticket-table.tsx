@@ -74,6 +74,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/hooks/use-auth"
 
 
 export type Ticket = {
@@ -172,6 +173,7 @@ const downloadServiceOrderPDF = (ticket: Ticket) => {
 
 
 export function TicketTable() {
+  const { user, isLoading: authIsLoading } = useAuth();
   const [tickets, setTickets] = React.useState<Ticket[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -187,6 +189,16 @@ export function TicketTable() {
 
 
   React.useEffect(() => {
+    if (authIsLoading) {
+      setIsLoading(true);
+      return;
+    }
+    if (!user) {
+      setIsLoading(false);
+      setTickets([]); // Clear tickets if user is logged out
+      return;
+    }
+  
     setIsLoading(true);
     const q = query(collection(db, "tickets"), orderBy("createdAt", "desc"));
   
@@ -212,7 +224,7 @@ export function TicketTable() {
     );
   
     return () => unsubscribe();
-  }, [toast]);
+  }, [user, authIsLoading, toast]);
   
 
   const updateTicketStatus = async (ticketId: string, status: string) => {
@@ -441,7 +453,7 @@ export function TicketTable() {
     },
   })
 
-  if (isLoading) {
+  if (isLoading && authIsLoading) {
     return (
       <div className="flex items-center justify-center py-10">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
