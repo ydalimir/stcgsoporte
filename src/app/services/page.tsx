@@ -1,7 +1,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Zap, ShieldCheck } from 'lucide-react';
+import { Zap, ShieldCheck, Wrench } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ServicesLandingPage() {
@@ -14,7 +14,7 @@ export default function ServicesLandingPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
         {/* Mantenimiento Correctivo Card */}
         <Card className="flex flex-col text-center hover:shadow-xl transition-shadow duration-300 p-6">
           <CardHeader>
@@ -50,7 +50,27 @@ export default function ServicesLandingPage() {
             </Button>
           </CardContent>
         </Card>
+        
+        {/* Instalación Card */}
+        <Card className="flex flex-col text-center hover:shadow-xl transition-shadow duration-300 p-6">
+          <CardHeader>
+            <div className="mx-auto bg-primary/10 p-4 rounded-full w-fit mb-4">
+                <Wrench className="w-10 h-10 text-primary" />
+            </div>
+            <CardTitle className="font-headline text-2xl">Instalación de Equipos</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-grow space-y-4">
+            <p className="text-muted-foreground">
+              Servicios profesionales para la instalación y puesta en marcha de nuevos equipos de cocina, garantizando su correcto funcionamiento desde el primer día.
+            </p>
+            <Button asChild size="lg" variant="secondary">
+              <Link href="/services/instalacion">Ver Servicios de Instalación</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 }
+
+    

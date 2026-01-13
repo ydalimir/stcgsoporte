@@ -83,7 +83,7 @@ export type Ticket = {
   clientName: string,
   clientPhone: string,
   clientAddress: string,
-  serviceType: "correctivo" | "preventivo"
+  serviceType: "correctivo" | "preventivo" | "instalacion"
   equipmentType: string
   description: string
   urgency: "baja" | "media" | "alta"
@@ -568,3 +568,5 @@ export function TicketTable() {
     </div>
   )
 }
+
+    

@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Zap, ShieldCheck } from 'lucide-react';
+import { Zap, ShieldCheck, Wrench as InstallIcon } from 'lucide-react';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
 import React, { Suspense, useEffect, useState } from 'react';
@@ -24,6 +24,11 @@ const serviceCategories = {
     description: "Consiste en realizar inspecciones regulares y tareas de mantenimiento programadas para garantizar que los equipos funcionen correctamente y evitar fallos futuros.",
     icon: <ShieldCheck className="w-8 h-8 text-primary" />,
   },
+  instalacion: {
+    title: "Instalación de Equipos",
+    description: "Ofrecemos servicios expertos para la instalación y configuración inicial de sus equipos de cocina, asegurando un arranque perfecto y conforme a las normativas.",
+    icon: <InstallIcon className="w-8 h-8 text-primary" />,
+  }
 };
 
 type ServiceType = keyof typeof serviceCategories;
@@ -120,3 +125,5 @@ export default function ServiceTypePage() {
     </Suspense>
   )
 }
+
+    

@@ -32,7 +32,7 @@ import { db } from "@/lib/firebase";
 import { Input } from "../ui/input";
 
 const ticketSchema = z.object({
-  serviceType: z.enum(["correctivo", "preventivo"], {
+  serviceType: z.enum(["correctivo", "preventivo", "instalacion"], {
     required_error: "Por favor seleccione el tipo de servicio.",
   }),
   equipmentType: z.string().min(3, {
@@ -97,7 +97,7 @@ export function TicketForm({ onTicketCreated, isAdminMode = false }: TicketFormP
     const equipmentType = searchParams.get('equipmentType');
     const price = searchParams.get('price');
 
-    if (serviceType === 'correctivo' || serviceType === 'preventivo') {
+    if (serviceType === 'correctivo' || serviceType === 'preventivo' || serviceType === 'instalacion') {
         form.setValue('serviceType', serviceType);
     }
     if (equipmentType) {
@@ -245,6 +245,7 @@ ${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toFixed(2)} MXN` : '
                     </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                    <SelectItem value="instalacion">Instalación</SelectItem>
                     <SelectItem value="correctivo">Mantenimiento Correctivo</SelectItem>
                     <SelectItem value="preventivo">Mantenimiento Preventivo</SelectItem>
                     </SelectContent>
@@ -362,3 +363,5 @@ ${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toFixed(2)} MXN` : '
     </Form>
   );
 }
+
+    
