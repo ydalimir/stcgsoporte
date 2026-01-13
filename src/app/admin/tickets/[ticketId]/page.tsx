@@ -10,6 +10,8 @@ import { Ticket } from '@/components/admin/ticket-table';
 import { TicketDetails } from '@/components/admin/ticket-details';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
+import { errorEmitter } from '@/lib/error-emitter';
+import { FirestorePermissionError } from '@/lib/errors';
 
 export default function TicketDetailPage() {
   const params = useParams();
@@ -42,7 +44,10 @@ export default function TicketDetailPage() {
       }
       setIsLoading(false);
     }, (err) => {
-      console.error('Error fetching ticket:', err);
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'get',
+      }));
       setError('Error al cargar el ticket.');
       setIsLoading(false);
     });

@@ -11,6 +11,8 @@ import { Loader2 } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Service } from '@/components/admin/service-manager';
+import { errorEmitter } from '@/lib/error-emitter';
+import { FirestorePermissionError } from '@/lib/errors';
 
 
 const serviceCategories = {
@@ -53,7 +55,10 @@ function ServiceTypePageContent() {
         setServices(servicesData);
         setIsLoading(false);
     }, (error) => {
-        console.error("Error fetching services: ", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: "services",
+            operation: 'list',
+        }));
         setIsLoading(false);
     });
 
@@ -125,5 +130,3 @@ export default function ServiceTypePage() {
     </Suspense>
   )
 }
-
-    

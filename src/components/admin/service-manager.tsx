@@ -58,6 +58,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
+import { errorEmitter } from "@/lib/error-emitter";
+import { FirestorePermissionError } from "@/lib/errors";
 
 const serviceSchema = z.object({
   id: z.string().optional(),
@@ -89,12 +91,16 @@ export function ServiceManager() {
       setServices([]);
       return;
     }
-    const unsubscribe = onSnapshot(collection(db, "services"), (snapshot) => {
+    const q = collection(db, "services");
+    const unsubscribe = onSnapshot(q, (snapshot) => {
         const servicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
         setServices(servicesData);
         setIsLoading(false);
     }, (error) => {
-      console.error("Error fetching services: ", error);
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'services',
+          operation: 'list',
+      }));
       setIsLoading(false);
     });
     return () => unsubscribe();

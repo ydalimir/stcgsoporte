@@ -75,6 +75,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth"
+import { errorEmitter } from "@/lib/error-emitter"
+import { FirestorePermissionError } from "@/lib/errors"
 
 
 export type Ticket = {
@@ -213,7 +215,10 @@ export function TicketTable() {
         setIsLoading(false);
       },
       (error) => {
-        console.error("Error fetching tickets:", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'tickets',
+            operation: 'list',
+        }));
         toast({
           title: "Error al cargar los tickets",
           description: "No se pudieron obtener los datos. Intente de nuevo.",

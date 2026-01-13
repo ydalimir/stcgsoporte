@@ -34,6 +34,8 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { Separator } from "../ui/separator";
+import { errorEmitter } from "@/lib/error-emitter";
+import { FirestorePermissionError } from "@/lib/errors";
 
 
 const quoteItemSchema = z.object({
@@ -73,13 +75,26 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
 
 
   useEffect(() => {
-      const unsubscribeServices = onSnapshot(collection(db, "services"), (snapshot) => {
+      const qServices = collection(db, "services");
+      const unsubscribeServices = onSnapshot(qServices, (snapshot) => {
           const servicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
           setServices(servicesData);
+      }, (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: 'services',
+                operation: 'list',
+            }));
       });
-      const unsubscribeParts = onSnapshot(collection(db, "spare_parts"), (snapshot) => {
+
+      const qParts = collection(db, "spare_parts");
+      const unsubscribeParts = onSnapshot(qParts, (snapshot) => {
         const partsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SparePart));
         setSpareParts(partsData);
+    }, (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'spare_parts',
+            operation: 'list',
+        }));
     });
       return () => {
         unsubscribeServices();
@@ -338,5 +353,3 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     </Dialog>
   );
 }
-
-    

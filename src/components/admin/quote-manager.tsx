@@ -53,6 +53,8 @@ import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimest
 import { db } from "@/lib/firebase";
 import { Badge } from "../ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { errorEmitter } from "@/lib/error-emitter";
+import { FirestorePermissionError } from "@/lib/errors";
 
 
 export type QuoteItem = {
@@ -254,12 +256,16 @@ export function QuoteManager() {
     }
 
     setIsLoading(true);
-    const unsubscribe = onSnapshot(collection(db, "quotes"), (snapshot) => {
+    const q = collection(db, "quotes");
+    const unsubscribe = onSnapshot(q, (snapshot) => {
         const quotesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
         setQuotes(quotesData.sort((a, b) => (b.quoteNumber || 0) - (a.quoteNumber || 0)));
         setIsLoading(false);
     }, (error) => {
-        console.error("Error fetching quotes:", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'quotes',
+            operation: 'list',
+        }));
         toast({ title: "Error al cargar", description: "No se pudieron cargar las cotizaciones.", variant: "destructive"});
         setIsLoading(false);
     });

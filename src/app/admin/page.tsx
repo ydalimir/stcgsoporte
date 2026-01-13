@@ -9,6 +9,8 @@ import { Ticket, Wrench, FileText, Package, CheckCheck, List, Loader2 } from "lu
 import { TicketTable } from "@/components/admin/ticket-table";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
+import { errorEmitter } from "@/lib/error-emitter";
+import { FirestorePermissionError } from "@/lib/errors";
 
 
 type StatCardProps = {
@@ -58,7 +60,10 @@ export default function AdminDashboardPage() {
       setStats(prev => ({ ...prev, tickets: tickets.length, pendingTickets, completedTickets }));
       setIsLoading(false);
     }, (error) => {
-        console.error("Error fetching ticket stats:", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: "tickets",
+            operation: 'list',
+        }));
         setIsLoading(false);
     });
 

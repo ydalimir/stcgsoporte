@@ -50,6 +50,8 @@ import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from "fireb
 import { db } from "@/lib/firebase";
 import { Textarea } from "../ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
+import { errorEmitter } from "@/lib/error-emitter";
+import { FirestorePermissionError } from "@/lib/errors";
 
 
 const sparePartSchema = z.object({
@@ -83,12 +85,16 @@ export function SparePartsManager() {
       setSpareParts([]);
       return;
     }
-    const unsubscribe = onSnapshot(collection(db, "spare_parts"), (snapshot) => {
+    const q = collection(db, "spare_parts");
+    const unsubscribe = onSnapshot(q, (snapshot) => {
         const partsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SparePart));
         setSpareParts(partsData);
         setIsLoading(false);
     }, (error) => {
-        console.error("Error fetching spare parts:", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'spare_parts',
+            operation: 'list',
+        }));
         toast({ title: "Error al cargar", description: "No se pudieron cargar las refacciones.", variant: "destructive"});
         setIsLoading(false);
     });
@@ -326,5 +332,3 @@ function SparePartFormDialog({ isOpen, onOpenChange, onSave, part }: SparePartFo
         </Dialog>
     )
 }
-
-    
