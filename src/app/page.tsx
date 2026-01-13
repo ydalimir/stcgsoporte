@@ -36,6 +36,8 @@ export default function LoginPage() {
       let description = "Ocurrió un error inesperado.";
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         description = "Credenciales inválidas. Por favor, verifique su correo y contraseña.";
+      } else if (error.code === 'auth/invalid-email') {
+        description = "El correo electrónico no es válido o está vacío.";
       } else if (error.message) {
         description = error.message;
       }
