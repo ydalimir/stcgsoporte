@@ -8,13 +8,13 @@ export default function UsersPage() {
             <CardHeader>
                 <div className="flex items-center gap-3">
                     <Users className="w-6 h-6" />
-                    <CardTitle>Administración de Usuarios</CardTitle>
+                    <CardTitle>Control de Usuarios</CardTitle>
                 </div>
                 <CardDescription>Gestionar roles y acceso de los usuarios de la plataforma. Próximamente.</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                    <p className="text-muted-foreground">La sección de administración de usuarios está en construcción.</p>
+                    <p className="text-muted-foreground">La sección de control de usuarios está en construcción.</p>
                 </div>
             </CardContent>
         </Card>
