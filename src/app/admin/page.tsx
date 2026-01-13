@@ -2,143 +2,117 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, where, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Ticket, Wrench, FileText, Package, DollarSign, List, Loader2 } from "lucide-react";
 import { TicketTable } from "@/components/admin/ticket-table";
-import { LayoutDashboard, Loader2, List, Wrench, FileText, Package } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ServiceManager } from "@/components/admin/service-manager";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { QuoteManager } from "@/components/admin/quote-manager";
-import { SparePartsManager } from "@/components/admin/spare-parts-manager";
+import { useRouter } from "next/navigation";
 
+
+type StatCardProps = {
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  description?: string;
+};
+
+const StatCard = ({ title, value, icon, description }: StatCardProps) => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      {icon}
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{value}</div>
+      {description && <p className="text-xs text-muted-foreground">{description}</p>}
+    </CardContent>
+  </Card>
+);
 
 export default function AdminDashboardPage() {
-  const router = useRouter();
   const { user, isLoading: authIsLoading } = useAuth();
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const router = useRouter();
+  const [stats, setStats] = useState({
+    tickets: 0,
+    pendingTickets: 0,
+    services: 0,
+    quotes: 0,
+    totalRevenue: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (authIsLoading) {
-      return; 
-    }
-
+    if (authIsLoading) return;
     if (!user) {
-      router.push("/");
-      return;
+        router.push('/');
+        return;
     }
 
-    const checkAdminRole = async () => {
-      try {
-        const userDocRef = doc(db, "users", user.uid);
-        const userDoc = await getDoc(userDocRef);
-        
-        if (userDoc.exists() && userDoc.data().role === 'admin') {
-          setIsAdmin(true);
-        }
-      } catch (error) {
-        console.error("Error al verificar el rol de admin:", error);
-      }
-    };
+    const q = query(collection(db, "tickets"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const tickets = snapshot.docs.map(doc => doc.data());
+      const pendingTickets = tickets.filter(t => t.status !== 'Resuelto').length;
+      const totalRevenue = tickets.reduce((acc, t) => acc + (t.price || 0), 0);
+      
+      setStats(prev => ({ ...prev, tickets: tickets.length, pendingTickets, totalRevenue }));
+      setIsLoading(false);
+    });
 
-    checkAdminRole();
+    // You can add listeners for other collections here if needed, e.g., services, quotes
+    // For simplicity, we'll just get the tickets stats for now.
 
+    return () => unsubscribe();
   }, [user, authIsLoading, router]);
-  
-  if (authIsLoading) {
+
+   if (authIsLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[calc(100vh-theme(spacing.16))]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-4">Cargando...</p>
+        <p className="ml-4">Cargando dashboard...</p>
       </div>
     );
   }
-  
+
   return (
-    <div className="container mx-auto px-4 py-10">
-      <div className="flex items-center gap-4 mb-8">
-        <LayoutDashboard className="w-8 h-8 text-primary" />
-        <h1 className="text-3xl md:text-4xl font-bold font-headline">Panel de Control</h1>
+    <>
+      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+        <StatCard 
+          title="Total de Tickets" 
+          value={stats.tickets} 
+          icon={<Ticket className="h-4 w-4 text-muted-foreground" />} 
+          description="Todos los tickets históricos."
+        />
+        <StatCard 
+          title="Tickets Pendientes" 
+          value={stats.pendingTickets} 
+          icon={<List className="h-4 w-4 text-muted-foreground" />}
+          description="Tickets 'Recibidos' o 'En Progreso'."
+        />
+        <StatCard 
+          title="Ingresos por Tickets" 
+          value={`$${stats.totalRevenue.toFixed(2)}`} 
+          icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+          description="Suma de precios de todos los tickets."
+        />
+         <StatCard 
+          title="Servicios" 
+          value="-" 
+          icon={<Wrench className="h-4 w-4 text-muted-foreground" />}
+          description="Próximamente"
+        />
       </div>
-      
-      <Tabs defaultValue="tickets" className="w-full">
-        <TabsList className={isAdmin ? "grid w-full grid-cols-4" : "grid w-full grid-cols-1"}>
-          <TabsTrigger value="tickets">
-            <List className="mr-2"/>
-            Tickets
-          </TabsTrigger>
-          {isAdmin && (
-            <>
-              <TabsTrigger value="services">
-                <Wrench className="mr-2"/>
-                Servicios
-              </TabsTrigger>
-              <TabsTrigger value="quotes">
-                <FileText className="mr-2"/>
-                Cotizaciones
-              </TabsTrigger>
-              <TabsTrigger value="spare-parts">
-                <Package className="mr-2"/>
-                Refacciones
-              </TabsTrigger>
-            </>
-          )}
-        </TabsList>
-        
-        <TabsContent value="tickets">
-           <Card>
+      <div className="mt-8">
+        <Card>
             <CardHeader>
-              <CardTitle>Gestión de Tickets</CardTitle>
-              <CardDescription>Ver, gestionar y asignar todos los tickets de soporte desde este panel central.</CardDescription>
+                <CardTitle>Tickets Recientes</CardTitle>
             </CardHeader>
             <CardContent>
-              <TicketTable />
+                <TicketTable />
             </CardContent>
-          </Card>
-        </TabsContent>
-
-        {isAdmin && (
-          <>
-            <TabsContent value="services">
-               <Card>
-                <CardHeader>
-                  <CardTitle>Gestión de Servicios</CardTitle>
-                  <CardDescription>Añadir, editar y eliminar servicios de mantenimiento preventivo y correctivo.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ServiceManager />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="quotes">
-               <Card>
-                <CardHeader>
-                  <CardTitle>Gestión de Cotizaciones</CardTitle>
-                  <CardDescription>Crear, ver, editar y eliminar cotizaciones para los clientes.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <QuoteManager />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="spare-parts">
-               <Card>
-                <CardHeader>
-                  <CardTitle>Gestión de Refacciones</CardTitle>
-                  <CardDescription>Añadir, editar y eliminar refacciones del inventario.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <SparePartsManager />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </>
-        )}
-      </Tabs>
-    </div>
+        </Card>
+      </div>
+    </>
   );
 }
