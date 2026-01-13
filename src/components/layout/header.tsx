@@ -23,8 +23,9 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 
 const navLinks = [
-  { href: '/profile', label: 'Dashboard' },
+  { href: '/about', label: 'Nosotros' },
   { href: '/services', label: 'Servicios' },
+  { href: '/contact', label: 'Contacto' },
 ];
 
 export function Header() {
@@ -33,7 +34,10 @@ export function Header() {
   const [isSheetOpen, setSheetOpen] = React.useState(false);
   const { user, isLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
-  const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/';
+  
+  // This should match any page that is part of the "public" site experience
+  const isPublicPage = ['/', '/about', '/services', '/contact', '/faq', '/quote', '/tickets/new', '/signup', '/login'].includes(pathname) || pathname.startsWith('/services/');
+
 
   useEffect(() => {
     if (isLoading || !user) {
@@ -89,14 +93,14 @@ export function Header() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/profile">Perfil</Link>
+          <Link href="/profile">Mi Panel</Link>
         </DropdownMenuItem>
          <DropdownMenuItem asChild>
           <Link href="/profile/my-tickets">Mis Tickets</Link>
         </DropdownMenuItem>
         {isAdmin && (
            <DropdownMenuItem asChild>
-             <Link href="/admin">Admin Dashboard</Link>
+             <Link href="/admin">Panel de Admin</Link>
            </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
@@ -107,36 +111,18 @@ export function Header() {
     </DropdownMenu>
   );
   
-  if (isAuthPage && !user) {
-      return (
-         <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-sm">
-            <div className="container mx-auto flex h-16 items-center justify-between px-4">
-                 <Logo />
-                 <div className="flex items-center gap-2">
-                    {pathname !== '/login' && (
-                        <Button variant="ghost" asChild>
-                            <Link href="/login">Iniciar Sesión</Link>
-                        </Button>
-                    )}
-                    {pathname !== '/signup' && (
-                         <Button asChild className="bg-accent hover:bg-accent/90">
-                            <Link href="/signup">Registrarse</Link>
-                        </Button>
-                    )}
-                 </div>
-            </div>
-        </header>
-      )
+  if (!isPublicPage) {
+    return null; // The header is not rendered on internal pages like /profile, /admin etc.
   }
-
+  
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-sm">
       <div className="container mx-auto flex h-16 items-center px-4">
-        <div className="flex items-center gap-6 md:w-1/3">
+        <div className="flex items-center gap-6">
           <Logo />
         </div>
 
-        <nav className="hidden md:flex items-center justify-center gap-6 w-1/3">
+        <nav className="hidden md:flex items-center justify-center gap-6 mx-auto">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -151,13 +137,13 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center justify-end gap-2 w-1/3">
+        <div className="hidden md:flex items-center justify-end gap-2 ml-auto">
           {isLoading ? null : user ? (
             <UserMenu />
           ) : (
             <>
               <Button variant="ghost" asChild>
-                <Link href="/login">Iniciar Sesión</Link>
+                <Link href="/">Iniciar Sesión</Link>
               </Button>
               <Button asChild className="bg-accent hover:bg-accent/90">
                 <Link href="/signup">Registrarse</Link>
@@ -166,54 +152,52 @@ export function Header() {
           )}
         </div>
 
-        <div className="md:hidden ml-auto">
-          <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Menu className="h-4 w-4" />
-                <span className="sr-only">Abrir menú</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right">
-              <div className="flex flex-col h-full">
-                <div className="p-4 border-b">
-                  <Logo />
-                </div>
-                <nav className="flex flex-col gap-4 p-4">
-                  {navLinks.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      onClick={() => setSheetOpen(false)}
-                      className={cn(
-                        'text-lg font-medium transition-colors hover:text-primary',
-                         pathname === link.href ? 'text-primary' : 'text-foreground'
-                      )}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                </nav>
-                <div className="mt-auto p-4 border-t flex flex-col gap-4">
-                  {isLoading ? null : user ? (
-                     <div className='flex items-center justify-between'>
-                       <p className="text-sm text-muted-foreground">{user.email}</p>
-                       <Button variant="outline" onClick={() => { handleSignOut(); setSheetOpen(false); }}>Cerrar Sesión</Button>
+        <div className="md:hidden ml-auto flex items-center gap-2">
+            {user && <UserMenu />}
+            <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
+                <SheetTrigger asChild>
+                <Button variant="outline" size="icon">
+                    <Menu className="h-4 w-4" />
+                    <span className="sr-only">Abrir menú</span>
+                </Button>
+                </SheetTrigger>
+                <SheetContent side="right">
+                <div className="flex flex-col h-full">
+                    <div className="p-4 border-b">
+                    <Logo />
                     </div>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      <Button variant="outline" asChild className="w-full">
-                        <Link href="/login" onClick={() => setSheetOpen(false)}>Iniciar Sesión</Link>
-                      </Button>
-                       <Button asChild className="bg-accent hover:bg-accent/90 w-full">
-                        <Link href="/signup" onClick={() => setSheetOpen(false)}>Registrarse</Link>
-                      </Button>
+                    <nav className="flex flex-col gap-4 p-4">
+                    {navLinks.map((link) => (
+                        <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setSheetOpen(false)}
+                        className={cn(
+                            'text-lg font-medium transition-colors hover:text-primary',
+                            pathname === link.href ? 'text-primary' : 'text-foreground'
+                        )}
+                        >
+                        {link.label}
+                        </Link>
+                    ))}
+                    </nav>
+                    <div className="mt-auto p-4 border-t flex flex-col gap-4">
+                    {isLoading ? null : user ? (
+                        null
+                    ) : (
+                        <div className="flex flex-col gap-2">
+                        <Button variant="outline" asChild className="w-full">
+                            <Link href="/" onClick={() => setSheetOpen(false)}>Iniciar Sesión</Link>
+                        </Button>
+                        <Button asChild className="bg-accent hover:bg-accent/90 w-full">
+                            <Link href="/signup" onClick={() => setSheetOpen(false)}>Registrarse</Link>
+                        </Button>
+                        </div>
+                    )}
                     </div>
-                  )}
                 </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+                </SheetContent>
+            </Sheet>
         </div>
       </div>
     </header>

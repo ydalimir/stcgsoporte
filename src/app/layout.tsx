@@ -3,6 +3,10 @@ import type { Metadata } from 'next';
 import { cn } from '@/lib/utils';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/hooks/use-auth-provider';
+import { Header } from '@/components/layout/header';
+import { Footer } from '@/components/layout/footer';
+
 
 export const metadata: Metadata = {
   title: 'LEBAREF',
@@ -23,8 +27,16 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
       </head>
       <body className={cn('font-body antialiased bg-background')}>
-        {children}
-        <Toaster />
+        <AuthProvider>
+            <div className="flex flex-col min-h-screen">
+                <Header />
+                <main className="flex-grow">
+                    {children}
+                </main>
+                <Footer />
+            </div>
+            <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );
