@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Package, FileText, Wrench, Ticket, User, LogOut } from "lucide-react";
+import { Home, Package, FileText, Wrench, Ticket, User, LogOut, AreaChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,6 +35,7 @@ export default function AdminLayout({
       { href: "/admin/tickets", label: "Tickets", icon: Ticket },
       { href: "/admin/services", label: "Servicios", icon: Wrench },
       { href: "/admin/spare-parts", label: "Refacciones", icon: Package },
+      { href: "/admin/reports", label: "Reportes", icon: AreaChart },
     ];
 
     const handleSignOut = async () => {
