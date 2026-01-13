@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/hooks/use-auth-provider';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 
 export const metadata: Metadata = {
@@ -36,6 +37,7 @@ export default function RootLayout({
                 <Footer />
             </div>
             <Toaster />
+            <FirebaseErrorListener />
         </AuthProvider>
       </body>
     </html>

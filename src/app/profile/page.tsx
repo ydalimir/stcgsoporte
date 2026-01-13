@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { errorEmitter } from "@/lib/error-emitter";
+import { FirestorePermissionError } from "@/lib/errors";
 
 export default function ProfilePage() {
   const { user, isLoading: authIsLoading } = useAuth();
@@ -33,22 +35,33 @@ export default function ProfilePage() {
       setIsSyncing(true);
       const userDocRef = doc(db, "users", user.uid);
       try {
-        const userDoc = await getDoc(userDocRef);
+        const userDoc = await getDoc(userDocRef).catch(serverError => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'get',
+            }));
+            throw serverError; // re-throw to stop execution
+        });
+
         if (!userDoc.exists()) {
-          // Document doesn't exist, so create it.
-          await setDoc(userDocRef, {
+          const newUserProfile = {
             email: user.email,
             role: "user", // Default role
             createdAt: new Date().toISOString(),
+          };
+          // Document doesn't exist, so create it.
+          await setDoc(userDocRef, newUserProfile).catch(serverError => {
+              errorEmitter.emit('permission-error', new FirestorePermissionError({
+                  path: userDocRef.path,
+                  operation: 'create',
+                  requestResourceData: newUserProfile
+              }));
           });
         }
       } catch (error) {
+        // Errors are now handled by the emitter, but we can still log if needed for other reasons.
+        // We avoid calling toast here to prevent duplicate notifications.
         console.error("Error syncing user profile:", error);
-        toast({
-          title: "Profile Sync Failed",
-          description: "Could not sync your profile with our database. Some features might not work correctly.",
-          variant: "destructive",
-        });
       } finally {
         setIsSyncing(false);
       }
