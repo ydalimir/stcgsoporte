@@ -20,14 +20,6 @@ import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-const navLinks = [
-  { href: "/admin", label: "Dashboard", icon: Home, exact: true },
-  { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
-  { href: "/admin/tickets", label: "Tickets", icon: Ticket },
-  { href: "/admin/services", label: "Servicios", icon: Wrench },
-  { href: "/admin/spare-parts", label: "Refacciones", icon: Package },
-];
-
 export default function AdminLayout({
   children,
 }: {
@@ -36,6 +28,14 @@ export default function AdminLayout({
     const pathname = usePathname();
     const { user } = useAuth();
     const router = useRouter();
+
+    const navLinks = [
+      { href: "/admin", label: "Dashboard", icon: Home, exact: true },
+      { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
+      { href: "/admin/tickets", label: "Tickets", icon: Ticket },
+      { href: "/admin/services", label: "Servicios", icon: Wrench },
+      { href: "/admin/spare-parts", label: "Refacciones", icon: Package },
+    ];
 
     const handleSignOut = async () => {
         await auth.signOut();
