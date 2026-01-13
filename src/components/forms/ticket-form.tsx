@@ -30,7 +30,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { addDoc, collection, serverTimestamp, runTransaction, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Input } from "../ui/input";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 
 const ticketSchema = z.object({
   serviceType: z.enum(["correctivo", "preventivo"], {
@@ -352,5 +351,3 @@ ${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toFixed(2)} MXN` : '
     </Form>
   );
 }
-
-    
