@@ -115,9 +115,9 @@ export default function LoginPage() {
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSubmitting ? "Ingresando..." : "Ingresar"}
             </Button>
-            <p className="text-sm text-muted-foreground text-center">
+            {/* <p className="text-sm text-muted-foreground text-center">
                ¿No tienes cuenta? <Link href="/signup" className="font-semibold text-primary hover:underline">Regístrate</Link>
-            </p>
+            </p> */}
           </form>
         </div>
       </div>
