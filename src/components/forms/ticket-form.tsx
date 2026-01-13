@@ -46,7 +46,7 @@ const ticketSchema = z.object({
   urgency: z.enum(["baja", "media", "alta"], {
     required_error: "Por favor seleccione un nivel de urgencia.",
   }),
-  price: z.number().optional(),
+  price: z.coerce.number().optional(),
   quantity: z.coerce.number().min(1, "La cantidad debe ser al menos 1.").optional(),
   clientName: z.string().min(1, { message: "El nombre es obligatorio." }),
   clientPhone: z.string().min(10, { message: "El teléfono debe tener al menos 10 dígitos." }),
@@ -57,7 +57,12 @@ const ticketSchema = z.object({
 
 type TicketFormValues = z.infer<typeof ticketSchema>;
 
-export function TicketForm() {
+interface TicketFormProps {
+    onTicketCreated?: () => void;
+    isAdminMode?: boolean;
+}
+
+export function TicketForm({ onTicketCreated, isAdminMode = false }: TicketFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user, isLoading } = useAuth();
@@ -100,20 +105,20 @@ export function TicketForm() {
     if (price) {
         form.setValue('price', parseFloat(price));
     }
-    if (user?.email) {
+    if (user?.email && !isAdminMode) {
         form.setValue('clientEmail', user.email);
     }
-  }, [searchParams, form, user]);
+  }, [searchParams, form, user, isAdminMode]);
 
   async function createTicketInApp(data: TicketFormValues) {
-    if (!user) {
-        // This should not happen if the logic is correct, but as a fallback
+    if (!user && !isAdminMode) {
         router.push('/signup');
         return;
     }
     setIsSubmitting(true);
     try {
       const finalPrice = data.price ? data.price * (data.quantity || 1) : undefined;
+      
       await runTransaction(db, async (transaction) => {
         const counterRef = doc(db, "counters", "tickets");
         const counterDoc = await transaction.get(counterRef);
@@ -122,11 +127,12 @@ export function TicketForm() {
           newTicketNumber = counterDoc.data().lastNumber + 1;
         }
         transaction.set(counterRef, { lastNumber: newTicketNumber }, { merge: true });
+        
         const newTicketRef = doc(collection(db, "tickets"));
         transaction.set(newTicketRef, {
           ...data,
           price: finalPrice,
-          userId: user.uid,
+          userId: isAdminMode ? 'admin_created' : user!.uid,
           status: "Recibido",
           createdAt: serverTimestamp(),
           ticketNumber: newTicketNumber,
@@ -135,11 +141,15 @@ export function TicketForm() {
 
       toast({
         title: "¡Ticket Enviado!",
-        description: "Hemos recibido su ticket de soporte y nos pondremos en contacto en breve.",
+        description: "Se ha creado una nueva orden de servicio.",
       });
 
       form.reset();
-      router.push('/profile/my-tickets');
+      if(onTicketCreated) {
+          onTicketCreated();
+      } else {
+         router.push('/profile/my-tickets');
+      }
 
     } catch (error) {
       console.error("Error al crear el ticket: ", error);
@@ -182,16 +192,14 @@ ${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toFixed(2)} MXN` : '
   };
 
   function onSubmit(data: TicketFormValues) {
-    if (user) {
+    if (user || isAdminMode) {
       createTicketInApp(data);
     } else {
-      // If user is not logged in, redirect to sign up
-      // Future enhancement: pass form data through query params or state management
       router.push('/signup');
     }
   }
   
-  if (isLoading) {
+  if (isLoading && !isAdminMode) {
     return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
@@ -256,33 +264,30 @@ ${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toFixed(2)} MXN` : '
                     {...field}
                     />
                 </FormControl>
-                <FormDescription>
+                {!isAdminMode && <FormDescription>
                     Sea lo más específico posible. Si viene de la página de servicios, esto se llena automáticamente.
-                </FormDescription>
+                </FormDescription>}
                 <FormMessage />
                 </FormItem>
             )}
             />
-
-            {unitPrice && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <FormField control={form.control} name="quantity" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Cantidad</FormLabel>
-                            <FormControl><Input type="number" min={1} {...field}/></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <FormField control={form.control} name="price" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Precio por Unidad</FormLabel>
-                        <FormControl><Input value={`$${unitPrice.toFixed(2)} MXN`} readOnly /></FormControl>
+                        <FormLabel>Precio (Opcional)</FormLabel>
+                        <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} /></FormControl>
+                        <FormMessage />
                     </FormItem>
-                     <FormItem>
-                        <FormLabel>Total Estimado</FormLabel>
-                        <FormControl><Input value={`$${estimatedTotal.toFixed(2)} MXN`} readOnly /></FormControl>
+                )} />
+                <FormField control={form.control} name="quantity" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Cantidad (Opcional)</FormLabel>
+                        <FormControl><Input type="number" min={1} {...field} onChange={e => field.onChange(e.target.valueAsNumber)}/></FormControl>
+                        <FormMessage />
                     </FormItem>
-                </div>
-            )}
+                )} />
+            </div>
 
             <FormField
             control={form.control}
@@ -297,9 +302,9 @@ ${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toFixed(2)} MXN` : '
                     {...field}
                     />
                 </FormControl>
-                <FormDescription>
+                 {!isAdminMode && <FormDescription>
                     Mientras más detalles nos brinde, más rápido podremos ayudarle.
-                </FormDescription>
+                </FormDescription>}
                 <FormMessage />
                 </FormItem>
             )}
@@ -328,7 +333,12 @@ ${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toFixed(2)} MXN` : '
             />
         </div>
 
-        {user ? (
+        {isAdminMode ? (
+             <Button type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting ? "Creando..." : "Crear Ticket"}
+            </Button>
+        ) : user ? (
             <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isSubmitting ? "Enviando..." : "Enviar Ticket"}
