@@ -24,7 +24,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useEffect, useState } from "react";
 import { Loader2, PlusCircle, Trash2, Check, ChevronsUpDown } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import type { Quote } from "@/components/admin/quote-manager";
 import type { Service } from "@/components/admin/service-manager";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -33,6 +33,7 @@ import { SparePart } from "../admin/spare-parts-manager";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { Separator } from "../ui/separator";
 
 
 const quoteItemSchema = z.object({
@@ -169,65 +170,73 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>{quote ? `Editar Cotización #${quoteIdDisplay}` : "Crear Cotización"}</DialogTitle>
+      <DialogContent className="sm:max-w-4xl p-0">
+        <DialogHeader className="p-6 pb-0">
+          <DialogTitle>{quote ? `Editar Cotización #${quoteIdDisplay}` : "Crear Nueva Cotización"}</DialogTitle>
+          <DialogDescription>Complete los detalles para generar el documento de cotización.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-h-[80vh] overflow-y-auto pr-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField name="clientName" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Cliente</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField name="rfc" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>RFC (Opcional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField name="clientPhone" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField name="clientAddress" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>Dirección</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-               <FormField name="date" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Fecha de Emisión</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField name="expirationDate" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Fecha de Vencimiento</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-               <FormField name="status" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Estado</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="Borrador">Borrador</SelectItem>
-                      <SelectItem value="Enviada">Enviada</SelectItem>
-                      <SelectItem value="Aceptada">Aceptada</SelectItem>
-                      <SelectItem value="Rechazada">Rechazada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                <FormMessage /></FormItem>
-              )} />
-            </div>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col">
+            <div className="space-y-6 px-6 overflow-y-auto max-h-[calc(80vh-150px)]">
+            
+              {/* Client and Date Info */}
+              <div className="border p-4 rounded-lg">
+                <h3 className="text-lg font-medium mb-4">Información General</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <FormField name="clientName" control={form.control} render={({ field }) => (
+                    <FormItem><FormLabel>Cliente</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField name="clientPhone" control={form.control} render={({ field }) => (
+                      <FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField name="rfc" control={form.control} render={({ field }) => (
+                    <FormItem><FormLabel>RFC (Opcional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                   <FormField name="clientAddress" control={form.control} render={({ field }) => (
+                      <FormItem className="md:col-span-2 lg:col-span-3"><FormLabel>Dirección</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField name="date" control={form.control} render={({ field }) => (
+                    <FormItem><FormLabel>Fecha de Emisión</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField name="expirationDate" control={form.control} render={({ field }) => (
+                    <FormItem><FormLabel>Fecha de Vencimiento</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                   <FormField name="status" control={form.control} render={({ field }) => (
+                    <FormItem><FormLabel>Estado</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="Borrador">Borrador</SelectItem>
+                          <SelectItem value="Enviada">Enviada</SelectItem>
+                          <SelectItem value="Aceptada">Aceptada</SelectItem>
+                          <SelectItem value="Rechazada">Rechazada</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    <FormMessage /></FormItem>
+                  )} />
+                </div>
+              </div>
 
-            <div className="space-y-4">
-                <FormLabel>Items de la Cotización</FormLabel>
-                <div className="space-y-2">
+              {/* Items Section */}
+              <div className="border p-4 rounded-lg">
+                <h3 className="text-lg font-medium mb-4">Items de la Cotización</h3>
+                <div className="space-y-3">
                     {fields.map((field, index) => (
                         <div key={field.id} className="flex items-end gap-2">
                             <FormField name={`items.${index}.description`} control={form.control} render={({ field }) => (
-                                <FormItem className="flex-grow"><FormControl><Input placeholder="Descripción" {...field} /></FormControl></FormItem>
+                                <FormItem className="flex-grow"><FormLabel className="text-xs">Descripción</FormLabel><FormControl><Input placeholder="Descripción del item" {...field} /></FormControl></FormItem>
                             )} />
                              <FormField name={`items.${index}.quantity`} control={form.control} render={({ field }) => (
-                                <FormItem className="w-24"><FormControl><Input type="number" placeholder="Cant." {...field} /></FormControl></FormItem>
+                                <FormItem className="w-24"><FormLabel className="text-xs">Cant.</FormLabel><FormControl><Input type="number" placeholder="Cant." {...field} /></FormControl></FormItem>
                             )} />
                              <FormField name={`items.${index}.price`} control={form.control} render={({ field }) => (
-                                <FormItem className="w-32"><FormControl><Input type="number" step="0.01" placeholder="Precio" {...field} /></FormControl></FormItem>
+                                <FormItem className="w-32"><FormLabel className="text-xs">Precio Unit.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Precio" {...field} /></FormControl></FormItem>
                             )} />
                             <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                     ))}
                 </div>
-                 <div className="flex items-center gap-4">
+                 <div className="flex items-center gap-4 mt-4 pt-4 border-t">
                     <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen}>
                         <PopoverTrigger asChild>
                             <Button variant="outline" role="combobox" aria-expanded={isComboboxOpen} className="w-[300px] justify-between">
@@ -273,41 +282,48 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                         <PlusCircle className="mr-2 h-4 w-4" /> Agregar Item Manual
                     </Button>
                 </div>
-                {form.formState.errors.items && <p className="text-sm font-medium text-destructive">{form.formState.errors.items?.root?.message || form.formState.errors.items.message}</p>}
-            </div>
-
-             <FormField name="observations" control={form.control} render={({ field }) => (
-              <FormItem><FormLabel>Observaciones</FormLabel><FormControl><Textarea placeholder="Añadir notas u observaciones específicas para esta cotización..." className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
-            )} />
-
-            <FormField name="policies" control={form.control} render={({ field }) => (
-              <FormItem><FormLabel>Políticas y Términos</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
-            )} />
+                {form.formState.errors.items && <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.items?.root?.message || form.formState.errors.items.message}</p>}
+              </div>
             
-             <div className="flex justify-end">
-                <div className="w-full max-w-sm space-y-2">
-                    <FormField name="iva" control={form.control} render={({ field }) => (
-                        <FormItem className="flex items-center justify-between">
-                            <FormLabel>IVA (%)</FormLabel>
-                            <FormControl><Input type="number" className="w-24" {...field} /></FormControl>
-                        </FormItem>
-                    )} />
-                    <div className="flex justify-between font-medium">
-                        <span>Subtotal:</span>
-                        <span>${subtotal.toFixed(2)}</span>
+              {/* Notes and Totals */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <FormField name="observations" control={form.control} render={({ field }) => (
+                    <FormItem><FormLabel>Observaciones</FormLabel><FormControl><Textarea placeholder="Añadir notas u observaciones específicas para esta cotización..." className="min-h-[100px] bg-muted/20" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField name="policies" control={form.control} render={({ field }) => (
+                    <FormItem><FormLabel>Políticas y Términos</FormLabel><FormControl><Textarea className="min-h-[100px] bg-muted/20" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
+                
+                <div className="flex flex-col justify-between p-4 bg-muted/50 rounded-lg">
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center font-medium">
+                            <span>Subtotal:</span>
+                            <span>${subtotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <FormField name="iva" control={form.control} render={({ field }) => (
+                                <FormItem className="flex items-center gap-2">
+                                    <FormLabel className="m-0 p-0">IVA (%):</FormLabel>
+                                    <FormControl><Input type="number" className="w-20 h-8" {...field} /></FormControl>
+                                </FormItem>
+                            )} />
+                            <span>${ivaAmount.toFixed(2)}</span>
+                        </div>
                     </div>
-                     <div className="flex justify-between">
-                        <span>IVA ({ivaPercentage}%):</span>
-                        <span>${ivaAmount.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-xl font-bold border-t pt-2">
-                        <span>Total:</span>
-                        <span>${total.toFixed(2)}</span>
+                    <div>
+                        <Separator className="my-3 bg-border" />
+                        <div className="flex justify-between text-xl font-bold">
+                            <span>Total:</span>
+                            <span>${total.toFixed(2)}</span>
+                        </div>
                     </div>
                 </div>
+              </div>
             </div>
 
-            <DialogFooter className="pt-4">
+            <DialogFooter className="p-6 bg-muted/30 border-t mt-6">
                 <DialogClose asChild>
                     <Button type="button" variant="ghost">Cancelar</Button>
                 </DialogClose>
@@ -322,5 +338,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     </Dialog>
   );
 }
+
+    
 
     
