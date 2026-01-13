@@ -78,6 +78,7 @@ export function TicketForm({ onTicketCreated, isAdminMode = false }: TicketFormP
       equipmentType: "",
       serviceType: undefined,
       urgency: "media",
+      price: undefined,
       quantity: 1,
       clientName: "",
       clientPhone: "",
@@ -276,14 +277,14 @@ ${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toFixed(2)} MXN` : '
                  <FormField control={form.control} name="price" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Precio (Opcional)</FormLabel>
-                        <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} /></FormControl>
+                        <FormControl><Input type="number" step="0.01" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.valueAsNumber)} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="quantity" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Cantidad (Opcional)</FormLabel>
-                        <FormControl><Input type="number" min={1} {...field} onChange={e => field.onChange(e.target.valueAsNumber)}/></FormControl>
+                        <FormControl><Input type="number" min={1} {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.valueAsNumber)}/></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
