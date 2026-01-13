@@ -4,7 +4,6 @@ import { cn } from '@/lib/utils';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/hooks/use-auth-provider';
-import { Footer } from '@/components/layout/footer';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 
@@ -33,7 +32,6 @@ export default function RootLayout({
                 <main className="flex-grow">
                     {children}
                 </main>
-                <Footer />
             </div>
             <Toaster />
             <FirebaseErrorListener />
