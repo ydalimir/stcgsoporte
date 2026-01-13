@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Package, FileText, Wrench, Ticket, User, LogOut, AreaChart } from "lucide-react";
+import { Home, Package, FileText, Wrench, Ticket, User, LogOut, AreaChart, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Logo } from "@/components/logo";
 
 export default function AdminLayout({
   children,
@@ -36,6 +37,7 @@ export default function AdminLayout({
       { href: "/admin/services", label: "Servicios", icon: Wrench },
       { href: "/admin/spare-parts", label: "Refacciones", icon: Package },
       { href: "/admin/reports", label: "Reportes", icon: AreaChart },
+      { href: "/admin/users", label: "Usuarios", icon: Users },
     ];
 
     const handleSignOut = async () => {
@@ -55,9 +57,7 @@ export default function AdminLayout({
       <div className="hidden border-r bg-muted/40 md:block">
         <div className="flex h-full max-h-screen flex-col gap-2">
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-            <Link href="/admin" className="flex items-center gap-2 font-semibold">
-              <span className="">LEBAREF</span>
-            </Link>
+            <Logo />
           </div>
           <div className="flex-1">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
