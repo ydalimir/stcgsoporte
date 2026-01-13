@@ -56,7 +56,7 @@ export default function LoginPage() {
     <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-2">
       <div className="relative flex flex-col items-center justify-center bg-gray-900 text-white p-8">
          <Image
-            src="https://ucarecdn.com/3336978a-7b33-42e1-a423-02631b746583/aaaIMG_6564.jpg"
+            src="https://res.cloudinary.com/mundodepixeles/image/upload/v1768286128/photo-1541888946425-d81bb19240f5_enhjmo.avif"
             alt="Taller de mantenimiento"
             fill
             className="object-cover opacity-20"
