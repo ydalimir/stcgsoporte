@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { collection, onSnapshot, query, where, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Ticket, Wrench, FileText, Package, DollarSign, List, Loader2 } from "lucide-react";
+import { Ticket, Wrench, FileText, Package, CheckCheck, List, Loader2 } from "lucide-react";
 import { TicketTable } from "@/components/admin/ticket-table";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
@@ -37,9 +37,7 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState({
     tickets: 0,
     pendingTickets: 0,
-    services: 0,
-    quotes: 0,
-    totalRevenue: 0,
+    completedTickets: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -54,9 +52,9 @@ export default function AdminDashboardPage() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const tickets = snapshot.docs.map(doc => doc.data());
       const pendingTickets = tickets.filter(t => t.status !== 'Resuelto').length;
-      const totalRevenue = tickets.reduce((acc, t) => acc + (t.price || 0), 0);
+      const completedTickets = tickets.filter(t => t.status === 'Resuelto').length;
       
-      setStats(prev => ({ ...prev, tickets: tickets.length, pendingTickets, totalRevenue }));
+      setStats(prev => ({ ...prev, tickets: tickets.length, pendingTickets, completedTickets }));
       setIsLoading(false);
     });
 
@@ -91,10 +89,10 @@ export default function AdminDashboardPage() {
           description="Tickets 'Recibidos' o 'En Progreso'."
         />
         <StatCard 
-          title="Ingresos por Tickets" 
-          value={`$${stats.totalRevenue.toFixed(2)}`} 
-          icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
-          description="Suma de precios de todos los tickets."
+          title="Proyectos Completados" 
+          value={stats.completedTickets} 
+          icon={<CheckCheck className="h-4 w-4 text-muted-foreground" />}
+          description="Total de proyectos completados."
         />
          <StatCard 
           title="Servicios" 
