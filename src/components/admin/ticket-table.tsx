@@ -94,80 +94,80 @@ export type Ticket = {
 }
 
 const downloadServiceOrderPDF = (ticket: Ticket) => {
-  const doc = new jsPDF();
-  let yPos = 20;
-  const ticketId = ticket.ticketNumber ? `ORD-${String(ticket.ticketNumber).padStart(3, '0')}` : ticket.id;
+    const doc = new jsPDF();
+    const ticketId = ticket.ticketNumber ? `ORD-${String(ticket.ticketNumber).padStart(3, '0')}` : ticket.id;
+    let yPos = 15;
+
+    // --- Header ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text("LEBAREF", 14, yPos);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Orden de Servicio", 14, yPos + 5);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`Orden #${ticketId}`, 196, yPos, { align: 'right' });
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Fecha: ${ticket.createdAt?.toDate().toLocaleDateString('es-MX') || "N/A"}`, 196, yPos + 5, { align: 'right' });
+    
+    yPos += 20;
+    doc.setDrawColor(221, 221, 221); // A light grey color
+    doc.line(14, yPos, 196, yPos);
+    yPos += 10;
+
+    // --- Client and Service Info in two columns ---
+    autoTable(doc, {
+      startY: yPos,
+      body: [
+        [
+          { content: 'CLIENTE', styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
+          { content: 'DETALLES DEL SERVICIO', styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }
+        ],
+        [
+          { content: `Nombre: ${ticket.clientName}\nDirección: ${ticket.clientAddress}\nTeléfono: ${ticket.clientPhone}`, styles: { cellWidth: 91 } },
+          { content: `Tipo: ${ticket.serviceType}\nEquipo: ${ticket.equipmentType}\nUrgencia: ${ticket.urgency.charAt(0).toUpperCase() + ticket.urgency.slice(1)}`, styles: { cellWidth: 91 } }
+        ]
+      ],
+      theme: 'plain',
+      styles: { fontSize: 9, cellPadding: 2 }
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 10;
+
+    // --- Description ---
+    doc.setFontSize(10).setFont(undefined, 'bold');
+    doc.text("Descripción del Problema / Necesidad:", 14, yPos);
+    yPos += 6;
+    doc.setFontSize(9).setFont(undefined, 'normal');
+    const splitDescription = doc.splitTextToSize(ticket.description, 180);
+    doc.text(splitDescription, 15, yPos + 4);
+    doc.setDrawColor(200, 200, 200);
+    doc.rect(14, yPos, 182, 35); // Box for the description
+    yPos += 45;
+
+    // --- Technician Notes ---
+    doc.setFontSize(10).setFont(undefined, 'bold');
+    doc.text("Notas del Técnico:", 14, yPos);
+    yPos += 6;
+    doc.rect(14, yPos, 182, 50); // Box for technician notes
+    yPos += 60;
+    
+    // --- Signatures ---
+    const signatureY = doc.internal.pageSize.height - 40;
+    doc.setDrawColor(150, 150, 150);
+    doc.line(20, signatureY, 80, signatureY);
+    doc.setFontSize(10).setFont(undefined, 'normal');
+    doc.text("Firma del Cliente", 50, signatureY + 5, { align: 'center' });
+
+    doc.line(116, signatureY, 176, signatureY);
+    doc.text("Firma del Técnico", 146, signatureY + 5, { align: 'center' });
 
 
-  doc.setFontSize(14);
-  doc.text("LEBAREF", 14, yPos);
-  yPos += 8;
-  doc.setFontSize(12);
-  doc.text(`Orden de Servicio #${ticketId}`, 14, yPos);
-  yPos += 12;
-
-  // Client Info
-  doc.setFontSize(12);
-  doc.text("Información del Cliente", 14, yPos);
-  yPos += 7;
-  doc.setFontSize(10);
-  doc.text(`Nombre: ${ticket.clientName}`, 14, yPos);
-  yPos += 6;
-  doc.text(`Teléfono: ${ticket.clientPhone}`, 14, yPos);
-  yPos += 6;
-  doc.text(`Dirección: ${ticket.clientAddress}`, 14, yPos);
-  yPos += 12;
-  
-  // Service Details
-  doc.setFontSize(12);
-  doc.text("Detalles del Servicio", 14, yPos);
-  yPos += 7;
-  doc.setFontSize(10);
-  
-  const details = [
-    ["Fecha de Creación", ticket.createdAt?.toDate().toLocaleDateString('es-MX') || "N/A"],
-    ["Tipo de Servicio", ticket.serviceType],
-    ["Nivel de Urgencia", ticket.urgency.charAt(0).toUpperCase() + ticket.urgency.slice(1)],
-    ["Asunto / Equipo", ticket.equipmentType],
-  ];
-
-  autoTable(doc, {
-    startY: yPos,
-    head: [['Campo', 'Valor']],
-    body: details,
-    theme: 'striped',
-    headStyles: { fillColor: [46, 154, 254] },
-  });
-
-  yPos = (doc as any).lastAutoTable.finalY + 10;
-  
-  // Description
-  doc.setFontSize(12);
-  doc.text("Descripción del Problema / Necesidad:", 14, yPos);
-  yPos += 6;
-  doc.setFontSize(10);
-  const splitDescription = doc.splitTextToSize(ticket.description, 180);
-  doc.rect(14, yPos, 182, 40); // Draw a box for the description
-  doc.text(splitDescription, 15, yPos + 5);
-  yPos += 50;
-
-  // Technician Notes
-  doc.setFontSize(12);
-  doc.text("Notas del Técnico:", 14, yPos);
-  yPos += 6;
-  doc.rect(14, yPos, 182, 60); // Box for technician notes
-  yPos += 70;
-
-  // Client Signature
-  doc.line(14, yPos, 80, yPos);
-  doc.setFontSize(10);
-  doc.text("Firma del Cliente", 35, yPos + 5);
-  
-  doc.line(116, yPos, 182, yPos);
-  doc.text("Firma del Técnico", 135, yPos + 5);
-
-
-  doc.save(`${ticketId}.pdf`);
+    doc.save(`${ticketId}.pdf`);
 }
 
 
@@ -568,5 +568,3 @@ export function TicketTable() {
     </div>
   )
 }
-
-    
