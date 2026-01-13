@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -64,7 +63,7 @@ export default function LoginPage() {
         />
         <div className="relative z-10 text-center space-y-4">
             <Logo className="justify-center text-4xl" />
-            <p className="text-lg text-muted-foreground">Expertos en gestión y mantenimiento de equipos.</p>
+            {/* <p className="text-lg text-muted-foreground">Expertos en gestión y mantenimiento de equipos.</p> */}
         </div>
       </div>
       <div className="flex items-center justify-center bg-background p-8">
