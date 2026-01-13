@@ -11,7 +11,7 @@ export function Footer() {
           <div className="flex flex-col items-center md:items-start gap-2">
             <Logo />
             <p className="text-sm text-muted-foreground">
-              &copy; {currentYear} TECHFLOW CRM. Todos los derechos reservados.
+              &copy; {currentYear} lebaref. Todos los derechos reservados.
             </p>
           </div>
           <nav className="flex flex-wrap justify-center gap-4 md:gap-6">

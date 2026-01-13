@@ -138,7 +138,7 @@ const downloadPDF = (quote: Quote) => {
 
     // Company Name
     doc.setFontSize(14);
-    doc.text("Servicio Técnico, Industrial y Comercial de Gastronomía S.A. De C.V.", 105, yPos, { align: 'center' });
+    doc.text("lebaref", 105, yPos, { align: 'center' });
     yPos += 12;
     
     // Client Info

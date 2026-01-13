@@ -32,7 +32,7 @@ export default function AboutPage() {
             Sobre Nosotros
           </h1>
           <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
-            Conoce la historia, misión y valores que nos convierten en líderes del servicio técnico gastronómico en Yucatán.
+            Conoce la historia, misión y valores que nos convierten en líderes del servicio técnico.
           </p>
         </div>
       </section>
@@ -42,7 +42,7 @@ export default function AboutPage() {
            <div className="relative h-80 md:h-full min-h-[400px] rounded-lg overflow-hidden shadow-2xl">
             <Image
               src="https://ucarecdn.com/3336978a-7b33-42e1-a423-02631b746583/aaaIMG_6564.jpg"
-              alt="Taller de sticgsa"
+              alt="Taller de lebaref"
               data-ai-hint="workshop tools"
               fill
               className="object-cover"
@@ -54,7 +54,7 @@ export default function AboutPage() {
               Expertos en servicios para estufas, freidoras, campanas, hornos y refrigeradores.
             </p>
             <p className="text-muted-foreground">
-              En Equipo Técnico Gastronómico sticgsa SA de CV tenemos más de 30 años de experiencia dentro del ramo industrial, brindando los mejores servicios de reparación, mantenimiento preventivo y correctivo de diferentes equipos de cocina industrial. Nos ubicamos en la Ciudad de Mérida Yucatán.
+              En lebaref tenemos más de 30 años de experiencia dentro del ramo industrial, brindando los mejores servicios de reparación, mantenimiento preventivo y correctivo de diferentes equipos de cocina industrial. Nos ubicamos en la Ciudad de Mérida Yucatán.
             </p>
             <p className="text-muted-foreground">
               Atendemos de manera integral cada una de las necesidades y requerimientos de nuestros clientes, ofrecemos soluciones técnicas asertivas en el manejo, diagnóstico y reparación de distintos equipos de cocina. Disponemos de la infraestructura comercial necesaria para la resolución efectiva de cada servicio.

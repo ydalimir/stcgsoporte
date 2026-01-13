@@ -100,7 +100,7 @@ const downloadServiceOrderPDF = (ticket: Ticket) => {
 
 
   doc.setFontSize(14);
-  doc.text("Servicio Técnico, Industrial y Comercial de Gastronomía S.A. De C.V.", 14, yPos);
+  doc.text("lebaref", 14, yPos);
   yPos += 8;
   doc.setFontSize(12);
   doc.text(`Orden de Servicio #${ticketId}`, 14, yPos);

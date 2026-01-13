@@ -7,9 +7,9 @@ export function Logo({className}: {className?: string}) {
     <Link
       href="/"
       className={cn('flex items-center gap-2', className)}
-      aria-label="TECHFLOW CRM Home"
+      aria-label="lebaref Home"
     >
-      <span className="font-bold text-xl font-headline">TECHFLOW CRM</span>
+      <span className="font-bold text-xl font-headline">lebaref</span>
     </Link>
   );
 }
