@@ -29,7 +29,6 @@ export default function ProfilePage() {
   const { user, isLoading: authIsLoading } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [displayName, setDisplayName] = useState('');
-  const [photoURL, setPhotoURL] = useState('');
   const [isSyncing, setIsSyncing] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
@@ -52,7 +51,6 @@ export default function ProfilePage() {
           const userData = userDoc.data() as UserProfile;
           setProfile(userData);
           setDisplayName(user.displayName || userData.displayName || '');
-          setPhotoURL(user.photoURL || userData.photoURL || '');
         } else {
           // If doc doesn't exist, create it.
           const newUserProfile: UserProfile = {
@@ -61,7 +59,7 @@ export default function ProfilePage() {
             displayName: user.displayName || '',
             photoURL: user.photoURL || '',
           };
-          await setDoc(userDocRef, newUserProfile).catch(serverError => {
+          setDoc(userDocRef, newUserProfile).catch(serverError => {
               errorEmitter.emit('permission-error', new FirestorePermissionError({
                   path: userDocRef.path,
                   operation: 'create',
@@ -91,15 +89,20 @@ export default function ProfilePage() {
     const userDocRef = doc(db, "users", user.uid);
     try {
         // Update Firebase Auth profile
-        await updateProfile(user, { displayName, photoURL });
+        await updateProfile(user, { displayName });
         
         // Update Firestore document
-        await updateDoc(userDocRef, {
+        updateDoc(userDocRef, {
             displayName,
-            photoURL,
+        }).catch(serverError => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'update',
+                requestResourceData: { displayName }
+            }));
         });
 
-        setProfile(prev => prev ? { ...prev, displayName, photoURL } : null);
+        setProfile(prev => prev ? { ...prev, displayName } : null);
 
         toast({
             title: "Perfil Actualizado",
@@ -112,11 +115,6 @@ export default function ProfilePage() {
             description: "No se pudieron guardar los cambios.",
             variant: "destructive",
         });
-         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: userDocRef.path,
-            operation: 'update',
-            requestResourceData: { displayName, photoURL }
-        }));
     } finally {
         setIsSaving(false);
     }
@@ -160,7 +158,7 @@ export default function ProfilePage() {
         <Card>
           <CardHeader className="text-center">
             <Avatar className="mx-auto h-24 w-24 mb-4 border-2 border-primary/20">
-              <AvatarImage src={photoURL} alt={displayName} />
+              <AvatarImage src={profile.photoURL} alt={displayName} />
               <AvatarFallback>
                 <User className="h-12 w-12" />
               </AvatarFallback>
@@ -178,15 +176,6 @@ export default function ProfilePage() {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Tu nombre"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="photoURL">URL de Foto de Perfil</Label>
-              <Input
-                id="photoURL"
-                value={photoURL}
-                onChange={(e) => setPhotoURL(e.target.value)}
-                placeholder="https://ejemplo.com/foto.jpg"
               />
             </div>
              <div className="border-t pt-4">
