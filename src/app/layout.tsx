@@ -4,7 +4,6 @@ import { cn } from '@/lib/utils';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/hooks/use-auth-provider';
-import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
@@ -30,7 +29,7 @@ export default function RootLayout({
       <body className={cn('font-body antialiased bg-background')}>
         <AuthProvider>
             <div className="flex flex-col min-h-screen">
-                <Header />
+                
                 <main className="flex-grow">
                     {children}
                 </main>
