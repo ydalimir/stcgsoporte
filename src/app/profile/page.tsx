@@ -2,54 +2,65 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { updateProfile } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, LogOut, Loader2, Ticket, List } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User, LogOut, Loader2, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { errorEmitter } from "@/lib/error-emitter";
 import { FirestorePermissionError } from "@/lib/errors";
 
+type UserProfile = {
+  email: string;
+  role: 'user' | 'admin';
+  displayName?: string;
+  photoURL?: string;
+};
+
 export default function ProfilePage() {
   const { user, isLoading: authIsLoading } = useAuth();
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [displayName, setDisplayName] = useState('');
+  const [photoURL, setPhotoURL] = useState('');
+  const [isSyncing, setIsSyncing] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (authIsLoading) {
-      return; 
-    }
+    if (authIsLoading) return;
     if (!user) {
       router.push("/login");
       return;
     }
-    
-    const syncUserProfile = async () => {
-      if (!user) return;
+
+    const fetchUserProfile = async () => {
       setIsSyncing(true);
       const userDocRef = doc(db, "users", user.uid);
       try {
-        const userDoc = await getDoc(userDocRef).catch(serverError => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: userDocRef.path,
-                operation: 'get',
-            }));
-            throw serverError; // re-throw to stop execution
-        });
+        const userDoc = await getDoc(userDocRef);
 
-        if (!userDoc.exists()) {
-          const newUserProfile = {
-            email: user.email,
+        if (userDoc.exists()) {
+          const userData = userDoc.data() as UserProfile;
+          setProfile(userData);
+          setDisplayName(user.displayName || userData.displayName || '');
+          setPhotoURL(user.photoURL || userData.photoURL || '');
+        } else {
+          // If doc doesn't exist, create it.
+          const newUserProfile: UserProfile = {
+            email: user.email || '',
             role: "user", // Default role
-            createdAt: new Date().toISOString(),
+            displayName: user.displayName || '',
+            photoURL: user.photoURL || '',
           };
-          // Document doesn't exist, so create it.
           await setDoc(userDocRef, newUserProfile).catch(serverError => {
               errorEmitter.emit('permission-error', new FirestorePermissionError({
                   path: userDocRef.path,
@@ -57,32 +68,73 @@ export default function ProfilePage() {
                   requestResourceData: newUserProfile
               }));
           });
+          setProfile(newUserProfile);
         }
       } catch (error) {
-        // Errors are now handled by the emitter, but we can still log if needed for other reasons.
-        // We avoid calling toast here to prevent duplicate notifications.
-        console.error("Error syncing user profile:", error);
+        console.error("Error fetching user profile:", error);
+        toast({
+          title: "Error",
+          description: "No se pudo cargar tu perfil.",
+          variant: "destructive"
+        });
       } finally {
         setIsSyncing(false);
       }
     };
-    
-    syncUserProfile();
 
+    fetchUserProfile();
   }, [user, authIsLoading, router, toast]);
+
+  const handleSaveChanges = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    const userDocRef = doc(db, "users", user.uid);
+    try {
+        // Update Firebase Auth profile
+        await updateProfile(user, { displayName, photoURL });
+        
+        // Update Firestore document
+        await updateDoc(userDocRef, {
+            displayName,
+            photoURL,
+        });
+
+        setProfile(prev => prev ? { ...prev, displayName, photoURL } : null);
+
+        toast({
+            title: "Perfil Actualizado",
+            description: "Tus cambios han sido guardados exitosamente.",
+        });
+    } catch (error: any) {
+        console.error("Error updating profile:", error);
+        toast({
+            title: "Error al Guardar",
+            description: "No se pudieron guardar los cambios.",
+            variant: "destructive",
+        });
+         errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'update',
+            requestResourceData: { displayName, photoURL }
+        }));
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
 
   const handleSignOut = async () => {
     try {
       await auth.signOut();
       toast({
-        title: "Signed Out",
-        description: "You have been successfully signed out.",
+        title: "Sesión Cerrada",
+        description: "Has cerrado sesión exitosamente.",
       });
       router.push("/");
     } catch (error: any) {
       toast({
-        title: "Sign Out Failed",
-        description: error.message || "An unexpected error occurred.",
+        title: "Fallo al Cerrar Sesión",
+        description: error.message || "Ocurrió un error inesperado.",
         variant: "destructive",
       });
     }
@@ -96,46 +148,62 @@ export default function ProfilePage() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Redirecting to login...</p>
-      </div>
-    );
+  if (!user || !profile) {
+    return null; // Redirecting is handled in useEffect
   }
+  
+  const isAdmin = profile.role === 'admin';
 
   return (
     <div className="container mx-auto px-4 py-16">
       <div className="max-w-2xl mx-auto">
         <Card>
           <CardHeader className="text-center">
-            <Avatar className="mx-auto h-20 w-20 mb-4">
+            <Avatar className="mx-auto h-24 w-24 mb-4 border-2 border-primary/20">
+              <AvatarImage src={photoURL} alt={displayName} />
               <AvatarFallback>
-                <User className="h-10 w-10" />
+                <User className="h-12 w-12" />
               </AvatarFallback>
             </Avatar>
-            <CardTitle className="text-2xl font-headline">Panel de Cliente</CardTitle>
-            <CardDescription>Gestiona tu información, tickets de servicio y más.</CardDescription>
+            <CardTitle className="text-2xl font-headline">
+              {isAdmin ? 'Panel de Administrador' : 'Panel de Cliente'}
+            </CardTitle>
+            <CardDescription>Gestiona tu información y preferencias de la cuenta.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="border-b pb-4">
+            <div className="space-y-2">
+              <Label htmlFor="displayName">Nombre a Mostrar</Label>
+              <Input
+                id="displayName"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Tu nombre"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="photoURL">URL de Foto de Perfil</Label>
+              <Input
+                id="photoURL"
+                value={photoURL}
+                onChange={(e) => setPhotoURL(e.target.value)}
+                placeholder="https://ejemplo.com/foto.jpg"
+              />
+            </div>
+             <div className="border-t pt-4">
               <p className="text-sm font-medium text-muted-foreground">Correo Electrónico</p>
               <p className="text-lg font-semibold">{user.email}</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-               <Button asChild variant="outline">
-                   <Link href="/profile/my-tickets">
-                       <List className="mr-2 h-4 w-4" />
-                       Ver Mis Tickets
-                   </Link>
-                </Button>
-                <Button asChild className="bg-accent hover:bg-accent/90">
-                    <Link href="/tickets/new">
-                        <Ticket className="mr-2 h-4 w-4"/>
-                        Crear Nuevo Ticket
+             {isAdmin && (
+                <Button asChild className="w-full bg-accent hover:bg-accent/90">
+                    <Link href="/admin">
+                        <ShieldCheck className="mr-2 h-4 w-4"/>
+                        Ir al Panel de Administración
                     </Link>
                 </Button>
-            </div>
+            )}
+            <Button onClick={handleSaveChanges} disabled={isSaving} className="w-full">
+              {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</> : "Guardar Cambios"}
+            </Button>
           </CardContent>
           <CardFooter>
             <Button variant="ghost" className="w-full" onClick={handleSignOut}>
