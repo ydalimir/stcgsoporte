@@ -37,8 +37,9 @@ export default function AdminLayout({
       { href: "/admin/services", label: "Servicios", icon: Wrench },
       { href: "/admin/spare-parts", label: "Refacciones", icon: Package },
       { href: "/admin/reports", label: "Reportes", icon: AreaChart },
-      { href: "/admin/users", label: "CONTROL ADMINISTRADOR", icon: Users },
     ];
+
+    const adminControlLink = { href: "/admin/users", label: "CONTROL ADMINISTRADOR", icon: Users };
 
     const handleSignOut = async () => {
         await auth.signOut();
@@ -59,7 +60,7 @@ export default function AdminLayout({
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
             <Logo />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 overflow-auto py-2">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
               {navLinks.map((link) => (
                 <Link
@@ -77,6 +78,21 @@ export default function AdminLayout({
               ))}
             </nav>
           </div>
+            <div className="mt-auto p-2">
+                 <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+                     <Link
+                        href={adminControlLink.href}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${
+                            isActive(adminControlLink.href)
+                            ? "bg-muted text-primary"
+                            : "text-muted-foreground"
+                        }`}
+                        >
+                        <adminControlLink.icon className="h-4 w-4" />
+                        {adminControlLink.label}
+                    </Link>
+                </nav>
+            </div>
         </div>
       </div>
       <div className="flex flex-col">
@@ -100,7 +116,7 @@ export default function AdminLayout({
                     >
                         LEBAREF
                     </Link>
-                    {navLinks.map((link) => (
+                    {[...navLinks, adminControlLink].map((link) => (
                         <Link
                         key={link.href}
                         href={link.href}
