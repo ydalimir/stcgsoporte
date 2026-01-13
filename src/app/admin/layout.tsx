@@ -22,9 +22,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const navLinks = [
   { href: "/admin", label: "Dashboard", icon: Home, exact: true },
+  { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
   { href: "/admin/tickets", label: "Tickets", icon: Ticket },
   { href: "/admin/services", label: "Servicios", icon: Wrench },
-  { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
   { href: "/admin/spare-parts", label: "Refacciones", icon: Package },
 ];
 
