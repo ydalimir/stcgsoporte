@@ -17,8 +17,12 @@ service cloud.firestore {
     }
 
     match /services/{serviceId} {
-        allow read: if true;
-        allow write: if isAdmin();
+      allow write: if isAdmin();
+      // Allow any user to read individual services, but only admins to list them all
+      allow read: if request.auth != null;
+    }
+     match /services {
+      allow list: if isAdmin();
     }
 
     match /quotes/{quoteId} {
@@ -26,7 +30,10 @@ service cloud.firestore {
     }
 
     match /spare_parts/{partId} {
-        allow read, write: if isAdmin();
+      allow read, write: if isAdmin();
+    }
+    match /spare_parts {
+      allow list: if isAdmin();
     }
     
     match /counters/{counterId} {
