@@ -5,7 +5,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'lebaref',
+  title: 'LEBAREF',
   description: 'Expertos en gestión y mantenimiento de equipos a través de nuestro CRM.',
 };
 
