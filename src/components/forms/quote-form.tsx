@@ -340,5 +340,3 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
 }
 
     
-
-    
