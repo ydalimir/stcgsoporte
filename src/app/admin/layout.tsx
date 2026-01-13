@@ -37,7 +37,7 @@ export default function AdminLayout({
       { href: "/admin/services", label: "Servicios", icon: Wrench },
       { href: "/admin/spare-parts", label: "Refacciones", icon: Package },
       { href: "/admin/reports", label: "Reportes", icon: AreaChart },
-      { href: "/admin/users", label: "Control de Usuarios", icon: Users },
+      { href: "/admin/users", label: "CONTROL ADMINISTRADOR", icon: Users },
     ];
 
     const handleSignOut = async () => {
