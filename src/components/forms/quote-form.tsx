@@ -47,6 +47,7 @@ const quoteItemSchema = z.object({
 const quoteFormSchema = z.object({
   clientName: z.string().min(2, "El nombre del cliente es requerido."),
   clientPhone: z.string().min(1, "El teléfono es requerido."),
+  clientEmail: z.string().email({ message: "Correo inválido." }).optional().or(z.literal('')),
   clientAddress: z.string().min(1, "La dirección es requerida."),
   date: z.string().min(1, "La fecha es requerida."),
   status: z.enum(["Borrador", "Enviada", "Aceptada", "Rechazada"]),
@@ -107,6 +108,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     defaultValues: {
       clientName: "",
       clientPhone: "",
+      clientEmail: "",
       clientAddress: "",
       date: new Date().toISOString().split("T")[0],
       status: "Borrador",
@@ -137,6 +139,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
          form.reset({
             clientName: "",
             clientPhone: "",
+            clientEmail: "",
             clientAddress: "",
             date: new Date().toISOString().split("T")[0],
             status: "Borrador",
@@ -204,11 +207,14 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                   <FormField name="clientPhone" control={form.control} render={({ field }) => (
                       <FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
+                   <FormField name="clientEmail" control={form.control} render={({ field }) => (
+                    <FormItem><FormLabel>Email (Opcional)</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
                   <FormField name="rfc" control={form.control} render={({ field }) => (
                     <FormItem><FormLabel>RFC (Opcional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                    <FormField name="clientAddress" control={form.control} render={({ field }) => (
-                      <FormItem className="md:col-span-2 lg:col-span-3"><FormLabel>Dirección</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem className="lg:col-span-2"><FormLabel>Dirección</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField name="date" control={form.control} render={({ field }) => (
                     <FormItem><FormLabel>Fecha de Emisión</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>

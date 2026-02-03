@@ -68,6 +68,7 @@ export type Quote = {
   quoteNumber: number;
   clientName: string;
   clientPhone: string;
+  clientEmail?: string;
   clientAddress: string;
   date: string;
   expirationDate?: string;
@@ -87,15 +88,14 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
       throw new Error("La cotización no tiene items.");
     }
     
-    // Create a detailed description from quote items
     const itemsDescription = quote.items.map(item => `${item.quantity} x ${item.description}`).join(', ');
-    const finalDescription = `${itemsDescription}. --- OBSERVACIONES: ${quote.observations || 'Ninguna.'}`;
+    const finalDescription = `Servicio basado en la cotización #${String(quote.quoteNumber).padStart(3, '0')}. --- ITEMS: ${itemsDescription}. --- OBSERVACIONES: ${quote.observations || 'Ninguna.'}`;
 
     const ticketData = {
       clientName: quote.clientName,
       clientPhone: quote.clientPhone, 
       clientAddress: quote.clientAddress,
-      clientEmail: "N/A", 
+      clientEmail: quote.clientEmail || "N/A", 
       clientRfc: quote.rfc || "N/A",
       serviceType: "correctivo" as "correctivo" | "preventivo", 
       equipmentType: `Servicio desde cotización #COT-${String(quote.quoteNumber).padStart(3, '0')}`,
@@ -108,10 +108,14 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
       quoteId: quote.id,
     };
   
+    const quoteRef = doc(db, "quotes", quote.id);
+
     if (quote.linkedTicketId) {
-        // Update existing ticket
         const ticketRef = doc(db, "tickets", quote.linkedTicketId);
-        await updateDoc(ticketRef, ticketData);
+        const batch = writeBatch(db);
+        batch.update(ticketRef, ticketData);
+        batch.update(quoteRef, { status: "Aceptada" });
+        await batch.commit();
         return quote.linkedTicketId;
     } else {
         return await runTransaction(db, async (transaction) => {
@@ -126,8 +130,7 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
             const newTicketRef = doc(collection(db, "tickets"));
             transaction.set(newTicketRef, { ...ticketData, ticketNumber: newTicketNumber });
             
-            const quoteRef = doc(db, "quotes", quote.id);
-            transaction.update(quoteRef, { linkedTicketId: newTicketRef.id });
+            transaction.update(quoteRef, { linkedTicketId: newTicketRef.id, status: 'Aceptada' });
 
             return newTicketRef.id;
         });
@@ -274,32 +277,27 @@ export function QuoteManager() {
 
   const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'quoteNumber'>) => {
     try {
-        if (selectedQuote) {
-            // Update existing quote
-            const quoteRef = doc(db, "quotes", selectedQuote.id);
-            await updateDoc(quoteRef, quoteData);
-            toast({ title: "Cotización Actualizada", description: `La cotización para ${quoteData.clientName} ha sido actualizada.` });
+        if (selectedQuote) { // UPDATE
+            const wasAccepted = selectedQuote.status === 'Aceptada';
+            const isNowAccepted = quoteData.status === 'Aceptada';
             
-            // If quote is accepted, update the linked ticket
-            if(quoteData.status === 'Aceptada' && selectedQuote.linkedTicketId){
-                const updatedQuote = { ...selectedQuote, ...quoteData };
-                await createOrUpdateTicketFromQuote(updatedQuote);
-                toast({ title: "Ticket Vinculado Actualizado", description: "La orden de servicio ha sido actualizada con los nuevos datos." });
+            if (isNowAccepted && !wasAccepted) {
+                await createOrUpdateTicketFromQuote({ ...selectedQuote, ...quoteData });
+                toast({ title: "Cotización Aceptada", description: `Se ha creado o actualizado la orden de servicio.` });
+            } else {
+                const quoteRef = doc(db, "quotes", selectedQuote.id);
+                await updateDoc(quoteRef, quoteData);
+                toast({ title: "Cotización Actualizada", description: `La cotización para ${quoteData.clientName} ha sido actualizada.` });
             }
-
-        } else {
-            // Create new quote with a numeric ID
+        } else { // CREATE
             await runTransaction(db, async (transaction) => {
                 const counterRef = doc(db, "counters", "quotes");
                 const counterDoc = await transaction.get(counterRef);
-
                 let newQuoteNumber = 1;
                 if (counterDoc.exists()) {
                     newQuoteNumber = counterDoc.data().lastNumber + 1;
                 }
-                
                 transaction.set(counterRef, { lastNumber: newQuoteNumber }, { merge: true });
-                
                 const newQuoteRef = doc(collection(db, "quotes"));
                 transaction.set(newQuoteRef, { ...quoteData, quoteNumber: newQuoteNumber });
             });
@@ -324,19 +322,15 @@ export function QuoteManager() {
   }, [toast]);
 
   const handleStatusChange = useCallback(async (quote: Quote, newStatus: Quote['status']) => {
-    const batch = writeBatch(db);
-    const quoteRef = doc(db, "quotes", quote.id);
-
     try {
         if (newStatus === "Aceptada") {
-            const ticketId = await createOrUpdateTicketFromQuote({ ...quote, status: newStatus });
-            batch.update(quoteRef, { status: newStatus, linkedTicketId: ticketId });
+            await createOrUpdateTicketFromQuote(quote);
             toast({ title: "¡Cotización Aceptada!", description: `Se ha generado/actualizado el ticket de servicio.` });
         } else {
-            batch.update(quoteRef, { status: newStatus });
+            const quoteRef = doc(db, "quotes", quote.id);
+            await updateDoc(quoteRef, { status: newStatus });
             toast({ title: "Estado Actualizado", description: `La cotización para ${quote.clientName} ahora está ${newStatus}.` });
         }
-        await batch.commit();
     } catch (error) {
         console.error("Error updating status:", error);
         toast({ title: "Error al actualizar", description: "No se pudo cambiar el estado.", variant: "destructive"});
