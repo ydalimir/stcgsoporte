@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -68,6 +67,21 @@ interface QuoteFormProps {
   quote: Partial<Quote> | null;
 }
 
+const defaultValues = {
+  clientName: "",
+  clientPhone: "",
+  clientEmail: "",
+  clientAddress: "",
+  date: new Date().toISOString().split("T")[0],
+  status: "Borrador" as Quote['status'],
+  items: [],
+  expirationDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+  rfc: "",
+  observations: "",
+  policies: "Esta cotización tiene una validez de 15 días a partir de la fecha de emisión. Los precios no incluyen IVA. El tiempo de entrega puede variar.",
+  iva: 16,
+};
+
 export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProps) {
   const [services, setServices] = useState<Service[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
@@ -105,27 +119,13 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
 
   const form = useForm<QuoteFormValues>({
     resolver: zodResolver(quoteFormSchema),
+    defaultValues: defaultValues,
   });
   
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "items"
   });
-
-  const defaultValues = {
-    clientName: "",
-    clientPhone: "",
-    clientEmail: "",
-    clientAddress: "",
-    date: new Date().toISOString().split("T")[0],
-    status: "Borrador" as Quote['status'],
-    items: [],
-    expirationDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    rfc: "",
-    observations: "",
-    policies: "Esta cotización tiene una validez de 15 días a partir de la fecha de emisión. Los precios no incluyen IVA. El tiempo de entrega puede variar.",
-    iva: 16,
-  };
 
   useEffect(() => {
     if (isOpen) {
@@ -142,7 +142,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
   const items = form.watch('items');
   const ivaPercentage = form.watch('iva');
   
-  const subtotal = items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+  const subtotal = (items || []).reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
   const ivaAmount = subtotal * (ivaPercentage / 100);
   const total = subtotal + ivaAmount;
 
