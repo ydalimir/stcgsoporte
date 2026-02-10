@@ -55,7 +55,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable, getFilteredRowModel, getPaginationRowModel } from "@tanstack/react-table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { errorEmitter } from "@/lib/error-emitter";
@@ -64,6 +64,7 @@ import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
 import type { Quote } from "./quote-manager";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { QuoteForm } from "../forms/quote-form";
 
 
 const projectSchema = z.object({
@@ -94,6 +95,9 @@ export function ProjectManager() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [filter, setFilter] = useState("");
   const { toast } = useToast();
+
+  const [isQuoteFormOpen, setIsQuoteFormOpen] = useState(false);
+  const [linkingProject, setLinkingProject] = useState<Project | null>(null);
 
   useEffect(() => {
     if (authIsLoading) return;
@@ -181,6 +185,36 @@ export function ProjectManager() {
          toast({ title: "Error al vincular", variant: "destructive" });
       }
   }, [toast]);
+
+  const handleSaveAndLinkQuote = useCallback(async (quoteData: any) => {
+    if (!linkingProject) return;
+    try {
+        const newQuoteId = await runTransaction(db, async (transaction) => {
+            const counterRef = doc(db, "counters", "quotes");
+            const counterDoc = await transaction.get(counterRef);
+            let newQuoteNumber = 1;
+            if (counterDoc.exists()) {
+                newQuoteNumber = counterDoc.data().lastNumber + 1;
+            }
+            transaction.set(counterRef, { lastNumber: newQuoteNumber }, { merge: true });
+            const newQuoteRef = doc(collection(db, "quotes"));
+            transaction.set(newQuoteRef, { ...quoteData, quoteNumber: newQuoteNumber });
+            return newQuoteRef.id;
+        });
+
+        const projectDoc = doc(db, "projects", linkingProject.id);
+        await updateDoc(projectDoc, { quoteId: newQuoteId });
+
+        toast({ title: "Cotización Creada y Vinculada", description: "La nueva cotización se ha vinculado al proyecto." });
+
+    } catch (error) {
+        console.error("Error creating and linking quote:", error);
+        toast({ title: "Error al vincular", description: "No se pudo crear y vincular la cotización.", variant: "destructive" });
+    } finally {
+        setIsQuoteFormOpen(false);
+        setLinkingProject(null);
+    }
+}, [linkingProject, toast]);
   
   const columns: ColumnDef<Project>[] = useMemo(() => [
       { accessorKey: "client", header: "Cliente" },
@@ -221,6 +255,11 @@ export function ProjectManager() {
                       </DropdownMenuRadioItem>
                     ))}
                   </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setLinkingProject(project); setIsQuoteFormOpen(true); }}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Crear y Vincular Cotización
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )
@@ -247,7 +286,7 @@ export function ProjectManager() {
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="p-0 h-auto">
                         <Badge variant="outline" className={cn('cursor-pointer capitalize', {
-                           'text-primary border-primary': status === 'Nuevo',
+                           'text-blue-600 border-blue-600': status === 'Nuevo',
                            'text-yellow-600 border-yellow-600': status === 'En Progreso',
                            'text-red-600 border-red-600': status === 'En Pausa',
                            'text-green-600 border-green-600': status === 'Completado',
@@ -303,7 +342,7 @@ export function ProjectManager() {
             )
         }
       }
-  ], [handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote]);
+  ], [handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, handleSaveAndLinkQuote]);
   
   const table = useReactTable({ 
     data: projects, 
@@ -314,6 +353,10 @@ export function ProjectManager() {
     state: { globalFilter: filter },
     onGlobalFilterChange: setFilter,
   });
+
+  const quoteTemplateForCreation = useMemo(() => 
+    linkingProject ? { clientName: linkingProject.client } : null
+  , [linkingProject]);
   
   if (isLoading && authIsLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -339,6 +382,15 @@ export function ProjectManager() {
         </div>
 
       <ProjectFormDialog isOpen={isFormOpen} onOpenChange={setIsFormOpen} onSave={handleSaveProject} project={selectedProject} quotes={quotes} />
+      <QuoteForm 
+        isOpen={isQuoteFormOpen}
+        onOpenChange={(open) => {
+            if (!open) setLinkingProject(null);
+            setIsQuoteFormOpen(open);
+        }}
+        onSave={handleSaveAndLinkQuote}
+        quote={quoteTemplateForCreation}
+      />
     </div>
   );
 }
@@ -441,5 +493,3 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes }: Pr
         </Dialog>
     )
 }
-
-    

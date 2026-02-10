@@ -65,7 +65,7 @@ interface QuoteFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSave: (quote: Omit<Quote, 'id' | 'quoteNumber' | 'subtotal' | 'total'> & { subtotal: number, total: number }) => void;
-  quote: Quote | null;
+  quote: Partial<Quote> | null;
 }
 
 export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProps) {
@@ -105,20 +105,6 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
 
   const form = useForm<QuoteFormValues>({
     resolver: zodResolver(quoteFormSchema),
-    defaultValues: {
-      clientName: "",
-      clientPhone: "",
-      clientEmail: "",
-      clientAddress: "",
-      date: new Date().toISOString().split("T")[0],
-      status: "Borrador",
-      items: [],
-      expirationDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // Default 15 days
-      rfc: "",
-      observations: "",
-      policies: "Esta cotización tiene una validez de 15 días a partir de la fecha de emisión. Los precios no incluyen IVA. El tiempo de entrega puede variar.",
-      iva: 16,
-    },
   });
   
   const { fields, append, remove } = useFieldArray({
@@ -126,31 +112,30 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     name: "items"
   });
 
+  const defaultValues = {
+    clientName: "",
+    clientPhone: "",
+    clientEmail: "",
+    clientAddress: "",
+    date: new Date().toISOString().split("T")[0],
+    status: "Borrador" as Quote['status'],
+    items: [],
+    expirationDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    rfc: "",
+    observations: "",
+    policies: "Esta cotización tiene una validez de 15 días a partir de la fecha de emisión. Los precios no incluyen IVA. El tiempo de entrega puede variar.",
+    iva: 16,
+  };
+
   useEffect(() => {
     if (isOpen) {
-      if (quote) {
-        form.reset({
-          ...quote,
-          date: new Date(quote.date).toISOString().split("T")[0],
-          expirationDate: quote.expirationDate ? new Date(quote.expirationDate).toISOString().split("T")[0] : undefined,
-          iva: quote.iva ?? 16,
-        });
-      } else {
-         form.reset({
-            clientName: "",
-            clientPhone: "",
-            clientEmail: "",
-            clientAddress: "",
-            date: new Date().toISOString().split("T")[0],
-            status: "Borrador",
-            items: [],
-            expirationDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-            rfc: "",
-            observations: "",
-            policies: "Esta cotización tiene una validez de 15 días a partir de la fecha de emisión. Los precios no incluyen IVA. El tiempo de entrega puede variar.",
-            iva: 16,
-        });
-      }
+        const resetValues = { 
+            ...defaultValues, 
+            ...quote,
+            date: quote?.date ? new Date(quote.date).toISOString().split("T")[0] : defaultValues.date,
+            expirationDate: quote?.expirationDate ? new Date(quote.expirationDate).toISOString().split("T")[0] : defaultValues.expirationDate,
+          };
+        form.reset(resetValues);
     }
   }, [quote, isOpen, form]);
 
@@ -190,7 +175,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl p-0">
         <DialogHeader className="p-6 pb-0">
-          <DialogTitle>{quote ? `Editar Cotización #${quoteIdDisplay}` : "Crear Nueva Cotización"}</DialogTitle>
+          <DialogTitle>{quote?.id ? `Editar Cotización #${quoteIdDisplay}` : "Crear Nueva Cotización"}</DialogTitle>
           <DialogDescription>Complete los detalles para generar el documento de cotización.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
