@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -24,7 +25,6 @@
         "status": { "type": "string", "enum": ["Nuevo", "En Progreso", "En Pausa", "Completado"], "description": "Current status of the project." },
         "programmedDate": { "type": "string", "format": "date", "description": "Scheduled date for the project." },
         "priority": { "type": "string", "enum": ["Baja", "Media", "Alta"], "description": "Priority level of the project." },
-        "cost": { "type": "number", "description": "Estimated or final cost of the project." },
         "files": { "type": "array", "items": { "type": "string", "format": "uri" }, "description": "List of URLs to project-related files." },
         "lastUpdated": { "type": "string", "format": "date-time", "description": "Timestamp of the last update." },
         "createdAt": { "type": "string", "format": "date-time" }
@@ -150,3 +150,5 @@
     }
   }
 }
+
+    

@@ -72,7 +72,6 @@ const projectSchema = z.object({
   status: z.enum(["Nuevo", "En Progreso", "En Pausa", "Completado"]),
   programmedDate: z.string().min(1, { message: "La fecha programada es requerida." }),
   priority: z.enum(["Baja", "Media", "Alta"]),
-  cost: z.coerce.number().min(0, "El costo no puede ser negativo.").optional(),
 });
 
 export type Project = z.infer<typeof projectSchema> & {
@@ -164,7 +163,6 @@ export function ProjectManager() {
             'text-green-500 border-green-500': priority === 'Baja',
          })}>{priority}</Badge>
       }},
-      { accessorKey: "cost", header: "Costo", cell: ({row}) => row.original.cost ? `$${row.original.cost.toFixed(2)}` : 'N/A' },
       { accessorKey: "lastUpdated", header: "Última Act.", cell: ({row}) => row.original.lastUpdated ? new Date(row.original.lastUpdated.toDate()).toLocaleDateString() : 'N/A' },
       { id: "actions",
         cell: ({ row }) => (
@@ -242,7 +240,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project }: ProjectFor
     const [isSubmitting, setIsSubmitting] = useState(false);
     const form = useForm<z.infer<typeof projectSchema>>({
         resolver: zodResolver(projectSchema),
-        defaultValues: { client: "", description: "", responsible: "", status: "Nuevo", programmedDate: new Date().toISOString().split('T')[0], priority: "Media", cost: undefined }
+        defaultValues: { client: "", description: "", responsible: "", status: "Nuevo", programmedDate: new Date().toISOString().split('T')[0], priority: "Media" }
     });
 
     useEffect(() => {
@@ -250,7 +248,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project }: ProjectFor
           if (project) {
             form.reset({ ...project, programmedDate: new Date(project.programmedDate).toISOString().split('T')[0]});
           } else {
-            form.reset({ client: "", description: "", responsible: "", status: "Nuevo", programmedDate: new Date().toISOString().split('T')[0], priority: "Media", cost: undefined });
+            form.reset({ client: "", description: "", responsible: "", status: "Nuevo", programmedDate: new Date().toISOString().split('T')[0], priority: "Media" });
           }
         }
       }, [project, isOpen, form]);
@@ -290,7 +288,6 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project }: ProjectFor
                             </Select><FormMessage /></FormItem>
                            )} />
                         </div>
-                         <FormField control={form.control} name="cost" render={({ field }) => ( <FormItem><FormLabel>Costo (Opcional)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem> )} />
                          <DialogFooter className="sticky bottom-0 bg-background pt-4">
                             <DialogClose asChild><Button type="button" variant="ghost">Cancelar</Button></DialogClose>
                             <Button type="submit" disabled={isSubmitting}>
@@ -304,3 +301,5 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project }: ProjectFor
         </Dialog>
     )
 }
+
+    
