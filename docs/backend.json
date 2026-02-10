@@ -1,0 +1,152 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's profile in the system.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique ID." },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Represents a project with tasks, timelines, and costs.",
+      "type": "object",
+      "properties": {
+        "client": { "type": "string", "description": "Name of the client for the project." },
+        "description": { "type": "string", "description": "Detailed description of the project." },
+        "responsible": { "type": "string", "description": "Person in charge of the project." },
+        "status": { "type": "string", "enum": ["Nuevo", "En Progreso", "En Pausa", "Completado"], "description": "Current status of the project." },
+        "programmedDate": { "type": "string", "format": "date", "description": "Scheduled date for the project." },
+        "priority": { "type": "string", "enum": ["Baja", "Media", "Alta"], "description": "Priority level of the project." },
+        "cost": { "type": "number", "description": "Estimated or final cost of the project." },
+        "files": { "type": "array", "items": { "type": "string", "format": "uri" }, "description": "List of URLs to project-related files." },
+        "lastUpdated": { "type": "string", "format": "date-time", "description": "Timestamp of the last update." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["client", "description", "status", "programmedDate", "priority"]
+    },
+    "Client": {
+        "title": "Client",
+        "description": "Represents a client of the business.",
+        "type": "object",
+        "properties": {
+            "name": { "type": "string" },
+            "phone": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "address": { "type": "string" },
+            "rfc": { "type": "string" }
+        },
+        "required": ["name", "phone"]
+    },
+     "Supplier": {
+        "title": "Supplier",
+        "description": "Represents a supplier for parts or services.",
+        "type": "object",
+        "properties": {
+            "name": { "type": "string" },
+            "contactPerson": { "type": "string" },
+            "phone": { "type": "string" },
+            "email": { "type": "string", "format": "email" }
+        },
+        "required": ["name"]
+    },
+    "Ticket": {
+        "title": "Service Ticket",
+        "description": "Represents a service request ticket.",
+        "type": "object",
+        "properties": {
+            "ticketNumber": { "type": "number" },
+            "clientName": { "type": "string" },
+            "clientPhone": { "type": "string" },
+            "serviceType": { "type": "string" },
+            "description": { "type": "string" },
+            "status": { "type": "string" },
+            "urgency": { "type": "string" },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["clientName", "serviceType", "description", "status"]
+    },
+    "Quote": {
+      "title": "Quote",
+      "description": "Represents a price quote for a client.",
+      "type": "object",
+      "properties": {
+        "quoteNumber": { "type": "number"},
+        "clientName": { "type": "string" },
+        "total": { "type": "number" },
+        "status": { "type": "string" },
+        "date": { "type": "string", "format": "date" }
+      },
+      "required": ["clientName", "total", "status", "date"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "A service offered by the company.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "sku": { "type": "string" },
+        "price": { "type": "number" }
+      },
+      "required": ["title", "sku", "price"]
+    },
+    "SparePart": {
+      "title": "Spare Part",
+      "description": "A spare part for repairs.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "sku": { "type": "string" },
+        "price": { "type": "number" }
+      },
+      "required": ["name", "sku", "price"]
+    }
+  },
+  "auth": {
+    "providers": ["email"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores user profile information."
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Stores individual project details."
+    },
+    "/tickets/{ticketId}": {
+      "schema": { "$ref": "#/entities/Ticket" },
+      "description": "Stores service tickets."
+    },
+    "/quotes/{quoteId}": {
+      "schema": { "$ref": "#/entities/Quote" },
+      "description": "Stores quotes."
+    },
+    "/services/{serviceId}": {
+      "schema": { "$ref": "#/entities/Service" },
+      "description": "Stores available services."
+    },
+    "/spare_parts/{partId}": {
+      "schema": { "$ref": "#/entities/SparePart" },
+      "description": "Stores spare parts inventory."
+    },
+    "/clients/{clientId}": {
+        "schema": { "$ref": "#/entities/Client" },
+        "description": "Stores client information."
+    },
+    "/suppliers/{supplierId}": {
+        "schema": { "$ref": "#/entities/Supplier" },
+        "description": "Stores supplier information."
+    },
+    "/counters/{counterId}": {
+        "schema": { "type": "object", "properties": { "lastNumber": { "type": "number" } } },
+        "description": "Global counters for tickets, quotes, etc."
+    }
+  }
+}
