@@ -23,7 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Loader2, PlusCircle, MoreHorizontal, Edit, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import { Loader2, PlusCircle, MoreHorizontal, Edit, Trash2, Check, ChevronsUpDown, Download } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -78,6 +78,8 @@ import { cn } from "@/lib/utils";
 import type { Quote } from "./quote-manager";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { QuoteForm } from "../forms/quote-form";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 
 const projectSchema = z.object({
@@ -98,6 +100,107 @@ export type Project = z.infer<typeof projectSchema> & {
     createdAt: any;
 };
 
+const downloadPDF = (quote: Quote) => {
+    const doc = new jsPDF();
+    const quoteId = `COT-${String(quote.quoteNumber).padStart(3, '0')}`;
+    let yPos = 15;
+    
+    // --- Header ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text("LEBAREF", 14, yPos);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Servicio Técnico Especializado", 14, yPos + 5);
+    
+    const headerDetailsX = 196;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`Cotización`, headerDetailsX, yPos, { align: 'right' });
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`#${quoteId}`, headerDetailsX, yPos + 5, { align: 'right' });
+    doc.text(`Fecha: ${new Date(quote.date).toLocaleDateString('es-MX')}`, headerDetailsX, yPos + 10, { align: 'right' });
+    if(quote.expirationDate) {
+      doc.text(`Válida hasta: ${new Date(quote.expirationDate).toLocaleDateString('es-MX')}`, headerDetailsX, yPos + 15, { align: 'right' });
+    }
+    
+    yPos += 25;
+    doc.setDrawColor(221, 221, 221); // A light grey color
+    doc.line(14, yPos, 196, yPos);
+    yPos += 10;
+
+    // --- Client Info ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("COTIZADO PARA:", 14, yPos);
+    yPos += 5;
+
+    doc.setFont("helvetica", "normal");
+    doc.text(quote.clientName, 14, yPos);
+    if(quote.clientAddress) yPos += 5; doc.text(quote.clientAddress, 14, yPos);
+    if(quote.clientPhone) yPos += 5; doc.text(quote.clientPhone, 14, yPos);
+    if(quote.rfc) yPos += 5; doc.text(`RFC: ${quote.rfc}`, 14, yPos);
+    yPos += 15;
+
+    // --- Items Table ---
+    const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+    const ivaPercentage = quote.iva ?? 16;
+    const ivaAmount = subtotal * (ivaPercentage / 100);
+    const total = quote.total ?? subtotal + ivaAmount;
+
+    const foot = [
+      ['', '', { content: 'Subtotal', styles: { halign: 'right' } }, { content: `$${subtotal.toFixed(2)}`, styles: { halign: 'right' } }],
+      ['', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toFixed(2)}`, styles: { halign: 'right' } }],
+      ['', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toFixed(2)}`, styles: { fontStyle: 'bold', halign: 'right' } }],
+    ];
+    
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Descripción', 'Cantidad', 'Precio Unitario', 'Importe']],
+      body: quote.items.map(item => [
+        item.description, 
+        item.quantity, 
+        `$${(item.price || 0).toFixed(2)}`, 
+        `$${((item.quantity || 0) * (item.price || 0)).toFixed(2)}`
+      ]),
+      foot: foot,
+      headStyles: { fillColor: [41, 71, 121] },
+      footStyles: {
+        cellPadding: { top: 2, right: 4, bottom: 2, left: 4 },
+      },
+      didDrawPage: (data) => {
+        yPos = data.cursor?.y ?? yPos;
+      }
+    });
+
+    yPos = (doc as any).lastAutoTable.finalY + 15;
+
+    // --- Observations and Policies ---
+    if (quote.observations) {
+        doc.setFontSize(10).setFont(undefined, 'bold');
+        doc.text("Observaciones:", 14, yPos);
+        yPos += 5;
+        doc.setFontSize(9).setFont(undefined, 'normal');
+        const splitObservations = doc.splitTextToSize(quote.observations, 180);
+        doc.text(splitObservations, 14, yPos);
+        yPos += splitObservations.length * 5 + 10;
+    }
+
+    if (quote.policies) {
+        doc.setFontSize(10).setFont(undefined, 'bold');
+        doc.text("Políticas y Términos:", 14, yPos);
+        yPos += 5;
+        doc.setFontSize(9).setFont(undefined, 'normal');
+        const splitPolicies = doc.splitTextToSize(quote.policies, 180);
+        doc.text(splitPolicies, 14, yPos);
+    }
+    
+    doc.save(`${quoteId}.pdf`);
+}
+
 
 export function ProjectManager() {
   const { user, isLoading: authIsLoading } = useAuth();
@@ -111,6 +214,7 @@ export function ProjectManager() {
 
   const [isQuoteFormOpen, setIsQuoteFormOpen] = useState(false);
   const [linkingProject, setLinkingProject] = useState<Project | null>(null);
+  const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
 
   useEffect(() => {
     if (authIsLoading) return;
@@ -227,7 +331,32 @@ export function ProjectManager() {
         setIsQuoteFormOpen(false);
         setLinkingProject(null);
     }
-}, [linkingProject, toast]);
+  }, [linkingProject, toast]);
+
+    const handleUpdateQuote = useCallback(async (quoteData: any) => {
+        if (!editingQuote) return;
+        try {
+            const quoteRef = doc(db, "quotes", editingQuote.id);
+            await updateDoc(quoteRef, quoteData);
+            toast({ title: "Cotización Actualizada", description: `La cotización para ${quoteData.clientName} ha sido actualizada.` });
+        } catch (error) {
+            console.error("Error updating quote:", error);
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `quotes/${editingQuote.id}`,
+                operation: 'update',
+                requestResourceData: quoteData
+            }));
+            toast({ title: "Error al actualizar", description: "No se pudo actualizar la cotización.", variant: "destructive" });
+        } finally {
+            setIsQuoteFormOpen(false);
+            setEditingQuote(null);
+        }
+    }, [editingQuote, toast]);
+
+    const handleEditQuote = (quote: Quote) => {
+        setEditingQuote(quote);
+        setIsQuoteFormOpen(true);
+    };
   
   const columns: ColumnDef<Project>[] = useMemo(() => [
       { accessorKey: "client", header: "Cliente" },
@@ -250,48 +379,60 @@ export function ProjectManager() {
             }
 
             return (
-              <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                   <Button variant="outline" role="combobox" aria-expanded={open} className="w-[200px] justify-between">
-                    {currentQuote 
-                        ? `COT-${String(currentQuote.quoteNumber).padStart(3, '0')}`
-                        : "Asignar cotización..."
-                    }
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0">
-                  <Command>
-                    <CommandInput placeholder="Buscar por cliente o ID..." />
-                    <CommandList>
-                      <CommandEmpty>No se encontraron cotizaciones.</CommandEmpty>
-                      <CommandGroup>
-                        <CommandItem key="ninguna" value="ninguna" onSelect={() => onSelectQuote(null)}>
-                           <Check className={cn("mr-2 h-4 w-4", !project.quoteId ? "opacity-100" : "opacity-0")}/>
-                          Ninguna
-                        </CommandItem>
-                        {availableQuotes.map(q => (
-                          <CommandItem 
-                            key={q.id} 
-                            value={`COT-${String(q.quoteNumber).padStart(3, '0')} ${q.clientName}`}
-                            onSelect={() => onSelectQuote(q.id)}
-                          >
-                            <Check className={cn("mr-2 h-4 w-4", project.quoteId === q.id ? "opacity-100" : "opacity-0")}/>
-                            COT-{String(q.quoteNumber).padStart(3, '0')} ({q.clientName})
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                       <CommandSeparator />
+              <div className="flex items-center gap-1">
+                <Popover open={open} onOpenChange={setOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={open} className="w-[150px] justify-between">
+                      {currentQuote 
+                          ? `COT-${String(currentQuote.quoteNumber).padStart(3, '0')}`
+                          : "Asignar..."
+                      }
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Buscar por cliente o ID..." />
+                      <CommandList>
+                        <CommandEmpty>No se encontraron cotizaciones.</CommandEmpty>
                         <CommandGroup>
-                            <CommandItem onSelect={() => { setOpen(false); setLinkingProject(project); setIsQuoteFormOpen(true); }}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Crear y Vincular Cotización
+                          <CommandItem key="ninguna" value="ninguna" onSelect={() => onSelectQuote(null)}>
+                            <Check className={cn("mr-2 h-4 w-4", !project.quoteId ? "opacity-100" : "opacity-0")}/>
+                            Ninguna
+                          </CommandItem>
+                          {availableQuotes.map(q => (
+                            <CommandItem 
+                              key={q.id} 
+                              value={`COT-${String(q.quoteNumber).padStart(3, '0')} ${q.clientName}`}
+                              onSelect={() => onSelectQuote(q.id)}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", project.quoteId === q.id ? "opacity-100" : "opacity-0")}/>
+                              COT-{String(q.quoteNumber).padStart(3, '0')} ({q.clientName})
                             </CommandItem>
+                          ))}
                         </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+                        <CommandSeparator />
+                          <CommandGroup>
+                              <CommandItem onSelect={() => { setOpen(false); setLinkingProject(project); setIsQuoteFormOpen(true); }}>
+                                  <PlusCircle className="mr-2 h-4 w-4" />
+                                  Crear y Vincular Cotización
+                              </CommandItem>
+                          </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                 {currentQuote && (
+                    <div className="flex items-center">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditQuote(currentQuote)}>
+                            <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadPDF(currentQuote)}>
+                            <Download className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
+              </div>
             )
         }
       },
@@ -372,7 +513,7 @@ export function ProjectManager() {
             )
         }
       }
-  ], [handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, handleSaveAndLinkQuote]);
+  ], [handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, handleSaveAndLinkQuote, handleUpdateQuote]);
   
   const table = useReactTable({ 
     data: projects, 
@@ -384,9 +525,10 @@ export function ProjectManager() {
     onGlobalFilterChange: setFilter,
   });
 
-  const quoteTemplateForCreation = useMemo(() => 
-    linkingProject ? { clientName: linkingProject.client } : null
-  , [linkingProject]);
+  const quoteForForm = useMemo(() => 
+    editingQuote || (linkingProject ? { clientName: linkingProject.client } : null)
+  , [editingQuote, linkingProject]);
+
   
   if (isLoading && authIsLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -415,11 +557,14 @@ export function ProjectManager() {
       <QuoteForm 
         isOpen={isQuoteFormOpen}
         onOpenChange={(open) => {
-            if (!open) setLinkingProject(null);
+            if (!open) {
+                setLinkingProject(null);
+                setEditingQuote(null);
+            }
             setIsQuoteFormOpen(open);
         }}
-        onSave={handleSaveAndLinkQuote}
-        quote={quoteTemplateForCreation}
+        onSave={editingQuote ? handleUpdateQuote : handleSaveAndLinkQuote}
+        quote={quoteForForm}
       />
     </div>
   );
