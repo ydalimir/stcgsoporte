@@ -1,6 +1,6 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users } from "lucide-react";
+import { ClientManager } from "@/components/admin/client-manager";
 
 export default function ClientsPage() {
     return (
@@ -8,14 +8,12 @@ export default function ClientsPage() {
             <CardHeader>
                 <div className="flex items-center gap-3">
                     <Users className="w-6 h-6" />
-                    <CardTitle>Clientes</CardTitle>
+                    <CardTitle>Cartera de Clientes</CardTitle>
                 </div>
-                <CardDescription>Añadir, ver y gestionar la información de tus clientes. Próximamente.</CardDescription>
+                <CardDescription>Añadir, ver y gestionar la información de todos tus clientes.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                    <p className="text-muted-foreground">La sección de clientes está en construcción.</p>
-                </div>
+                <ClientManager />
             </CardContent>
         </Card>
     )
