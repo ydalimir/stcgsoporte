@@ -63,6 +63,7 @@ import { FirestorePermissionError } from "@/lib/errors";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
 import type { Quote } from "./quote-manager";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 
 const projectSchema = z.object({
@@ -173,7 +174,18 @@ export function ProjectManager() {
   const columns: ColumnDef<Project>[] = useMemo(() => [
       { accessorKey: "client", header: "Cliente" },
       { accessorKey: "description", header: "Descripción", cell: ({row}) => <div className="max-w-xs whitespace-normal">{row.original.description}</div> },
-      { accessorKey: "responsible", header: "Responsable" },
+      { accessorKey: "responsible", header: "Responsable", cell: ({row}) => {
+          const name = row.original.responsible;
+          const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2);
+          return (
+            <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8 text-xs">
+                    <AvatarFallback>{initials}</AvatarFallback>
+                </Avatar>
+                <span>{name}</span>
+            </div>
+          )
+      } },
       { accessorKey: "status", header: "Estado", cell: ({row}) => {
          const project = row.original;
          const status = project.status;
@@ -181,11 +193,11 @@ export function ProjectManager() {
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="p-0 h-auto">
-                        <Badge className={cn('cursor-pointer', {
-                           'bg-blue-500 hover:bg-blue-600': status === 'Nuevo',
-                           'bg-yellow-500 hover:bg-yellow-600 text-black': status === 'En Progreso',
-                           'bg-red-500 hover:bg-red-600': status === 'En Pausa',
-                           'bg-green-500 hover:bg-green-600': status === 'Completado',
+                        <Badge variant="outline" className={cn('cursor-pointer capitalize', {
+                           'text-primary border-primary': status === 'Nuevo',
+                           'text-chart-4 border-chart-4': status === 'En Progreso',
+                           'text-destructive border-destructive': status === 'En Pausa',
+                           'text-chart-3 border-chart-3': status === 'Completado',
                         })}>{status}</Badge>
                     </Button>
                 </DropdownMenuTrigger>
@@ -203,10 +215,10 @@ export function ProjectManager() {
       { accessorKey: "programmedDate", header: "Fecha Prog.", cell: ({row}) => new Date(row.original.programmedDate).toLocaleDateString() },
       { accessorKey: "priority", header: "Prioridad", cell: ({row}) => {
          const priority = row.original.priority;
-         return <Badge variant="outline" className={cn({
-            'text-red-500 border-red-500': priority === 'Alta',
-            'text-yellow-500 border-yellow-500': priority === 'Media',
-            'text-green-500 border-green-500': priority === 'Baja',
+         return <Badge variant="outline" className={cn('capitalize', {
+            'text-destructive border-destructive': priority === 'Alta',
+            'text-chart-4 border-chart-4': priority === 'Media',
+            'text-chart-3 border-chart-3': priority === 'Baja',
          })}>{priority}</Badge>
       }},
       { accessorKey: "lastUpdated", header: "Última Act.", cell: ({row}) => row.original.lastUpdated ? new Date(row.original.lastUpdated.toDate()).toLocaleDateString() : 'N/A' },
