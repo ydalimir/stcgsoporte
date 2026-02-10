@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Logo } from "@/components/logo";
+import { cn } from "@/lib/utils";
 
 export default function AdminLayout({
   children,
