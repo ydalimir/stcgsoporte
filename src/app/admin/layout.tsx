@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Package, FileText, Wrench, Ticket, User, LogOut, AreaChart, Users } from "lucide-react";
+import { Home, Briefcase, FileText, Users, ShoppingCart, Truck, Ticket, User, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
@@ -30,16 +29,26 @@ export default function AdminLayout({
     const { user } = useAuth();
     const router = useRouter();
 
-    const navLinks = [
-      { href: "/admin", label: "Dashboard", icon: Home, exact: true },
-      { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
-      { href: "/admin/tickets", label: "Tickets", icon: Ticket },
-      { href: "/admin/services", label: "Servicios", icon: Wrench },
-      { href: "/admin/spare-parts", label: "Refacciones", icon: Package },
-      { href: "/admin/reports", label: "Reportes", icon: AreaChart },
+    const mainLinks = [
+        { href: "/admin", label: "Dashboard", icon: Home, exact: true },
+        { href: "/admin/projects", label: "Proyectos", icon: Briefcase },
+    ];
+    
+    const salesLinks = [
+        { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
+        { href: "/admin/clients", label: "Clientes", icon: Users },
+    ];
+    
+    const purchasesLinks = [
+        { href: "/admin/purchase-orders", label: "Órdenes de Compra", icon: ShoppingCart },
+        { href: "/admin/suppliers", label: "Proveedores", icon: Truck },
     ];
 
-    const adminControlLink = { href: "/admin/users", label: "CONTROL ADMINISTRADOR", icon: Users };
+    const operationsLinks = [
+        { href: "/admin/tickets", label: "Tickets de Servicio", icon: Ticket },
+    ];
+
+    const adminControlLink = { href: "/admin/users", label: "Control de Usuarios", icon: User };
 
     const handleSignOut = async () => {
         await auth.signOut();
@@ -53,6 +62,28 @@ export default function AdminLayout({
         return pathname.startsWith(href);
     }
 
+    const NavLink = ({ link, isMobile = false }: { link: { href: string, label: string, icon: React.ElementType, exact?: boolean }, isMobile?: boolean}) => (
+         <Link
+            href={link.href}
+            className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary",
+                isActive(link.href, link.exact) ? "bg-muted text-primary" : "text-muted-foreground",
+                 isMobile && `gap-4 rounded-xl text-foreground hover:text-foreground mx-[-0.65rem] ${isActive(link.href, link.exact) ? "bg-muted" : ""}`
+            )}
+        >
+            <link.icon className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
+            {link.label}
+        </Link>
+    );
+
+    const NavGroup = ({ title, links, isMobile = false }: { title: string, links: any[], isMobile?: boolean }) => (
+        <div className="py-2">
+            {!isMobile && <h3 className="mb-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</h3>}
+            {links.map((link) => <NavLink key={link.href} link={link} isMobile={isMobile} />)}
+        </div>
+    );
+    
+
   return (
     <div className="grid h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       <div className="hidden border-r bg-muted/40 md:block">
@@ -62,35 +93,15 @@ export default function AdminLayout({
           </div>
           <div className="flex-1 overflow-auto py-2">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${
-                    isActive(link.href, link.exact)
-                      ? "bg-muted text-primary"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  <link.icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              ))}
+              {mainLinks.map((link) => <NavLink key={link.href} link={link} />)}
+              <NavGroup title="Ventas" links={salesLinks} />
+              <NavGroup title="Compras" links={purchasesLinks} />
+              <NavGroup title="Operaciones" links={operationsLinks} />
             </nav>
           </div>
             <div className="mt-auto p-4">
                  <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-                     <Link
-                        href={adminControlLink.href}
-                        className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${
-                            isActive(adminControlLink.href)
-                            ? "bg-muted text-primary"
-                            : "text-muted-foreground"
-                        }`}
-                        >
-                        <adminControlLink.icon className="h-4 w-4" />
-                        {adminControlLink.label}
-                    </Link>
+                    <NavLink link={adminControlLink} />
                 </nav>
             </div>
         </div>
@@ -113,21 +124,7 @@ export default function AdminLayout({
                         <Logo href="/admin" />
                     </div>
                     <nav className="grid gap-2 text-lg font-medium p-4">
-                    
-                    {[...navLinks, adminControlLink].map((link) => (
-                        <Link
-                        key={link.href}
-                        href={link.href}
-                        className={`mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 hover:text-foreground ${
-                            isActive(link.href, link.exact)
-                            ? "bg-muted text-foreground"
-                            : "text-muted-foreground"
-                        }`}
-                        >
-                        <link.icon className="h-5 w-5" />
-                        {link.label}
-                        </Link>
-                    ))}
+                        {[...mainLinks, ...salesLinks, ...purchasesLinks, ...operationsLinks, adminControlLink].map((link) => <NavLink key={link.href} link={link} isMobile={true} />)}
                     </nav>
                 </SheetContent>
             </Sheet>

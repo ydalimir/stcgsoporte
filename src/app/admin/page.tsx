@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { collection, onSnapshot, query, where, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Ticket, Wrench, FileText, Package, CheckCheck, List, Loader2 } from "lucide-react";
+import { Briefcase, FileText, ShoppingCart, List, Loader2 } from "lucide-react";
 import { TicketTable } from "@/components/admin/ticket-table";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
@@ -37,9 +37,10 @@ export default function AdminDashboardPage() {
   const { user, isLoading: authIsLoading } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState({
-    tickets: 0,
-    pendingTickets: 0,
-    completedTickets: 0,
+    quotes: 0,
+    pendingQuotes: 0,
+    purchaseOrders: 0,
+    projects: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -51,17 +52,16 @@ export default function AdminDashboardPage() {
     }
 
     setIsLoading(true);
-    const q = query(collection(db, "tickets"));
+    const q = query(collection(db, "quotes"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const tickets = snapshot.docs.map(doc => doc.data());
-      const pendingTickets = tickets.filter(t => t.status !== 'Resuelto').length;
-      const completedTickets = tickets.filter(t => t.status === 'Resuelto').length;
+      const quotes = snapshot.docs.map(doc => doc.data());
+      const pendingQuotes = quotes.filter(q => q.status === 'Enviada' || q.status === 'Borrador').length;
       
-      setStats(prev => ({ ...prev, tickets: tickets.length, pendingTickets, completedTickets }));
+      setStats(prev => ({ ...prev, quotes: quotes.length, pendingQuotes }));
       setIsLoading(false);
     }, (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: "tickets",
+            path: "quotes",
             operation: 'list',
         }));
         setIsLoading(false);
@@ -84,27 +84,27 @@ export default function AdminDashboardPage() {
     <>
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
         <StatCard 
-          title="Total de Tickets" 
-          value={stats.tickets} 
-          icon={<Ticket className="h-4 w-4 text-muted-foreground" />} 
-          description="Todos los tickets históricos."
+          title="Total de Cotizaciones" 
+          value={stats.quotes} 
+          icon={<FileText className="h-4 w-4 text-muted-foreground" />} 
+          description="Todas las cotizaciones históricas."
         />
         <StatCard 
-          title="Tickets Pendientes" 
-          value={stats.pendingTickets} 
+          title="Pendientes General" 
+          value={stats.pendingQuotes} 
           icon={<List className="h-4 w-4 text-muted-foreground" />}
-          description="Tickets 'Recibidos' o 'En Progreso'."
+          description="Cotizaciones en 'Borrador' o 'Enviada'."
         />
         <StatCard 
-          title="Proyectos Completados" 
-          value={stats.completedTickets} 
-          icon={<CheckCheck className="h-4 w-4 text-muted-foreground" />}
-          description="Total de proyectos completados."
+          title="Órdenes de Compra" 
+          value={stats.purchaseOrders}
+          icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
+          description="Próximamente."
         />
          <StatCard 
-          title="Servicios" 
-          value="-" 
-          icon={<Wrench className="h-4 w-4 text-muted-foreground" />}
+          title="Proyectos" 
+          value={stats.projects}
+          icon={<Briefcase className="h-4 w-4 text-muted-foreground" />}
           description="Próximamente"
         />
       </div>
