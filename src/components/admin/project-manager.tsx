@@ -54,7 +54,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable, getFilteredRowModel, getPaginationRowModel } from "@tanstack/react-table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -175,13 +175,30 @@ export function ProjectManager() {
       { accessorKey: "description", header: "Descripción", cell: ({row}) => <div className="max-w-xs whitespace-normal">{row.original.description}</div> },
       { accessorKey: "responsible", header: "Responsable" },
       { accessorKey: "status", header: "Estado", cell: ({row}) => {
-         const status = row.original.status;
-         return <Badge className={cn({
-            'bg-blue-500 hover:bg-blue-600': status === 'Nuevo',
-            'bg-yellow-500 hover:bg-yellow-600 text-black': status === 'En Progreso',
-            'bg-red-500 hover:bg-red-600': status === 'En Pausa',
-            'bg-green-500 hover:bg-green-600': status === 'Completado',
-         })}>{status}</Badge>
+         const project = row.original;
+         const status = project.status;
+         return (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="p-0 h-auto">
+                        <Badge className={cn('cursor-pointer', {
+                           'bg-blue-500 hover:bg-blue-600': status === 'Nuevo',
+                           'bg-yellow-500 hover:bg-yellow-600 text-black': status === 'En Progreso',
+                           'bg-red-500 hover:bg-red-600': status === 'En Pausa',
+                           'bg-green-500 hover:bg-green-600': status === 'Completado',
+                        })}>{status}</Badge>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                     <DropdownMenuRadioGroup value={project.status} onValueChange={(newStatus) => handleStatusChange(project.id, newStatus as Project['status'])}>
+                        <DropdownMenuRadioItem value="Nuevo">Nuevo</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="En Progreso">En Progreso</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="En Pausa">En Pausa</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="Completado">Completado</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
+         )
       }},
       { accessorKey: "programmedDate", header: "Fecha Prog.", cell: ({row}) => new Date(row.original.programmedDate).toLocaleDateString() },
       { accessorKey: "priority", header: "Prioridad", cell: ({row}) => {
@@ -202,17 +219,6 @@ export function ProjectManager() {
                     <DropdownMenuContent>
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => { setSelectedProject(project); setIsFormOpen(true); }}><Edit className="mr-2 h-4 w-4"/> Editar</DropdownMenuItem>
-                         <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>Cambiar Estado</DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                                <DropdownMenuRadioGroup value={project.status} onValueChange={(newStatus) => handleStatusChange(project.id, newStatus as Project['status'])}>
-                                    <DropdownMenuRadioItem value="Nuevo">Nuevo</DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem value="En Progreso">En Progreso</DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem value="En Pausa">En Pausa</DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem value="Completado">Completado</DropdownMenuRadioItem>
-                                </DropdownMenuRadioGroup>
-                            </DropdownMenuSubContent>
-                        </DropdownMenuSub>
                         <DropdownMenuSeparator />
                         <AlertDialog>
                             <AlertDialogTrigger asChild><DropdownMenuItem onSelect={e => e.preventDefault()} className="text-red-500"><Trash2 className="mr-2 h-4 w-4"/> Eliminar</DropdownMenuItem></AlertDialogTrigger>
