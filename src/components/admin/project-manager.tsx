@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,7 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Loader2, PlusCircle, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { Loader2, PlusCircle, MoreHorizontal, Edit, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -54,7 +53,21 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable, getFilteredRowModel, getPaginationRowModel } from "@tanstack/react-table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -224,44 +237,61 @@ export function ProjectManager() {
         cell: ({ row }) => {
             const project = row.original;
             const currentQuote = quotes.find(q => q.id === project.quoteId);
+            const [open, setOpen] = useState(false);
             
-            // Available quotes are those not linked to any other project
             const otherLinkedQuoteIds = new Set(
               projects.filter(p => p.id !== project.id).map(p => p.quoteId).filter(Boolean)
             );
             const availableQuotes = quotes.filter(q => !otherLinkedQuoteIds.has(q.id));
 
+            const onSelectQuote = (quoteId: string | null) => {
+              handleLinkQuote(project.id, quoteId);
+              setOpen(false);
+            }
+
             return (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                   <Button variant="ghost" className="justify-start p-0 h-auto font-normal text-left w-full min-w-max">
+              <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                   <Button variant="outline" role="combobox" aria-expanded={open} className="w-[200px] justify-between">
                     {currentQuote 
-                        ? <Badge variant="secondary">COT-{String(currentQuote.quoteNumber).padStart(3, '0')}</Badge> 
-                        : <Badge variant="outline">Asignar cotización...</Badge>
+                        ? `COT-${String(currentQuote.quoteNumber).padStart(3, '0')}`
+                        : "Asignar cotización..."
                     }
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuLabel>Seleccionar Cotización</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuRadioGroup 
-                    value={project.quoteId || ''}
-                    onValueChange={(newQuoteId) => handleLinkQuote(project.id, newQuoteId === '' ? null : newQuoteId)}
-                  >
-                    <DropdownMenuRadioItem value="">Ninguna</DropdownMenuRadioItem>
-                    {availableQuotes.map(q => (
-                      <DropdownMenuRadioItem key={q.id} value={q.id}>
-                        COT-{String(q.quoteNumber).padStart(3, '0')} ({q.clientName})
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setLinkingProject(project); setIsQuoteFormOpen(true); }}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Crear y Vincular Cotización
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Buscar por cliente o ID..." />
+                    <CommandList>
+                      <CommandEmpty>No se encontraron cotizaciones.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem key="ninguna" value="ninguna" onSelect={() => onSelectQuote(null)}>
+                           <Check className={cn("mr-2 h-4 w-4", !project.quoteId ? "opacity-100" : "opacity-0")}/>
+                          Ninguna
+                        </CommandItem>
+                        {availableQuotes.map(q => (
+                          <CommandItem 
+                            key={q.id} 
+                            value={`COT-${String(q.quoteNumber).padStart(3, '0')} ${q.clientName}`}
+                            onSelect={() => onSelectQuote(q.id)}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", project.quoteId === q.id ? "opacity-100" : "opacity-0")}/>
+                            COT-{String(q.quoteNumber).padStart(3, '0')} ({q.clientName})
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                       <CommandSeparator />
+                        <CommandGroup>
+                            <CommandItem onSelect={() => { setOpen(false); setLinkingProject(project); setIsQuoteFormOpen(true); }}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Crear y Vincular Cotización
+                            </CommandItem>
+                        </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             )
         }
       },
