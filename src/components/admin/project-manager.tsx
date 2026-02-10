@@ -173,6 +173,21 @@ export function ProjectManager() {
   
   const columns: ColumnDef<Project>[] = useMemo(() => [
       { accessorKey: "client", header: "Cliente" },
+      { 
+        id: "quote",
+        header: "Cotización",
+        cell: ({ row }) => {
+            const project = row.original;
+            if (!project.quoteId) {
+                return <Badge variant="outline">Sin Cotización</Badge>;
+            }
+            const quote = quotes.find(q => q.id === project.quoteId);
+            if (!quote) {
+                return <Badge variant="destructive">Inválida</Badge>;
+            }
+            return <Badge variant="secondary">COT-{String(quote.quoteNumber).padStart(3, '0')}</Badge>;
+        }
+      },
       { accessorKey: "description", header: "Descripción", cell: ({row}) => <div className="max-w-xs whitespace-normal">{row.original.description}</div> },
       { accessorKey: "responsible", header: "Responsable", cell: ({row}) => {
           const name = row.original.responsible;
@@ -250,7 +265,7 @@ export function ProjectManager() {
             )
         }
       }
-  ], [handleDeleteProject, handleStatusChange]);
+  ], [handleDeleteProject, handleStatusChange, quotes]);
   
   const table = useReactTable({ 
     data: projects, 
@@ -388,5 +403,3 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes }: Pr
         </Dialog>
     )
 }
-
-    
