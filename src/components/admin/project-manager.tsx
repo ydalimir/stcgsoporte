@@ -151,7 +151,7 @@ export function ProjectManager() {
          return <Badge className={cn({
             'bg-blue-500 hover:bg-blue-600': status === 'Nuevo',
             'bg-yellow-500 hover:bg-yellow-600 text-black': status === 'En Progreso',
-            'bg-gray-500 hover:bg-gray-600': status === 'En Pausa',
+            'bg-red-500 hover:bg-red-600': status === 'En Pausa',
             'bg-green-500 hover:bg-green-600': status === 'Completado',
          })}>{status}</Badge>
       }},
