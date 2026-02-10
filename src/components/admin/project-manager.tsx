@@ -74,7 +74,7 @@ const projectSchema = z.object({
   status: z.enum(["Nuevo", "En Progreso", "En Pausa", "Completado"]),
   programmedDate: z.string().min(1, { message: "La fecha programada es requerida." }),
   priority: z.enum(["Baja", "Media", "Alta"]),
-  quoteId: z.string().optional(),
+  quoteId: z.string().optional().nullable(),
   purchaseOrderId: z.string().optional(),
 });
 
@@ -170,6 +170,17 @@ export function ProjectManager() {
         toast({ title: "Error al actualizar", variant: "destructive" });
     }
   }, [toast]);
+
+  const handleLinkQuote = useCallback(async (projectId: string, quoteId: string | null) => {
+      const projectDoc = doc(db, "projects", projectId);
+      try {
+        await updateDoc(projectDoc, { quoteId: quoteId });
+        toast({ title: "Proyecto Actualizado", description: "La cotización ha sido vinculada/desvinculada." });
+      } catch(error) {
+         console.error("Error linking quote:", error);
+         toast({ title: "Error al vincular", variant: "destructive" });
+      }
+  }, [toast]);
   
   const columns: ColumnDef<Project>[] = useMemo(() => [
       { accessorKey: "client", header: "Cliente" },
@@ -178,14 +189,41 @@ export function ProjectManager() {
         header: "Cotización",
         cell: ({ row }) => {
             const project = row.original;
-            if (!project.quoteId) {
-                return <Badge variant="outline">Sin Cotización</Badge>;
-            }
-            const quote = quotes.find(q => q.id === project.quoteId);
-            if (!quote) {
-                return <Badge variant="destructive">Inválida</Badge>;
-            }
-            return <Badge variant="secondary">COT-{String(quote.quoteNumber).padStart(3, '0')}</Badge>;
+            const currentQuote = quotes.find(q => q.id === project.quoteId);
+            
+            // Available quotes are those not linked to any other project
+            const otherLinkedQuoteIds = new Set(
+              projects.filter(p => p.id !== project.id).map(p => p.quoteId).filter(Boolean)
+            );
+            const availableQuotes = quotes.filter(q => !otherLinkedQuoteIds.has(q.id));
+
+            return (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                   <Button variant="ghost" className="justify-start p-0 h-auto font-normal text-left w-full min-w-max">
+                    {currentQuote 
+                        ? <Badge variant="secondary">COT-{String(currentQuote.quoteNumber).padStart(3, '0')}</Badge> 
+                        : <Badge variant="outline">Asignar cotización...</Badge>
+                    }
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuLabel>Seleccionar Cotización</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioGroup 
+                    value={project.quoteId || ''}
+                    onValueChange={(newQuoteId) => handleLinkQuote(project.id, newQuoteId === '' ? null : newQuoteId)}
+                  >
+                    <DropdownMenuRadioItem value="">Ninguna</DropdownMenuRadioItem>
+                    {availableQuotes.map(q => (
+                      <DropdownMenuRadioItem key={q.id} value={q.id}>
+                        COT-{String(q.quoteNumber).padStart(3, '0')} ({q.clientName})
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
         }
       },
       { accessorKey: "description", header: "Descripción", cell: ({row}) => <div className="max-w-xs whitespace-normal">{row.original.description}</div> },
@@ -210,9 +248,9 @@ export function ProjectManager() {
                     <Button variant="ghost" className="p-0 h-auto">
                         <Badge variant="outline" className={cn('cursor-pointer capitalize', {
                            'text-primary border-primary': status === 'Nuevo',
-                           'text-chart-4 border-chart-4': status === 'En Progreso',
-                           'text-destructive border-destructive': status === 'En Pausa',
-                           'text-chart-3 border-chart-3': status === 'Completado',
+                           'text-yellow-600 border-yellow-600': status === 'En Progreso',
+                           'text-red-600 border-red-600': status === 'En Pausa',
+                           'text-green-600 border-green-600': status === 'Completado',
                         })}>{status}</Badge>
                     </Button>
                 </DropdownMenuTrigger>
@@ -231,9 +269,9 @@ export function ProjectManager() {
       { accessorKey: "priority", header: "Prioridad", cell: ({row}) => {
          const priority = row.original.priority;
          return <Badge variant="outline" className={cn('capitalize', {
-            'text-destructive border-destructive': priority === 'Alta',
-            'text-chart-4 border-chart-4': priority === 'Media',
-            'text-chart-3 border-chart-3': priority === 'Baja',
+            'text-red-600 border-red-600': priority === 'Alta',
+            'text-yellow-600 border-yellow-600': priority === 'Media',
+            'text-green-600 border-green-600': priority === 'Baja',
          })}>{priority}</Badge>
       }},
       { accessorKey: "lastUpdated", header: "Última Act.", cell: ({row}) => row.original.lastUpdated ? new Date(row.original.lastUpdated.toDate()).toLocaleDateString() : 'N/A' },
@@ -265,7 +303,7 @@ export function ProjectManager() {
             )
         }
       }
-  ], [handleDeleteProject, handleStatusChange, quotes]);
+  ], [handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote]);
   
   const table = useReactTable({ 
     data: projects, 
@@ -368,7 +406,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes }: Pr
                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                              <FormField control={form.control} name="quoteId" render={({ field }) => (
                                 <FormItem><FormLabel>Cotización Vinculada</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar cotización..." /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         <SelectItem value="">Ninguna</SelectItem>
@@ -403,3 +441,5 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes }: Pr
         </Dialog>
     )
 }
+
+    
