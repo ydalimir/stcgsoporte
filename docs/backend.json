@@ -27,7 +27,9 @@
         "priority": { "type": "string", "enum": ["Baja", "Media", "Alta"], "description": "Priority level of the project." },
         "files": { "type": "array", "items": { "type": "string", "format": "uri" }, "description": "List of URLs to project-related files." },
         "lastUpdated": { "type": "string", "format": "date-time", "description": "Timestamp of the last update." },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "quoteId": { "type": "string", "description": "The ID of the linked quote." },
+        "purchaseOrderId": { "type": "string", "description": "The ID of the linked purchase order." }
       },
       "required": ["client", "description", "status", "programmedDate", "priority"]
     },
@@ -151,4 +153,5 @@
   }
 }
 
+    
     

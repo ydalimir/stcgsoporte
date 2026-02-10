@@ -54,7 +54,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable, getFilteredRowModel, getPaginationRowModel } from "@tanstack/react-table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -62,6 +62,7 @@ import { errorEmitter } from "@/lib/error-emitter";
 import { FirestorePermissionError } from "@/lib/errors";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
+import type { Quote } from "./quote-manager";
 
 
 const projectSchema = z.object({
@@ -72,6 +73,8 @@ const projectSchema = z.object({
   status: z.enum(["Nuevo", "En Progreso", "En Pausa", "Completado"]),
   programmedDate: z.string().min(1, { message: "La fecha programada es requerida." }),
   priority: z.enum(["Baja", "Media", "Alta"]),
+  quoteId: z.string().optional(),
+  purchaseOrderId: z.string().optional(),
 });
 
 export type Project = z.infer<typeof projectSchema> & {
@@ -84,6 +87,7 @@ export type Project = z.infer<typeof projectSchema> & {
 export function ProjectManager() {
   const { user, isLoading: authIsLoading } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -99,8 +103,8 @@ export function ProjectManager() {
     }
     
     setIsLoading(true);
-    const q = collection(db, "projects");
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const projectsQuery = collection(db, "projects");
+    const unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
         setProjects(data.sort((a,b) => b.createdAt?.toMillis() - a.createdAt?.toMillis()));
         setIsLoading(false);
@@ -109,7 +113,21 @@ export function ProjectManager() {
         toast({ title: "Error de Permisos", description: "No se pudieron cargar los proyectos.", variant: "destructive" });
         setIsLoading(false);
     });
-    return () => unsubscribe();
+
+    const quotesQuery = collection(db, "quotes");
+    const unsubscribeQuotes = onSnapshot(quotesQuery, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
+        setQuotes(data);
+    }, (error) => {
+        // Not showing a toast here to avoid spamming if permissions are missing for quotes
+        console.error("Could not load quotes for project linking.");
+    });
+
+
+    return () => {
+        unsubscribeProjects();
+        unsubscribeQuotes();
+    };
   }, [user, authIsLoading, toast]);
 
   const handleSaveProject = useCallback(async (data: Omit<Project, 'id' | 'lastUpdated' | 'createdAt'>) => {
@@ -140,6 +158,17 @@ export function ProjectManager() {
          toast({ title: "Error al eliminar", variant: "destructive" });
       }
   }, [toast]);
+
+   const handleStatusChange = useCallback(async (projectId: string, newStatus: Project['status']) => {
+    const projectDoc = doc(db, "projects", projectId);
+    try {
+        await updateDoc(projectDoc, { status: newStatus });
+        toast({ title: "Estado Actualizado", description: `El estado del proyecto ahora es ${newStatus}.` });
+    } catch(error) {
+        console.error("Error updating status:", error);
+        toast({ title: "Error al actualizar", variant: "destructive" });
+    }
+  }, [toast]);
   
   const columns: ColumnDef<Project>[] = useMemo(() => [
       { accessorKey: "client", header: "Cliente" },
@@ -165,31 +194,45 @@ export function ProjectManager() {
       }},
       { accessorKey: "lastUpdated", header: "Última Act.", cell: ({row}) => row.original.lastUpdated ? new Date(row.original.lastUpdated.toDate()).toLocaleDateString() : 'N/A' },
       { id: "actions",
-        cell: ({ row }) => (
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                <DropdownMenuContent>
-                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => { setSelectedProject(row.original); setIsFormOpen(true); }}><Edit className="mr-2 h-4 w-4"/> Editar</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                     <AlertDialog>
-                        <AlertDialogTrigger asChild><DropdownMenuItem onSelect={e => e.preventDefault()} className="text-red-500"><Trash2 className="mr-2 h-4 w-4"/> Eliminar</DropdownMenuItem></AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
-                                <AlertDialogDescription>Esta acción eliminará el proyecto permanentemente.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteProject(row.original.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        )
+        cell: ({ row }) => {
+            const project = row.original;
+            return (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => { setSelectedProject(project); setIsFormOpen(true); }}><Edit className="mr-2 h-4 w-4"/> Editar</DropdownMenuItem>
+                         <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>Cambiar Estado</DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                                <DropdownMenuRadioGroup value={project.status} onValueChange={(newStatus) => handleStatusChange(project.id, newStatus as Project['status'])}>
+                                    <DropdownMenuRadioItem value="Nuevo">Nuevo</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="En Progreso">En Progreso</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="En Pausa">En Pausa</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="Completado">Completado</DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuSeparator />
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild><DropdownMenuItem onSelect={e => e.preventDefault()} className="text-red-500"><Trash2 className="mr-2 h-4 w-4"/> Eliminar</DropdownMenuItem></AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
+                                    <AlertDialogDescription>Esta acción eliminará el proyecto permanentemente.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteProject(project.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            )
+        }
       }
-  ], [handleDeleteProject]);
+  ], [handleDeleteProject, handleStatusChange]);
   
   const table = useReactTable({ 
     data: projects, 
@@ -224,7 +267,7 @@ export function ProjectManager() {
             <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Siguiente</Button>
         </div>
 
-      <ProjectFormDialog isOpen={isFormOpen} onOpenChange={setIsFormOpen} onSave={handleSaveProject} project={selectedProject}/>
+      <ProjectFormDialog isOpen={isFormOpen} onOpenChange={setIsFormOpen} onSave={handleSaveProject} project={selectedProject} quotes={quotes} />
     </div>
   );
 }
@@ -234,13 +277,14 @@ interface ProjectFormDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   onSave: (data: Omit<Project, 'id' | 'lastUpdated' | 'createdAt'>) => void;
   project: Project | null;
+  quotes: Quote[];
 }
 
-function ProjectFormDialog({ isOpen, onOpenChange, onSave, project }: ProjectFormDialogProps) {
+function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes }: ProjectFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const form = useForm<z.infer<typeof projectSchema>>({
         resolver: zodResolver(projectSchema),
-        defaultValues: { client: "", description: "", responsible: "", status: "Nuevo", programmedDate: new Date().toISOString().split('T')[0], priority: "Media" }
+        defaultValues: { client: "", description: "", responsible: "", status: "Nuevo", programmedDate: new Date().toISOString().split('T')[0], priority: "Media", quoteId: undefined, purchaseOrderId: undefined }
     });
 
     useEffect(() => {
@@ -248,7 +292,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project }: ProjectFor
           if (project) {
             form.reset({ ...project, programmedDate: new Date(project.programmedDate).toISOString().split('T')[0]});
           } else {
-            form.reset({ client: "", description: "", responsible: "", status: "Nuevo", programmedDate: new Date().toISOString().split('T')[0], priority: "Media" });
+            form.reset({ client: "", description: "", responsible: "", status: "Nuevo", programmedDate: new Date().toISOString().split('T')[0], priority: "Media", quoteId: undefined, purchaseOrderId: undefined });
           }
         }
       }, [project, isOpen, form]);
@@ -288,6 +332,31 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project }: ProjectFor
                             </Select><FormMessage /></FormItem>
                            )} />
                         </div>
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                             <FormField control={form.control} name="quoteId" render={({ field }) => (
+                                <FormItem><FormLabel>Cotización Vinculada</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar cotización..." /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="">Ninguna</SelectItem>
+                                        {quotes.map(q => (
+                                            <SelectItem key={q.id} value={q.id}>
+                                               COT-{String(q.quoteNumber).padStart(3, '0')} ({q.clientName})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage /></FormItem>
+                            )} />
+                             <FormField control={form.control} name="purchaseOrderId" render={({ field }) => (
+                                <FormItem><FormLabel>Orden de Compra Vinculada</FormLabel>
+                                <Select disabled>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Próximamente..." /></SelectTrigger></FormControl>
+                                    <SelectContent></SelectContent>
+                                </Select>
+                                <FormMessage /></FormItem>
+                            )} />
+                        </div>
                          <DialogFooter className="sticky bottom-0 bg-background pt-4">
                             <DialogClose asChild><Button type="button" variant="ghost">Cancelar</Button></DialogClose>
                             <Button type="submit" disabled={isSubmitting}>
@@ -301,3 +370,5 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project }: ProjectFor
         </Dialog>
     )
 }
+
+    
