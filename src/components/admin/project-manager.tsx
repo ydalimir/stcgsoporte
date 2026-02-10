@@ -143,7 +143,7 @@ export function ProjectManager() {
   
   const columns: ColumnDef<Project>[] = useMemo(() => [
       { accessorKey: "client", header: "Cliente" },
-      { accessorKey: "description", header: "Descripción", cell: ({row}) => <div className="truncate w-40">{row.original.description}</div> },
+      { accessorKey: "description", header: "Descripción", cell: ({row}) => <div className="max-w-xs whitespace-normal">{row.original.description}</div> },
       { accessorKey: "responsible", header: "Responsable" },
       { accessorKey: "status", header: "Estado", cell: ({row}) => {
          const status = row.original.status;
@@ -301,5 +301,3 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project }: ProjectFor
         </Dialog>
     )
 }
-
-    
