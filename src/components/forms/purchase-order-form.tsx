@@ -251,7 +251,7 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder 
                     <FormField control={form.control} name="quoteId" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Cotización Vinculada</FormLabel>
-                            <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value || ''}>
+                            <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value || 'none'}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar cotización..." /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     <SelectItem value="none">Ninguna</SelectItem>
@@ -307,23 +307,23 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder 
                 
                 <div className="flex flex-col justify-between p-4 bg-muted/50 rounded-lg">
                     <div className="space-y-2">
-                        <div className="flex justify-between items-center font-medium"><span>Subtotal:</span><span>${subtotal.toFixed(2)}</span></div>
+                        <div className="flex justify-between items-center font-medium"><span>Subtotal:</span><span>${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                         <FormField name="discountPercentage" control={form.control} render={({ field }) => (
                             <FormItem className="flex items-center justify-between"><FormLabel className="m-0 p-0">Descuento (%):</FormLabel><FormControl><Input type="number" className="w-20 h-8" {...field} /></FormControl></FormItem>
                         )} />
-                        <div className="flex justify-between items-center font-medium text-destructive"><span></span><span>-${discountAmount.toFixed(2)}</span></div>
+                        <div className="flex justify-between items-center font-medium text-destructive"><span></span><span>-${discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                         <FormField name="iva" control={form.control} render={({ field }) => (
                             <FormItem className="flex items-center justify-between"><FormLabel className="m-0 p-0">IVA (%):</FormLabel>
                                 <div className="flex items-center gap-2">
                                 <FormControl><Input type="number" className="w-20 h-8" {...field} /></FormControl>
-                                <span>${ivaAmount.toFixed(2)}</span>
+                                <span>${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                             </FormItem>
                         )} />
                     </div>
                     <div>
                         <Separator className="my-3 bg-border" />
-                        <div className="flex justify-between text-xl font-bold"><span>Total:</span><span>${total.toFixed(2)}</span></div>
+                        <div className="flex justify-between text-xl font-bold"><span>Total:</span><span>${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                     </div>
                 </div>
               </div>

@@ -141,7 +141,7 @@ export function ServiceManager() {
       { accessorKey: "title", header: "Título" },
       { accessorKey: "serviceType", header: "Tipo" },
       { accessorKey: "sku", header: "SKU" },
-      { accessorKey: "price", header: "Precio", cell: ({ row }) => `$${parseFloat(row.original.price as any).toFixed(2)}` },
+      { accessorKey: "price", header: "Precio", cell: ({ row }) => `$${parseFloat(row.original.price as any).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
       { id: "actions",
         cell: ({ row }) => (
             <DropdownMenu>

@@ -99,7 +99,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     yPos += 8;
 
     doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(100, 100, 100);
-    const poDate = po.date ? new Date(po.date.replace(/-/g, '/')).toLocaleDateString('es-MX') : 'N/A';
+    const poDate = po.date ? new Date(po.date).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
     doc.text(`FECHA: ${poDate}`, 200, yPos, { align: 'right' });
     yPos += 4;
     doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, 200, yPos, { align: 'right' });
@@ -126,7 +126,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     // --- Details Table ---
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
     const quoteDisplay = linkedQuote ? `COT-${String(linkedQuote.quoteNumber).padStart(4, '0')}` : 'N/A';
-    const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '/')).toLocaleDateString('es-MX') : 'N/A'
+    const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A'
 
     autoTable(doc, {
         startY: yPos,
@@ -157,9 +157,9 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         index + 1,
         item.description, 
         item.unit || 'PZA',
-        (item.quantity || 0).toFixed(2), 
-        `$${(item.price || 0).toFixed(2)}`, 
-        `$${((item.quantity || 0) * (item.price || 0)).toFixed(2)}`
+        (item.quantity || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        `$${(item.price || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       ]),
       theme: 'grid',
       headStyles: { fillColor: [220, 220, 220], textColor: 0, fontSize: 8, fontStyle: 'bold', halign: 'center' },
@@ -177,16 +177,16 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     const totalsY = finalY + 5;
     doc.setFontSize(9);
     doc.text('SUBTOTAL', totalsX, totalsY, { align: 'left'});
-    doc.text(`$${subtotal.toFixed(2)}`, 200, totalsY, { align: 'right'});
+    doc.text(`$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 200, totalsY, { align: 'right'});
     if(po.discountPercentage) {
         doc.text(`DESCUENTO ${po.discountPercentage}%`, totalsX, totalsY + 5, { align: 'left'});
-        doc.text(`-$${discountAmount.toFixed(2)}`, 200, totalsY + 5, { align: 'right'});
+        doc.text(`-$${discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 200, totalsY + 5, { align: 'right'});
     }
     doc.text('IVA', totalsX, totalsY + 10, { align: 'left'});
-    doc.text(`$${ivaAmount.toFixed(2)}`, 200, totalsY + 10, { align: 'right'});
+    doc.text(`$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 200, totalsY + 10, { align: 'right'});
     doc.setFont("helvetica", "bold");
     doc.text('TOTAL', totalsX, totalsY + 15, { align: 'left'});
-    doc.text(`$${total.toFixed(2)}`, 200, totalsY + 15, { align: 'right'});
+    doc.text(`$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 200, totalsY + 15, { align: 'right'});
     
     // --- Observations & Signature ---
     const obsY = finalY + 5;
@@ -323,14 +323,14 @@ export function PurchaseOrderManager() {
         cell: ({ row }) => {
             const date = row.original.date;
             if (!date) return 'N/A';
-            const localDate = new Date(date.replace(/-/g, '/'));
-            return localDate.toLocaleDateString('es-MX');
+            const localDate = new Date(date);
+            return localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
         } 
       },
       {
         accessorKey: "total",
         header: "Total",
-        cell: ({ row }) => `$${row.original.total.toFixed(2)}`,
+        cell: ({ row }) => `$${row.original.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       },
       { accessorKey: "status", header: "Estado", cell: ({row}) => <Badge>{row.original.status}</Badge> },
       {

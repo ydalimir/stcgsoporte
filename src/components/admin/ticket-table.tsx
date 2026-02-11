@@ -341,7 +341,7 @@ export function TicketTable() {
         header: "Precio",
         cell: ({ row }) => {
           const price = row.getValue("price") as number | undefined;
-          return price ? `$${price.toFixed(2)}` : "N/A";
+          return price ? `$${price.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "N/A";
         },
       },
       {

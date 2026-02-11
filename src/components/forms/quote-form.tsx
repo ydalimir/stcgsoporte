@@ -467,7 +467,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                     <div className="space-y-2">
                         <div className="flex justify-between items-center font-medium">
                             <span>Subtotal:</span>
-                            <span>${subtotal.toFixed(2)}</span>
+                            <span>${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div className="flex justify-between items-center">
                             <FormField name="iva" control={form.control} render={({ field }) => (
@@ -476,14 +476,14 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                                     <FormControl><Input type="number" className="w-20 h-8" {...field} /></FormControl>
                                 </FormItem>
                             )} />
-                            <span>${ivaAmount.toFixed(2)}</span>
+                            <span>${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     </div>
                     <div>
                         <Separator className="my-3 bg-border" />
                         <div className="flex justify-between text-xl font-bold">
                             <span>Total:</span>
-                            <span>${total.toFixed(2)}</span>
+                            <span>${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     </div>
                 </div>
@@ -505,5 +505,3 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     </Dialog>
   );
 }
-
-    

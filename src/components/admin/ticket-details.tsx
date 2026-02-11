@@ -187,7 +187,7 @@ export function TicketDetails({ ticket }: TicketDetailsProps) {
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
-                 <div><span className="font-medium text-muted-foreground">Precio:</span> {ticket.price ? `$${ticket.price.toFixed(2)}` : 'N/A'}</div>
+                 <div><span className="font-medium text-muted-foreground">Precio:</span> {ticket.price ? `$${ticket.price.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'N/A'}</div>
                  {ticket.quantity && <div><span className="font-medium text-muted-foreground">Cantidad:</span> {ticket.quantity}</div>}
             </div>
              <div className="mt-4">

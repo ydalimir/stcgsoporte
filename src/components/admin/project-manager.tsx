@@ -162,14 +162,14 @@ const downloadQuotePDF = (quote: Quote) => {
         index + 1,
         item.description, 
         item.unidad || 'PZA',
-        (item.quantity || 0).toFixed(2), 
-        `$${(item.price || 0).toFixed(2)}`, 
-        `$${((item.quantity || 0) * (item.price || 0)).toFixed(2)}`
+        (item.quantity || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        `$${(item.price || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       ]),
       foot: [
-        ['', '', '', '', { content: 'Subtotal', styles: { halign: 'right' } }, { content: `$${subtotal.toFixed(2)}`, styles: { halign: 'right' } }],
-        ['', '', '', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toFixed(2)}`, styles: { halign: 'right' } }],
-        ['', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toFixed(2)}`, styles: { fontStyle: 'bold', halign: 'right' } }],
+        ['', '', '', '', { content: 'Subtotal', styles: { halign: 'right' } }, { content: `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
+        ['', '', '', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
+        ['', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' } }],
       ],
       headStyles: { fillColor: [41, 71, 121] },
       didDrawPage: (data) => {
@@ -296,9 +296,9 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         index + 1,
         item.description, 
         item.unit || 'PZA',
-        (item.quantity || 0).toFixed(2), 
-        `$${(item.price || 0).toFixed(2)}`, 
-        `$${((item.quantity || 0) * (item.price || 0)).toFixed(2)}`
+        (item.quantity || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        `$${(item.price || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       ]),
       theme: 'grid',
       headStyles: { fillColor: [220, 220, 220], textColor: 0, fontSize: 8, fontStyle: 'bold', halign: 'center' },
@@ -316,16 +316,16 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     const totalsY = finalY + 5;
     doc.setFontSize(9);
     doc.text('SUBTOTAL', totalsX, totalsY, { align: 'left'});
-    doc.text(`$${subtotal.toFixed(2)}`, 200, totalsY, { align: 'right'});
+    doc.text(`$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 200, totalsY, { align: 'right'});
     if(po.discountPercentage) {
         doc.text(`DESCUENTO ${po.discountPercentage}%`, totalsX, totalsY + 5, { align: 'left'});
-        doc.text(`-$${discountAmount.toFixed(2)}`, 200, totalsY + 5, { align: 'right'});
+        doc.text(`-$${discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 200, totalsY + 5, { align: 'right'});
     }
     doc.text('IVA', totalsX, totalsY + 10, { align: 'left'});
-    doc.text(`$${ivaAmount.toFixed(2)}`, 200, totalsY + 10, { align: 'right'});
+    doc.text(`$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 200, totalsY + 10, { align: 'right'});
     doc.setFont("helvetica", "bold");
     doc.text('TOTAL', totalsX, totalsY + 15, { align: 'left'});
-    doc.text(`$${total.toFixed(2)}`, 200, totalsY + 15, { align: 'right'});
+    doc.text(`$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 200, totalsY + 15, { align: 'right'});
     
     // --- Observations & Signature ---
     const obsY = finalY + 5;

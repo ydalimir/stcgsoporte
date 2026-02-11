@@ -88,7 +88,7 @@ function ServiceTypePageContent() {
                     <Card key={service.id} className="flex flex-col hover:shadow-xl transition-shadow duration-300">
                         <CardHeader>
                             <CardTitle>{service.title}</CardTitle>
-                            <CardDescription className="text-primary font-bold text-lg pt-2">${parseFloat(service.price as any).toFixed(2)} MXN</CardDescription>
+                            <CardDescription className="text-primary font-bold text-lg pt-2">${parseFloat(service.price as any).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN</CardDescription>
                         </CardHeader>
                         <CardContent className="flex-grow">
                             <p className="text-muted-foreground">{service.description}</p>

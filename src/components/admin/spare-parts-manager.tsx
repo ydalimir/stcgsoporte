@@ -134,7 +134,7 @@ export function SparePartsManager() {
       { accessorKey: "name", header: "Nombre" },
       { accessorKey: "brand", header: "Marca" },
       { accessorKey: "sku", header: "SKU" },
-      { accessorKey: "price", header: "Precio", cell: ({ row }) => `$${row.original.price.toFixed(2)}` },
+      { accessorKey: "price", header: "Precio", cell: ({ row }) => `$${row.original.price.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
       { id: "actions",
         cell: ({ row }) => (
             <DropdownMenu>

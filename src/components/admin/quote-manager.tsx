@@ -168,14 +168,13 @@ const downloadPDF = (quote: Quote) => {
     yPos += 10;
     doc.setTextColor(0, 0, 0); // Reset color
 
-    const [year, month, day] = quote.date.split('-').map(Number);
-    const localDate = new Date(year, month - 1, day);
+    const localDate = new Date(quote.date);
 
     // --- Client and Service Info ---
     autoTable(doc, {
         startY: yPos,
         body: [
-            [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${localDate.toLocaleDateString('es-MX')}`, styles: { halign: 'right' } }],
+            [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'})}`, styles: { halign: 'right' } }],
             [{ content: `Empresa: ${quote.clientName}` }, { content: `Ciudad: Mérida`, styles: { halign: 'right' } }],
             [{ content: `Dirección: ${quote.clientAddress}` }, { content: `Tipo de Servicio: ${quote.tipoServicio || ''}`, styles: { halign: 'right' } }],
             [{ content: `Teléfono: ${quote.clientPhone}` }, { content: `Tipo de Trabajo: ${quote.tipoTrabajo || ''}`, styles: { halign: 'right' } }],
@@ -201,14 +200,14 @@ const downloadPDF = (quote: Quote) => {
         index + 1,
         item.description, 
         item.unidad || 'PZA',
-        (item.quantity || 0).toFixed(2), 
-        `$${(item.price || 0).toFixed(2)}`, 
-        `$${((item.quantity || 0) * (item.price || 0)).toFixed(2)}`
+        (item.quantity || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        `$${(item.price || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       ]),
       foot: [
-        ['', '', '', '', { content: 'Subtotal', styles: { halign: 'right' } }, { content: `$${subtotal.toFixed(2)}`, styles: { halign: 'right' } }],
-        ['', '', '', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toFixed(2)}`, styles: { halign: 'right' } }],
-        ['', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toFixed(2)}`, styles: { fontStyle: 'bold', halign: 'right' } }],
+        ['', '', '', '', { content: 'Subtotal', styles: { halign: 'right' } }, { content: `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
+        ['', '', '', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
+        ['', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' } }],
       ],
       headStyles: { fillColor: [41, 71, 121] },
       didDrawPage: (data) => {
@@ -241,18 +240,12 @@ const downloadPDF = (quote: Quote) => {
     
     // --- Payment Conditions ---
     if (quote.paymentTerms) {
-        const paymentTermsLines = doc.splitTextToSize(quote.paymentTerms, 180);
-        const sectionHeight = (paymentTermsLines.length * 4) + 12;
-        if (yPos + sectionHeight > pageHeight - 45) { // Check if it fits before footer
-            doc.addPage();
-            yPos = 15;
-        }
-
         doc.setFontSize(10).setFont(undefined, 'bold');
         doc.text("Condiciones de Pago:", 14, yPos);
         yPos += 6;
         
         doc.setFontSize(8).setFont(undefined, 'normal');
+        const paymentTermsLines = doc.splitTextToSize(quote.paymentTerms, 180);
         doc.text(paymentTermsLines, 14, yPos);
     }
     
@@ -384,9 +377,8 @@ export function QuoteManager() {
         header: "Fecha", 
         cell: ({ row }) => {
             if (!row.original.date) return 'N/A';
-            const [year, month, day] = row.original.date.split('-').map(Number);
-            const localDate = new Date(year, month - 1, day);
-            return localDate.toLocaleDateString('es-MX');
+            const localDate = new Date(row.original.date);
+            return localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
         } 
       },
       {
@@ -394,7 +386,7 @@ export function QuoteManager() {
         header: "Total",
         cell: ({ row }) => {
             const total = row.original.total ?? (row.original.items.reduce((sum, item) => sum + item.price * item.quantity, 0) * (1 + (row.original.iva ?? 16)/100));
-            return `$${total.toFixed(2)}`;
+            return `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         },
       },
       { accessorKey: "status", header: "Estado", cell: ({row}) => <Badge>{row.original.status}</Badge> },

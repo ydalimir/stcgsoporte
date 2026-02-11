@@ -172,7 +172,7 @@ export function TicketForm({ onTicketCreated, isAdminMode = false }: TicketFormP
 *Descripción:* ${data.description}
 *Urgencia:* ${data.urgency}
 ${data.quantity ? `*Cantidad:* ${data.quantity}` : ''}
-${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toFixed(2)} MXN` : ''}
+${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN` : ''}
     `.trim().replace(/\n\s*\n/g, '\n');
 
     const whatsappUrl = `https://wa.me/529993101452?text=${encodeURIComponent(message)}`;
@@ -363,5 +363,3 @@ ${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toFixed(2)} MXN` : '
     </Form>
   );
 }
-
-    
