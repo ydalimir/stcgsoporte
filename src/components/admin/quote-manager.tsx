@@ -168,12 +168,14 @@ const downloadPDF = (quote: Quote) => {
     yPos += 10;
     doc.setTextColor(0, 0, 0); // Reset color
 
+    const [year, month, day] = quote.date.split('-').map(Number);
+    const localDate = new Date(year, month - 1, day);
 
     // --- Client and Service Info ---
     autoTable(doc, {
         startY: yPos,
         body: [
-            [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${new Date(quote.date).toLocaleDateString('es-MX')}`, styles: { halign: 'right' } }],
+            [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${localDate.toLocaleDateString('es-MX')}`, styles: { halign: 'right' } }],
             [{ content: `Empresa: ${quote.clientName}` }, { content: `Ciudad: Mérida`, styles: { halign: 'right' } }],
             [{ content: `Dirección: ${quote.clientAddress}` }, { content: `Tipo de Servicio: ${quote.tipoServicio || ''}`, styles: { halign: 'right' } }],
             [{ content: `Teléfono: ${quote.clientPhone}` }, { content: `Tipo de Trabajo: ${quote.tipoTrabajo || ''}`, styles: { halign: 'right' } }],
@@ -377,7 +379,16 @@ export function QuoteManager() {
         }
       },
       { accessorKey: "clientName", header: "Cliente" },
-      { accessorKey: "date", header: "Fecha", cell: ({ row }) => new Date(row.original.date).toLocaleDateString('es-MX') },
+      { 
+        accessorKey: "date", 
+        header: "Fecha", 
+        cell: ({ row }) => {
+            if (!row.original.date) return 'N/A';
+            const [year, month, day] = row.original.date.split('-').map(Number);
+            const localDate = new Date(year, month - 1, day);
+            return localDate.toLocaleDateString('es-MX');
+        } 
+      },
       {
         accessorKey: "total",
         header: "Total",

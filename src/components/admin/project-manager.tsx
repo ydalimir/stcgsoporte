@@ -127,12 +127,14 @@ const downloadPDF = (quote: Quote) => {
     yPos += 10;
     doc.setTextColor(0, 0, 0); // Reset color
 
+    const [year, month, day] = quote.date.split('-').map(Number);
+    const localDate = new Date(year, month - 1, day);
 
     // --- Client and Service Info ---
     autoTable(doc, {
         startY: yPos,
         body: [
-            [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${new Date(quote.date).toLocaleDateString('es-MX')}`, styles: { halign: 'right' } }],
+            [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${localDate.toLocaleDateString('es-MX')}`, styles: { halign: 'right' } }],
             [{ content: `Empresa: ${quote.clientName}` }, { content: `Ciudad: Mérida`, styles: { halign: 'right' } }],
             [{ content: `Dirección: ${quote.clientAddress}` }, { content: `Tipo de Servicio: ${quote.tipoServicio || ''}`, styles: { halign: 'right' } }],
             [{ content: `Teléfono: ${quote.clientPhone}` }, { content: `Tipo de Trabajo: ${quote.tipoTrabajo || ''}`, styles: { halign: 'right' } }],
@@ -198,20 +200,19 @@ const downloadPDF = (quote: Quote) => {
     
     // --- Payment Conditions ---
     if (quote.paymentTerms) {
-        if (yPos + 30 > pageHeight - 45) { // Check if it fits before footer
+        const paymentTermsLines = doc.splitTextToSize(quote.paymentTerms, 180);
+        const sectionHeight = (paymentTermsLines.length * 4) + 12;
+        if (yPos + sectionHeight > pageHeight - 45) { // Check if it fits before footer
             doc.addPage();
             yPos = 15;
         }
 
-        doc.setFillColor(245, 245, 245); // Light grey background
-        doc.roundedRect(14, yPos, 182, 22, 3, 3, 'F');
-
-        doc.setFontSize(10).setFont(undefined, 'bold').setTextColor(41, 71, 121);
-        doc.text("Condiciones de Pago:", 20, yPos + 7);
+        doc.setFontSize(10).setFont(undefined, 'bold');
+        doc.text("Condiciones de Pago:", 14, yPos);
+        yPos += 6;
         
-        doc.setFontSize(8).setFont(undefined, 'normal').setTextColor(50, 50, 50);
-        const paymentTermsLines = doc.splitTextToSize(quote.paymentTerms, 170);
-        doc.text(paymentTermsLines, 20, yPos + 13);
+        doc.setFontSize(8).setFont(undefined, 'normal');
+        doc.text(paymentTermsLines, 14, yPos);
     }
     
     // --- Footer with Signature ---
@@ -501,7 +502,12 @@ export function ProjectManager() {
             </DropdownMenu>
          )
       }},
-      { accessorKey: "programmedDate", header: "Fecha Prog.", cell: ({row}) => new Date(row.original.programmedDate).toLocaleDateString() },
+      { accessorKey: "programmedDate", header: "Fecha Prog.", cell: ({row}) => {
+        if (!row.original.programmedDate) return 'N/A';
+        const [year, month, day] = row.original.programmedDate.split('-').map(Number);
+        const localDate = new Date(year, month - 1, day);
+        return localDate.toLocaleDateString('es-MX');
+      }},
       { accessorKey: "priority", header: "Prioridad", cell: ({row}) => {
          const priority = row.original.priority;
          return <Badge variant="outline" className={cn('capitalize', {
