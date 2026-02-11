@@ -6,7 +6,6 @@ import { collection, onSnapshot, query, where, orderBy } from "firebase/firestor
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Briefcase, FileText, ShoppingCart, List, Loader2 } from "lucide-react";
-import { TicketTable } from "@/components/admin/ticket-table";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { errorEmitter } from "@/lib/error-emitter";
@@ -111,10 +110,12 @@ export default function AdminDashboardPage() {
       <div className="mt-8">
         <Card>
             <CardHeader>
-                <CardTitle>Tickets Recientes</CardTitle>
+                <CardTitle>Proyectos en Proceso</CardTitle>
             </CardHeader>
             <CardContent>
-                <TicketTable />
+                <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
+                    <p className="text-muted-foreground">En desarrollo</p>
+                </div>
             </CardContent>
         </Card>
       </div>
