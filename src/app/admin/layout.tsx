@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Home, Briefcase, FileText, Users, ShoppingCart, Truck, User, LogOut, Menu, Wrench, Package } from "lucide-react";
+import { Home, Briefcase, FileText, Users, ShoppingCart, Truck, User, LogOut, Menu, Wrench, Package, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,6 +20,8 @@ import { auth } from "@/lib/firebase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 export default function AdminLayout({
   children,
@@ -30,6 +32,7 @@ export default function AdminLayout({
     const { user } = useAuth();
     const router = useRouter();
     const [dashboardLabel, setDashboardLabel] = useState("Dashboard");
+    const [date, setDate] = useState<Date | undefined>(new Date());
 
     useEffect(() => {
         setDashboardLabel("Inicio");
@@ -107,6 +110,24 @@ export default function AdminLayout({
             </nav>
           </div>
             <div className="mt-auto p-4">
+                <div className="px-2 lg:px-4 mb-4">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-full justify-start">
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                Calendario
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <Calendar
+                                mode="single"
+                                selected={date}
+                                onSelect={setDate}
+                                initialFocus
+                            />
+                        </PopoverContent>
+                    </Popover>
+                </div>
                  <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
                     <NavLink link={adminControlLink} />
                 </nav>
