@@ -59,6 +59,7 @@ const quoteFormSchema = z.object({
   rfc: z.string().optional(),
   observations: z.string().optional(),
   policies: z.string().optional(),
+  paymentTerms: z.string().optional(),
   iva: z.coerce.number().min(0, "El IVA no puede ser negativo.").default(16),
 });
 
@@ -71,13 +72,12 @@ interface QuoteFormProps {
   quote: Partial<Quote> | null;
 }
 
-const defaultPolicies = `1- EQUIPO NUEVO: La garantía para equipos de refrigeración suministrados por nosotros cubre defectos de fabricación por un período de 1 año a partir de la fecha de instalación. Para componentes especificos como compresores, la garantia puede extenderse hasta 5 años para uso residencial y 3 años para uso comercial o público. Es obligatorio realizar un minimo de 2 mantenimientos preventivos anuales para mantener la validez de esta garantia. Aplican restricciones según los términos y condiciones del fabricante. Para otros equipos suministrados por nosotros, la garantia será la que brinde el fabricante, y los alcances de la misma estarán sujetos a lo determinado por dicho fabricante.
-2- INSTALACIÓN DE EQUIPOS: Ofrecemos una garantia de 90 dias por la mano de obra en la instalación de equipos, siempre que haya sido realizada por nuestros técnicos especializados. Esta garantia cubre cualquier defecto o falla derivada directamente de la instalación. Sin embargo, no se cubren daños resultantes del uso indebido, modificaciones no autorizadas, o condiciones ambientales adversas no reportadas previamente.
-3- MANTENIMIENTO PREVENTIVO Y/O CORRECTIVO: Nuestros servicios de mantenimiento preventivo y/o correctivo están respaldados por una garantia de 60 días sobre la mano de obra efectuada. Esta garantía se limita a los trabajos específicos realizados y no cubre componentes que no hayan sido objeto de mantenimiento o revisión. Adicionalmente, no se garantiza contra fallos originados por un uso inadecuado, negligencia o falta de mantenimiento regular.
-4- REFACCIONES Y PIEZAS DE REEMPLAZO: La garantia sobre refacciones y piezas de reemplazo será la que determine el fabricante correspondiente. Las piezas electrónicas, como tarjetas de control y circuitos, no cuentan con garantia, a menos que se especifique explicitamente. Es responsabilidad del cliente asegurarse de que el equipo esté correctamente instalado y mantenido para evitar daños que invaliden la garantia.
-5- SISTEMAS ELÉCTRICOS Y ELECTRÓNICOS: Ofrecemos 60 días de garantía limitada sobre instalaciones eléctricas y electrónicas, bajo la condición de que el sistema cuente con una correcta tierra fisica y cumpla con todas las normativas de seguridad aplicables. Cualquier alteración o instalación incorrecta que no haya sido realizada por nuestros especialistas anulará esta garantia.
-6- INSTALACIONES GENERALES Y SISTEMAS DEFECTUOSOS: Proporcionamos una garantía de 60 días para cualquier trabajo de instalación o reparación realizado por nuestro equipo, siempre y cuando los defectos sean atribuibles a una ejecución incorrecta. Esta garantia no cubre daños posteriores ocasionados por factores externos, negligencia del usuario o intervenciones de terceros.
-7- CONDICIONES GENERALES: Las garantias mencionadas no aplican en situaciones de mal uso, desgaste natural, accidentes, daños por condiciones ambientales extremas, o intervenciones no autorizadas. Todas las garantias están sujetas a los términos y condiciones establecidos en el contrato de servicio, así como a la normativa vigente en la materia. Es responsabilidad del cliente seguir las recomendaciones de mantenimiento proporcionadas por nosotros para garantizar la durabilidad y correcto funcionamiento de los equipos e instalaciones.`;
+const defaultPaymentTerms = `Formas de Pago: Transferencia Bancaria / Depósitos
+Banco: Banco Mercantil del Norte, BANORTE
+Cuenta: 1053332481
+Clabe Interbancaria: 072 910 01053332481 1
+Beneficiario: LEBAREF SERVICIO DE MANTENIMIENTO GENERAL
+RFC: LSM150727IP0`;
 
 const defaultValues = {
   clientName: "",
@@ -93,7 +93,8 @@ const defaultValues = {
   expirationDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
   rfc: "",
   observations: "",
-  policies: defaultPolicies,
+  policies: "",
+  paymentTerms: defaultPaymentTerms,
   iva: 16,
 };
 
@@ -328,10 +329,13 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <FormField name="observations" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Observaciones</FormLabel><FormControl><Textarea placeholder="Añadir notas u observaciones específicas para esta cotización..." className="min-h-[100px] bg-muted/20" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Comentarios y Diagnóstico</FormLabel><FormControl><Textarea placeholder="Añadir notas u observaciones específicas para esta cotización..." className="min-h-[100px] bg-muted/20" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField name="policies" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Políticas y Términos</FormLabel><FormControl><Textarea className="min-h-[100px] bg-muted/20" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Garantías</FormLabel><FormControl><Textarea placeholder="Describa las garantías del servicio o producto..." className="min-h-[100px] bg-muted/20" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField name="paymentTerms" control={form.control} render={({ field }) => (
+                    <FormItem><FormLabel>Condiciones de Pago</FormLabel><FormControl><Textarea className="min-h-[100px] bg-muted/20" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
                 

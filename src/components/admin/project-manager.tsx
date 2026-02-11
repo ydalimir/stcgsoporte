@@ -110,17 +110,6 @@ const downloadPDF = (quote: Quote) => {
     doc.setFontSize(18);
     doc.text("Leboref", 14, yPos);
     
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text("Servicio de Mantenimiento General", 14, yPos + 6);
-    yPos += 10;
-    doc.text("Calle SSC No. 851 entre 100A y 104, Fraccionamiento las Américas CP. 97302, Mérida Yucatán", 14, yPos);
-    yPos += 4;
-    doc.text("Oficinas: 990-101-0221", 14, yPos);
-    doc.text("Correo: corporativo@lebaref.com", (doc.internal.pageSize.getWidth() / 2) - 0, yPos);
-    yPos += 4;
-    doc.text("Administrativo: 999-593-5287", 14, yPos);
-    
     // Right side header
     const headerDetailsX = 196;
     let rightHeaderY = 15;
@@ -129,7 +118,7 @@ const downloadPDF = (quote: Quote) => {
     doc.text(`Cotización`, headerDetailsX, rightHeaderY, { align: 'right' });
     doc.text(`${quoteId}`, headerDetailsX, rightHeaderY + 6, { align: 'right' });
     
-    yPos += 10;
+    yPos = 35;
     doc.setDrawColor(221, 221, 221); // A light grey color
     doc.line(14, yPos, 196, yPos);
     yPos += 5;
@@ -209,29 +198,15 @@ const downloadPDF = (quote: Quote) => {
     }
     
     // --- Payment Conditions ---
-    doc.setFontSize(10).setFont(undefined, 'bold');
-    doc.text("Condiciones de Pago:", 14, yPos);
-    yPos += 5;
-    autoTable(doc, {
-      startY: yPos,
-      body: [
-        ['Formas de Pago:', 'Transferencia Bancaria / Depósitos'],
-        ['Banco:', 'Banco Mercantil del Norte, BANORTE'],
-        ['Cuenta:', '1053332481'],
-        ['Clabe Interbancaria:', '072 910 01053332481 1'],
-        ['Beneficiario:', 'LEBAREF SERVICIO DE MANTENIMIENTO GENERAL'],
-        ['RFC:', 'LSM150727IP0']
-      ],
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 1 },
-      headStyles: { fontStyle: 'bold' }
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 15;
-    
-    // --- Signature ---
-    doc.line(120, yPos, 190, yPos);
-    yPos += 5;
-    doc.text('FERNANDO SALVADOR MONTESDE OCA PEREZ', 125, yPos);
+    if (quote.paymentTerms) {
+        doc.setFontSize(10).setFont(undefined, 'bold');
+        doc.text("Condiciones de Pago:", 14, yPos);
+        yPos += 5;
+        doc.setFontSize(8).setFont(undefined, 'normal');
+        const splitTerms = doc.splitTextToSize(quote.paymentTerms, 180);
+        doc.text(splitTerms, 14, yPos);
+        yPos += splitTerms.length * 3 + 5;
+    }
     
     doc.save(`${quoteId}.pdf`);
 }
