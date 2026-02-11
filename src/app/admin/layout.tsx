@@ -1,8 +1,8 @@
-
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Home, Briefcase, FileText, Users, ShoppingCart, Truck, Ticket, User, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,9 +29,14 @@ export default function AdminLayout({
     const pathname = usePathname();
     const { user } = useAuth();
     const router = useRouter();
+    const [dashboardLabel, setDashboardLabel] = useState("Dashboard");
+
+    useEffect(() => {
+        setDashboardLabel("Inicio");
+    }, []);
 
     const mainLinks = [
-        { href: "/admin", label: "Inicio", icon: Home, exact: true },
+        { href: "/admin", label: dashboardLabel, icon: Home, exact: true },
         { href: "/admin/projects", label: "Proyectos", icon: Briefcase },
     ];
     
