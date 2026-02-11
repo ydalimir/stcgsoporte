@@ -84,6 +84,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { PurchaseOrder } from "./purchase-order-manager";
 import { PurchaseOrderForm } from "../forms/purchase-order-form";
+import type { Client } from "./client-manager";
 
 
 const projectSchema = z.object({
@@ -130,7 +131,7 @@ const downloadQuotePDF = (quote: Quote) => {
     yPos += 10;
     doc.setTextColor(0, 0, 0); // Reset color
 
-    const localDate = new Date(quote.date);
+    const localDate = new Date(quote.date.replace(/-/g, '\/'));
 
     // --- Client and Service Info ---
     autoTable(doc, {
@@ -238,7 +239,7 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     yPos += 8;
 
     doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(100, 100, 100);
-    const poDate = po.date ? new Date(po.date).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
+    const poDate = po.date ? new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
     doc.text(`FECHA: ${poDate}`, 200, yPos, { align: 'right' });
     yPos += 4;
     doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, 200, yPos, { align: 'right' });
@@ -265,7 +266,7 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     // --- Details Table ---
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
     const quoteDisplay = linkedQuote ? `C01-${String(linkedQuote.quoteNumber).padStart(4, '0')}` : 'N/A';
-    const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A'
+    const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A'
 
     autoTable(doc, {
         startY: yPos,
@@ -696,7 +697,7 @@ export function ProjectManager() {
       }},
       { accessorKey: "programmedDate", header: "Fecha Prog.", cell: ({row}) => {
         if (!row.original.programmedDate) return 'N/A';
-        const localDate = new Date(row.original.programmedDate);
+        const localDate = new Date(row.original.programmedDate.replace(/-/g, '\/'));
         return localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
       }},
        { 
@@ -894,6 +895,20 @@ interface ProjectFormDialogProps {
 
 function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purchaseOrders }: ProjectFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [clients, setClients] = useState<Client[]>([]);
+    const [isClientComboboxOpen, setIsClientComboboxOpen] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const qClients = collection(db, "clients");
+        const unsubscribeClients = onSnapshot(qClients, (snapshot) => {
+            setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
+        }, (error) => {
+            console.error("Could not load clients for project form: ", error);
+        });
+        return () => unsubscribeClients();
+    }, [isOpen]);
+
     const formatDate = (date: Date) => {
         const year = date.getFullYear();
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -909,7 +924,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
     useEffect(() => {
         if (isOpen) {
           if (project) {
-            form.reset({ ...project, programmedDate: new Date(project.programmedDate).toISOString().split('T')[0]});
+            form.reset({ ...project, programmedDate: project.programmedDate });
           } else {
             form.reset({ client: "", description: "", responsible: "", status: "Nuevo", programmedDate: formatDate(new Date()), priority: "Media", quoteId: undefined, purchaseOrderId: undefined });
           }
@@ -931,7 +946,59 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-2">
-                        <FormField control={form.control} name="client" render={({ field }) => ( <FormItem><FormLabel>Cliente</FormLabel><FormControl><Input placeholder="Nombre del cliente" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                         <FormField
+                            control={form.control}
+                            name="client"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>Cliente</FormLabel>
+                                    <Popover open={isClientComboboxOpen} onOpenChange={setIsClientComboboxOpen}>
+                                        <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className={cn(
+                                                "w-full justify-between",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                            >
+                                            {field.value || "Seleccionar o escribir un cliente"}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                                            <CommandInput
+                                            placeholder="Buscar cliente..."
+                                            onValueChange={(search) => field.onChange(search)}
+                                            />
+                                            <CommandList>
+                                            <CommandEmpty>No se encontró cliente.</CommandEmpty>
+                                            <CommandGroup>
+                                                {clients.map((client) => (
+                                                <CommandItem
+                                                    value={client.name}
+                                                    key={client.id}
+                                                    onSelect={() => {
+                                                        field.onChange(client.name);
+                                                        setIsClientComboboxOpen(false);
+                                                    }}
+                                                >
+                                                    <Check className={cn("mr-2 h-4 w-4", client.name === field.value ? "opacity-100" : "opacity-0")} />
+                                                    {client.name}
+                                                </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                         <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Describe el proyecto en detalle..." {...field} /></FormControl><FormMessage /></FormItem> )} />
                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={form.control} name="responsible" render={({ field }) => ( <FormItem><FormLabel>Responsable</FormLabel><FormControl><Input placeholder="Persona a cargo" {...field} /></FormControl><FormMessage /></FormItem> )} />
