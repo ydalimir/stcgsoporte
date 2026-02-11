@@ -94,7 +94,7 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
     }
     
     const itemsDescription = quote.items.map(item => `${item.quantity} x ${item.description}`).join(', ');
-    const finalDescription = `Servicio basado en la cotización #${String(quote.quoteNumber).padStart(3, '0')}. --- ITEMS: ${itemsDescription}. --- OBSERVACIONES: ${quote.observations || 'Ninguna.'}`;
+    const finalDescription = `Servicio basado en la cotización #C01-${String(quote.quoteNumber).padStart(4, '0')}. --- ITEMS: ${itemsDescription}. --- OBSERVACIONES: ${quote.observations || 'Ninguna.'}`;
 
     const ticketData = {
       clientName: quote.clientName,
@@ -103,7 +103,7 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
       clientEmail: quote.clientEmail || "N/A", 
       clientRfc: quote.rfc || "N/A",
       serviceType: "correctivo" as "correctivo" | "preventivo", 
-      equipmentType: `Servicio desde cotización #COT-${String(quote.quoteNumber).padStart(3, '0')}`,
+      equipmentType: `Servicio desde cotización #C01-${String(quote.quoteNumber).padStart(4, '0')}`,
       description: finalDescription,
       urgency: "media" as "baja" | "media" | "alta",
       status: "Recibido",
@@ -144,7 +144,7 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
 
 const downloadPDF = (quote: Quote) => {
     const doc = new jsPDF();
-    const quoteId = `COT-${String(quote.quoteNumber).padStart(4, '0')}`;
+    const quoteId = `C01-${String(quote.quoteNumber).padStart(4, '0')}`;
     const pageHeight = doc.internal.pageSize.height;
     let yPos = 20;
 
@@ -368,7 +368,7 @@ export function QuoteManager() {
         header: "ID",
         cell: ({ row }) => {
           const quoteNumber = row.original.quoteNumber;
-          return quoteNumber ? `COT-${String(quoteNumber).padStart(3, '0')}` : 'N/A';
+          return quoteNumber ? `C01-${String(quoteNumber).padStart(4, '0')}` : 'N/A';
         }
       },
       { accessorKey: "clientName", header: "Cliente" },

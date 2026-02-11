@@ -106,7 +106,7 @@ export type Project = z.infer<typeof projectSchema> & {
 
 const downloadQuotePDF = (quote: Quote) => {
     const doc = new jsPDF();
-    const quoteId = `COT-${String(quote.quoteNumber).padStart(4, '0')}`;
+    const quoteId = `C01-${String(quote.quoteNumber).padStart(4, '0')}`;
     const pageHeight = doc.internal.pageSize.height;
     let yPos = 20;
 
@@ -226,7 +226,7 @@ const downloadQuotePDF = (quote: Quote) => {
 
 const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     const doc = new jsPDF();
-    const poId = `OC-${String(po.purchaseOrderNumber).padStart(4, '0')}`;
+    const poId = `OC01-${String(po.purchaseOrderNumber).padStart(4, '0')}`;
     let yPos = 20;
 
     // --- Header ---
@@ -264,7 +264,7 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     
     // --- Details Table ---
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
-    const quoteDisplay = linkedQuote ? `COT-${String(linkedQuote.quoteNumber).padStart(4, '0')}` : 'N/A';
+    const quoteDisplay = linkedQuote ? `C01-${String(linkedQuote.quoteNumber).padStart(4, '0')}` : 'N/A';
     const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A'
 
     autoTable(doc, {
@@ -616,7 +616,7 @@ export function ProjectManager() {
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" aria-expanded={open} className="w-[150px] justify-between">
                       {currentQuote 
-                          ? `COT-${String(currentQuote.quoteNumber).padStart(3, '0')}`
+                          ? `C01-${String(currentQuote.quoteNumber).padStart(4, '0')}`
                           : "Asignar..."
                       }
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -635,11 +635,11 @@ export function ProjectManager() {
                           {availableQuotes.map(q => (
                             <CommandItem 
                               key={q.id} 
-                              value={`COT-${String(q.quoteNumber).padStart(3, '0')} ${q.clientName}`}
+                              value={`C01-${String(q.quoteNumber).padStart(4, '0')} ${q.clientName}`}
                               onSelect={() => onSelectQuote(q.id)}
                             >
                               <Check className={cn("mr-2 h-4 w-4", project.quoteId === q.id ? "opacity-100" : "opacity-0")}/>
-                              COT-{String(q.quoteNumber).padStart(3, '0')} ({q.clientName})
+                              C01-{String(q.quoteNumber).padStart(4, '0')} ({q.clientName})
                             </CommandItem>
                           ))}
                         </CommandGroup>
@@ -721,7 +721,7 @@ export function ProjectManager() {
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" aria-expanded={open} className="w-[150px] justify-between">
                       {currentPO 
-                          ? `OC-${String(currentPO.purchaseOrderNumber).padStart(3, '0')}`
+                          ? `OC01-${String(currentPO.purchaseOrderNumber).padStart(4, '0')}`
                           : "Asignar..."
                       }
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -740,11 +740,11 @@ export function ProjectManager() {
                           {availablePOs.map(po => (
                             <CommandItem 
                               key={po.id} 
-                              value={`OC-${String(po.purchaseOrderNumber).padStart(3, '0')} ${po.supplierName}`}
+                              value={`OC01-${String(po.purchaseOrderNumber).padStart(4, '0')} ${po.supplierName}`}
                               onSelect={() => onSelectPO(po.id)}
                             >
                               <Check className={cn("mr-2 h-4 w-4", project.purchaseOrderId === po.id ? "opacity-100" : "opacity-0")}/>
-                              OC-{String(po.purchaseOrderNumber).padStart(3, '0')} ({po.supplierName})
+                              OC01-{String(po.purchaseOrderNumber).padStart(4, '0')} ({po.supplierName})
                             </CommandItem>
                           ))}
                         </CommandGroup>
@@ -960,7 +960,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
                                         <SelectItem value="none">Ninguna</SelectItem>
                                         {quotes.map(q => (
                                             <SelectItem key={q.id} value={q.id}>
-                                               COT-{String(q.quoteNumber).padStart(3, '0')} ({q.clientName})
+                                               C01-{String(q.quoteNumber).padStart(4, '0')} ({q.clientName})
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -975,7 +975,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
                                         <SelectItem value="none">Ninguna</SelectItem>
                                         {purchaseOrders.map(po => (
                                             <SelectItem key={po.id} value={po.id}>
-                                               OC-{String(po.purchaseOrderNumber).padStart(3, '0')} ({po.supplierName})
+                                               OC01-{String(po.purchaseOrderNumber).padStart(4, '0')} ({po.supplierName})
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

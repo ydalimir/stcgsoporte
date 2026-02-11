@@ -75,10 +75,9 @@ interface QuoteFormProps {
 }
 
 const formatDate = (date: Date) => {
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+    const localDate = new Date(date.getTime() - userTimezoneOffset);
+    return localDate.toISOString().split('T')[0];
 };
 
 const today = new Date();
@@ -178,13 +177,13 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
           clientPhone: quote.clientPhone || "",
           clientEmail: quote.clientEmail || "",
           clientAddress: quote.clientAddress || "",
-          date: quote.date ? quote.date.split('T')[0] : formatDate(new Date()),
+          date: quote.date ? new Date(quote.date).toISOString().split('T')[0] : formatDate(new Date()),
           status: quote.status || "Borrador",
           tipoServicio: quote.tipoServicio || "Correctivo",
           tipoTrabajo: quote.tipoTrabajo || "",
           equipoLugar: quote.equipoLugar || "",
           items: quote.items || [],
-          expirationDate: quote.expirationDate ? quote.expirationDate.split('T')[0] : formatDate(expiration),
+          expirationDate: quote.expirationDate ? new Date(quote.expirationDate).toISOString().split('T')[0] : formatDate(expiration),
           rfc: quote.rfc || "",
           observations: quote.observations || "",
           policies: quote.policies || "",
@@ -227,7 +226,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     setIsComboboxOpen(false);
   };
 
-  const quoteIdDisplay = quote?.quoteNumber ? `COT-${String(quote.quoteNumber).padStart(3, '0')}` : "Nueva Cotización";
+  const quoteIdDisplay = quote?.quoteNumber ? `C01-${String(quote.quoteNumber).padStart(4, '0')}` : "Nueva Cotización";
 
 
   return (

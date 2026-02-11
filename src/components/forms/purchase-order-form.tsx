@@ -195,7 +195,7 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder 
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl p-0">
         <DialogHeader className="p-6 pb-0">
-          <DialogTitle>{purchaseOrder?.id ? `Editar Orden de Compra #${purchaseOrder.purchaseOrderNumber}` : "Crear Orden de Compra"}</DialogTitle>
+          <DialogTitle>{purchaseOrder?.id ? `Editar Orden de Compra #OC01-${String(purchaseOrder.purchaseOrderNumber).padStart(4, '0')}` : "Crear Orden de Compra"}</DialogTitle>
           <DialogDescription>Complete los detalles para generar la orden de compra.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -257,7 +257,7 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder 
                                     <SelectItem value="none">Ninguna</SelectItem>
                                     {quotes.map(q => (
                                         <SelectItem key={q.id} value={q.id}>
-                                            COT-{String(q.quoteNumber).padStart(3, '0')} ({q.clientName})
+                                            C01-{String(q.quoteNumber).padStart(4, '0')} ({q.clientName})
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

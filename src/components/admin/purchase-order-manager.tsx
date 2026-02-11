@@ -87,7 +87,7 @@ export type PurchaseOrder = {
 
 const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     const doc = new jsPDF();
-    const poId = `OC-${String(po.purchaseOrderNumber).padStart(4, '0')}`;
+    const poId = `OC01-${String(po.purchaseOrderNumber).padStart(4, '0')}`;
     let yPos = 20;
 
     // --- Header ---
@@ -125,7 +125,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     
     // --- Details Table ---
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
-    const quoteDisplay = linkedQuote ? `COT-${String(linkedQuote.quoteNumber).padStart(4, '0')}` : 'N/A';
+    const quoteDisplay = linkedQuote ? `C01-${String(linkedQuote.quoteNumber).padStart(4, '0')}` : 'N/A';
     const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A'
 
     autoTable(doc, {
@@ -313,7 +313,7 @@ export function PurchaseOrderManager() {
         header: "ID",
         cell: ({ row }) => {
           const poNumber = row.original.purchaseOrderNumber;
-          return poNumber ? `OC-${String(poNumber).padStart(4, '0')}` : 'N/A';
+          return poNumber ? `OC01-${String(poNumber).padStart(4, '0')}` : 'N/A';
         }
       },
       { accessorKey: "supplierName", header: "Proveedor" },
