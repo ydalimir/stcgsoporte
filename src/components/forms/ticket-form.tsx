@@ -74,8 +74,8 @@ export function TicketForm({ onTicketCreated, isAdminMode = false }: TicketFormP
   const searchParams = useSearchParams();
   const [clients, setClients] = useState<Client[]>([]);
   const [isClientComboboxOpen, setIsClientComboboxOpen] = useState(false);
+  const [hasPreselectedService, setHasPreselectedService] = useState(false);
   
-  const preselectedServiceType = searchParams.get('serviceType');
 
   const form = useForm<TicketFormValues>({
     resolver: zodResolver(ticketSchema),
@@ -105,6 +105,7 @@ export function TicketForm({ onTicketCreated, isAdminMode = false }: TicketFormP
 
     if (serviceType === 'correctivo' || serviceType === 'preventivo' || serviceType === 'instalacion') {
         form.setValue('serviceType', serviceType);
+        setHasPreselectedService(true);
     }
     if (equipmentType) {
         form.setValue('equipmentType', equipmentType);
@@ -310,7 +311,7 @@ ${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toLocaleString('es-M
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Tipo de Servicio</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value} disabled={!!preselectedServiceType}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={hasPreselectedService}>
                     <FormControl>
                     <SelectTrigger>
                         <SelectValue placeholder="Seleccione el tipo de servicio requerido" />
