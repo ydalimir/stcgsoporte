@@ -55,6 +55,7 @@ import { Badge } from "../ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { errorEmitter } from "@/lib/error-emitter";
 import { FirestorePermissionError } from "@/lib/errors";
+import type { Quote } from "./quote-manager";
 
 export type PurchaseOrderItem = {
   description: string;
@@ -72,7 +73,7 @@ export type PurchaseOrder = {
   supplierName: string;
   supplierDetails: string;
   billToDetails: string;
-  quoteLink?: string;
+  quoteId?: string;
   shippingMethod?: string;
   paymentMethod?: string;
   status: "Borrador" | "Enviada" | "Recibida Parcialmente" | "Recibida";
@@ -84,7 +85,7 @@ export type PurchaseOrder = {
   total: number;
 };
 
-const downloadPDF = (po: PurchaseOrder) => {
+const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     const doc = new jsPDF();
     const poId = `OC-${String(po.purchaseOrderNumber).padStart(4, '0')}`;
     let yPos = 20;
@@ -121,10 +122,13 @@ const downloadPDF = (po: PurchaseOrder) => {
     yPos += maxLines * 4 + 10;
     
     // --- Details Table ---
+    const linkedQuote = quotes.find(q => q.id === po.quoteId);
+    const quoteDisplay = linkedQuote ? `COT-${String(linkedQuote.quoteNumber).padStart(4, '0')}` : 'N/A';
+
     autoTable(doc, {
         startY: yPos,
         body: [[
-            { content: `COTIZACIÓN:\n${po.quoteLink || 'N/A'}`},
+            { content: `COTIZACIÓN:\n${quoteDisplay}`},
             { content: `ENVIAR VÍA:\n${po.shippingMethod || 'N/A'}`},
             { content: `PAGO:\n${po.paymentMethod || 'N/A'}`},
             { content: `FECHA APROX ENTREGA:\n${po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '/')).toLocaleDateString('es-MX') : 'N/A'}`},
@@ -201,6 +205,7 @@ const downloadPDF = (po: PurchaseOrder) => {
 export function PurchaseOrderManager() {
   const { user, isLoading: authIsLoading } = useAuth();
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState("");
   const { toast } = useToast();
@@ -232,7 +237,20 @@ export function PurchaseOrderManager() {
         toast({ title: "Error al cargar", description: "No se pudieron cargar las órdenes de compra.", variant: "destructive"});
         setIsLoading(false);
     });
-    return () => unsubscribe();
+
+    const qQuotes = collection(db, "quotes");
+    const unsubscribeQuotes = onSnapshot(qQuotes, (snapshot) => {
+        const quotesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
+        setQuotes(quotesData);
+    }, (error) => {
+        console.error("Could not load quotes", error);
+    });
+
+
+    return () => {
+      unsubscribe();
+      unsubscribeQuotes();
+    };
   }, [user, authIsLoading, toast]);
 
   const handleSave = useCallback(async (poData: any) => {
@@ -327,7 +345,7 @@ export function PurchaseOrderManager() {
                 <DropdownMenuItem onClick={() => { setSelectedPO(po); setIsFormOpen(true); }}>
                   <Edit className="mr-2 h-4 w-4" /> Editar
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => downloadPDF(po)}>
+                <DropdownMenuItem onClick={() => downloadPDF(po, quotes)}>
                   <Download className="mr-2 h-4 w-4" /> Descargar PDF
                 </DropdownMenuItem>
                 <DropdownMenuSub>
@@ -372,7 +390,7 @@ export function PurchaseOrderManager() {
         },
       },
     ],
-    [handleDelete, handleStatusChange]
+    [handleDelete, handleStatusChange, quotes]
   );
 
   const table = useReactTable({

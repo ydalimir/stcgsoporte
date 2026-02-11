@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { Separator } from "../ui/separator";
 import { Supplier } from "../admin/supplier-manager";
 import { SparePart } from "../admin/spare-parts-manager";
+import type { Quote } from "@/components/admin/quote-manager";
 
 
 const poItemSchema = z.object({
@@ -52,7 +53,7 @@ const poFormSchema = z.object({
   deliveryDate: z.string().optional(),
   status: z.enum(["Borrador", "Enviada", "Recibida Parcialmente", "Recibida"]),
   items: z.array(poItemSchema).min(1, "Debe agregar al menos un ítem."),
-  quoteLink: z.string().optional(),
+  quoteId: z.string().optional(),
   shippingMethod: z.string().optional(),
   paymentMethod: z.string().optional(),
   observations: z.string().optional(),
@@ -91,7 +92,7 @@ const defaultValues: POFormValues = {
   items: [],
   iva: 16,
   deliveryDate: "",
-  quoteLink: "",
+  quoteId: "",
   shippingMethod: "",
   paymentMethod: "CRÉDITO",
   observations: "",
@@ -101,6 +102,7 @@ const defaultValues: POFormValues = {
 export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder }: PurchaseOrderFormProps) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSupplierComboboxOpen, setIsSupplierComboboxOpen] = useState(false);
   const [isItemComboboxOpen, setIsItemComboboxOpen] = useState(false);
@@ -115,9 +117,16 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder 
     const unsubParts = onSnapshot(qParts, (snapshot) => {
         setSpareParts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SparePart)));
     });
+
+    const qQuotes = collection(db, "quotes");
+    const unsubQuotes = onSnapshot(qQuotes, (snapshot) => {
+        setQuotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote)));
+    });
+
     return () => {
         unsubSuppliers();
         unsubParts();
+        unsubQuotes();
     };
   }, []);
 
@@ -140,6 +149,7 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder 
           date: purchaseOrder.date ? purchaseOrder.date.split('T')[0] : formatDate(new Date()),
           deliveryDate: purchaseOrder.deliveryDate ? purchaseOrder.deliveryDate.split('T')[0] : "",
           items: purchaseOrder.items || [],
+          quoteId: purchaseOrder.quoteId || ""
         });
       } else {
         form.reset(defaultValues);
@@ -237,7 +247,23 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder 
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border p-4 rounded-lg">
-                    <FormField name="quoteLink" control={form.control} render={({ field }) => (<FormItem><FormLabel>Cotización</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                    <FormField control={form.control} name="quoteId" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Cotización Vinculada</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value ?? undefined}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar cotización..." /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    <SelectItem value="">Ninguna</SelectItem>
+                                    {quotes.map(q => (
+                                        <SelectItem key={q.id} value={q.id}>
+                                            COT-{String(q.quoteNumber).padStart(3, '0')} ({q.clientName})
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
                     <FormField name="shippingMethod" control={form.control} render={({ field }) => (<FormItem><FormLabel>Enviar Vía</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                     <FormField name="paymentMethod" control={form.control} render={({ field }) => (<FormItem><FormLabel>Pago</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                     <FormField name="deliveryDate" control={form.control} render={({ field }) => (<FormItem><FormLabel>Fecha Aprox. Entrega</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)} />
