@@ -198,19 +198,20 @@ const downloadPDF = (quote: Quote) => {
     
     // --- Payment Conditions ---
     if (quote.paymentTerms) {
-        const paymentTermsLines = doc.splitTextToSize(quote.paymentTerms, 180);
-        const sectionHeight = (paymentTermsLines.length * 4) + 12;
-        if (yPos + sectionHeight > pageHeight - 45) { // Check if it fits before footer
+        if (yPos + 30 > pageHeight - 45) { // Check if it fits before footer
             doc.addPage();
             yPos = 15;
         }
 
-        doc.setFontSize(10).setFont(undefined, 'bold');
-        doc.text("Condiciones de Pago:", 14, yPos);
-        yPos += 6;
+        doc.setFillColor(245, 245, 245); // Light grey background
+        doc.roundedRect(14, yPos, 182, 22, 3, 3, 'F');
+
+        doc.setFontSize(10).setFont(undefined, 'bold').setTextColor(41, 71, 121);
+        doc.text("Condiciones de Pago:", 20, yPos + 7);
         
-        doc.setFontSize(8).setFont(undefined, 'normal');
-        doc.text(paymentTermsLines, 14, yPos);
+        doc.setFontSize(8).setFont(undefined, 'normal').setTextColor(50, 50, 50);
+        const paymentTermsLines = doc.splitTextToSize(quote.paymentTerms, 170);
+        doc.text(paymentTermsLines, 20, yPos + 13);
     }
     
     // --- Footer with Signature ---
@@ -605,17 +606,24 @@ interface ProjectFormDialogProps {
 
 function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes }: ProjectFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const formatDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const form = useForm<z.infer<typeof projectSchema>>({
         resolver: zodResolver(projectSchema),
-        defaultValues: { client: "", description: "", responsible: "", status: "Nuevo", programmedDate: new Date().toISOString().split('T')[0], priority: "Media", quoteId: undefined, purchaseOrderId: undefined }
+        defaultValues: { client: "", description: "", responsible: "", status: "Nuevo", programmedDate: formatDate(new Date()), priority: "Media", quoteId: undefined, purchaseOrderId: undefined }
     });
 
     useEffect(() => {
         if (isOpen) {
           if (project) {
-            form.reset({ ...project, programmedDate: new Date(project.programmedDate).toISOString().split('T')[0]});
+            form.reset({ ...project, programmedDate: project.programmedDate.split('T')[0]});
           } else {
-            form.reset({ client: "", description: "", responsible: "", status: "Nuevo", programmedDate: new Date().toISOString().split('T')[0], priority: "Media", quoteId: undefined, purchaseOrderId: undefined });
+            form.reset({ client: "", description: "", responsible: "", status: "Nuevo", programmedDate: formatDate(new Date()), priority: "Media", quoteId: undefined, purchaseOrderId: undefined });
           }
         }
       }, [project, isOpen, form]);

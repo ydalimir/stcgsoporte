@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -72,6 +73,18 @@ interface QuoteFormProps {
   quote: Partial<Quote> | null;
 }
 
+const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const today = new Date();
+const expiration = new Date();
+expiration.setDate(today.getDate() + 15);
+
+
 const defaultPaymentTerms = `Formas de Pago: Transferencia Bancaria / Depósitos
 Banco: Banco Mercantil del Norte, BANORTE
 Cuenta: 1053332481
@@ -84,13 +97,13 @@ const defaultValues = {
   clientPhone: "",
   clientEmail: "",
   clientAddress: "",
-  date: new Date().toISOString().split("T")[0],
+  date: formatDate(today),
   status: "Borrador" as Quote['status'],
   tipoServicio: "Correctivo",
   tipoTrabajo: "",
   equipoLugar: "",
   items: [],
-  expirationDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+  expirationDate: formatDate(expiration),
   rfc: "",
   observations: "",
   policies: "",
@@ -148,8 +161,8 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
         const resetValues = { 
             ...defaultValues, 
             ...quote,
-            date: quote?.date ? new Date(quote.date).toISOString().split("T")[0] : defaultValues.date,
-            expirationDate: quote?.expirationDate ? new Date(quote.expirationDate).toISOString().split("T")[0] : defaultValues.expirationDate,
+            date: quote?.date ? quote.date.split('T')[0] : defaultValues.date,
+            expirationDate: quote?.expirationDate ? quote.expirationDate.split('T')[0] : defaultValues.expirationDate,
           };
         form.reset(resetValues);
     }
@@ -329,13 +342,13 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <FormField name="observations" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Comentarios y Diagnóstico</FormLabel><FormControl><Textarea placeholder="Añadir notas u observaciones específicas para esta cotización..." className="min-h-[100px] bg-muted/20" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Comentarios y Diagnóstico</FormLabel><FormControl><Textarea placeholder="Añadir notas u observaciones específicas para esta cotización..." className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField name="policies" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Garantías</FormLabel><FormControl><Textarea placeholder="Describa las garantías del servicio o producto..." className="min-h-[100px] bg-muted/20" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Garantías</FormLabel><FormControl><Textarea placeholder="Describa las garantías del servicio o producto..." className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField name="paymentTerms" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Condiciones de Pago</FormLabel><FormControl><Textarea className="min-h-[100px] bg-muted/20" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Condiciones de Pago</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
                 
