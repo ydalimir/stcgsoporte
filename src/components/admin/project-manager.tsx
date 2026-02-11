@@ -105,23 +105,28 @@ const downloadPDF = (quote: Quote) => {
     const doc = new jsPDF();
     const quoteId = `COT-${String(quote.quoteNumber).padStart(4, '0')}`;
     const pageHeight = doc.internal.pageSize.height;
-    let yPos = 15;
+    let yPos = 20;
 
     // --- Header ---
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
-    doc.text("Leboref", 14, yPos);
+    doc.setTextColor(41, 71, 121); // Primary color
+    doc.text("LEBAREF", 14, yPos);
     
     const headerDetailsX = 196;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text(`Cotización`, headerDetailsX, yPos, { align: 'right' });
-    doc.text(`${quoteId}`, headerDetailsX, yPos + 6, { align: 'right' });
+    doc.text(`COTIZACIÓN`, headerDetailsX, yPos - 2, { align: 'right' });
     
-    yPos = 35;
+    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(128, 128, 128);
+    doc.text(`${quoteId}`, headerDetailsX, yPos + 4, { align: 'right' });
+
+    yPos = 30;
     doc.setDrawColor(221, 221, 221); // A light grey color
     doc.line(14, yPos, 196, yPos);
-    yPos += 5;
+    yPos += 10;
+    doc.setTextColor(0, 0, 0); // Reset color
+
 
     // --- Client and Service Info ---
     autoTable(doc, {
@@ -137,7 +142,7 @@ const downloadPDF = (quote: Quote) => {
         theme: 'plain',
         styles: { fontSize: 9, cellPadding: 1 }
     });
-    yPos = (doc as any).lastAutoTable.finalY + 5;
+    yPos = (doc as any).lastAutoTable.finalY + 10;
 
 
     // --- Items Table ---
@@ -188,29 +193,24 @@ const downloadPDF = (quote: Quote) => {
         doc.setFontSize(7).setFont(undefined, 'normal');
         const splitPolicies = doc.splitTextToSize(quote.policies, 180);
         doc.text(splitPolicies, 14, yPos);
-        yPos += splitPolicies.length * 3 + 5;
+        yPos += splitPolicies.length * 3 + 10;
     }
     
     // --- Payment Conditions ---
     if (quote.paymentTerms) {
-        const paymentTermsLines = doc.splitTextToSize(quote.paymentTerms, 172);
-        const rectHeight = (paymentTermsLines.length * 4) + 20;
-        if (yPos + rectHeight > pageHeight - 45) { // 45 for footer margin
+        const paymentTermsLines = doc.splitTextToSize(quote.paymentTerms, 180);
+        const sectionHeight = (paymentTermsLines.length * 4) + 12;
+        if (yPos + sectionHeight > pageHeight - 45) { // Check if it fits before footer
             doc.addPage();
             yPos = 15;
         }
 
-        doc.setFillColor(245, 245, 245); // Light grey background
-        doc.setDrawColor(220, 220, 220); // Border color
-        doc.roundedRect(14, yPos, 182, rectHeight, 3, 3, 'FD');
-        
-        yPos += 7;
-        doc.setFontSize(10).setFont(undefined, 'bold').setTextColor(41, 71, 121);
-        doc.text("Condiciones de Pago:", 20, yPos);
+        doc.setFontSize(10).setFont(undefined, 'bold');
+        doc.text("Condiciones de Pago:", 14, yPos);
         yPos += 6;
         
-        doc.setFontSize(8).setFont(undefined, 'normal').setTextColor(0,0,0);
-        doc.text(paymentTermsLines, 20, yPos);
+        doc.setFontSize(8).setFont(undefined, 'normal');
+        doc.text(paymentTermsLines, 14, yPos);
     }
     
     // --- Footer with Signature ---
