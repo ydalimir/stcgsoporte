@@ -24,12 +24,16 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
-import { Loader2, MessageSquare, UserPlus } from "lucide-react";
+import { Loader2, MessageSquare, UserPlus, Check, ChevronsUpDown } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter, useSearchParams } from "next/navigation";
-import { addDoc, collection, serverTimestamp, runTransaction, doc } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, runTransaction, doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Input } from "../ui/input";
+import { Client } from "../admin/client-manager";
+import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
+import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from "../ui/command";
+import { cn } from "@/lib/utils";
 
 const ticketSchema = z.object({
   serviceType: z.enum(["correctivo", "preventivo", "instalacion"], {
@@ -68,6 +72,8 @@ export function TicketForm({ onTicketCreated, isAdminMode = false }: TicketFormP
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [clients, setClients] = useState<Client[]>([]);
+  const [isClientComboboxOpen, setIsClientComboboxOpen] = useState(false);
   
   const preselectedServiceType = searchParams.get('serviceType');
 
@@ -110,6 +116,20 @@ export function TicketForm({ onTicketCreated, isAdminMode = false }: TicketFormP
         form.setValue('clientEmail', user.email);
     }
   }, [searchParams, form, user, isAdminMode]);
+
+  useEffect(() => {
+    const qClients = collection(db, "clients");
+    const unsubscribeClients = onSnapshot(qClients, (snapshot) => {
+        const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+        setClients(clientsData);
+    }, (error) => {
+        console.error("Could not load clients: ", error);
+    });
+
+    return () => {
+        unsubscribeClients();
+    };
+  }, []);
 
   async function createTicketInApp(data: TicketFormValues) {
     if (!user && !isAdminMode) {
@@ -210,9 +230,61 @@ ${estimatedTotal > 0 ? `*Total Estimado:* $${estimatedTotal.toLocaleString('es-M
         <div className="space-y-4 border-b pb-6">
              <h3 className="text-lg font-medium">Información del Cliente</h3>
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 <FormField control={form.control} name="clientName" render={({ field }) => (
-                    <FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="Ej: Juan Pérez" {...field} /></FormControl><FormMessage /></FormItem>
-                 )} />
+                 <FormField
+                    name="clientName"
+                    control={form.control}
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Nombre Completo</FormLabel>
+                            <Popover open={isClientComboboxOpen} onOpenChange={setIsClientComboboxOpen}>
+                                <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
+                                        >
+                                            {field.value || "Seleccionar o escribir cliente"}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                                        <CommandInput
+                                            placeholder="Buscar cliente..."
+                                            onValueChange={(search) => field.onChange(search)}
+                                        />
+                                        <CommandList>
+                                            <CommandEmpty>No se encontró cliente.</CommandEmpty>
+                                            <CommandGroup>
+                                                {clients.map((client) => (
+                                                    <CommandItem
+                                                        value={client.name}
+                                                        key={client.id}
+                                                        onSelect={() => {
+                                                            form.setValue("clientName", client.name);
+                                                            form.setValue("clientPhone", client.phone);
+                                                            form.setValue("clientAddress", client.address || "");
+                                                            form.setValue("clientEmail", client.email || "");
+                                                            form.setValue("clientRfc", client.rfc || "");
+                                                            field.onChange(client.name);
+                                                            setIsClientComboboxOpen(false);
+                                                        }}
+                                                    >
+                                                        <Check className={cn("mr-2 h-4 w-4", client.name === field.value ? "opacity-100" : "opacity-0")} />
+                                                        {client.name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
                  <FormField control={form.control} name="clientPhone" render={({ field }) => (
                     <FormItem><FormLabel>Número de Teléfono</FormLabel><FormControl><Input placeholder="Ej: 9991234567" {...field} /></FormControl><FormMessage /></FormItem>
                  )} />
