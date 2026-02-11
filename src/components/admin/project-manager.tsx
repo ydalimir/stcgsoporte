@@ -82,6 +82,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { QuoteForm } from "../forms/quote-form";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import type { PurchaseOrder } from "./purchase-order-manager";
+import { PurchaseOrderForm } from "../forms/purchase-order-form";
 
 
 const projectSchema = z.object({
@@ -93,7 +95,7 @@ const projectSchema = z.object({
   programmedDate: z.string().min(1, { message: "La fecha programada es requerida." }),
   priority: z.enum(["Baja", "Media", "Alta"]),
   quoteId: z.string().optional().nullable(),
-  purchaseOrderId: z.string().optional(),
+  purchaseOrderId: z.string().optional().nullable(),
 });
 
 export type Project = z.infer<typeof projectSchema> & {
@@ -102,7 +104,7 @@ export type Project = z.infer<typeof projectSchema> & {
     createdAt: any;
 };
 
-const downloadPDF = (quote: Quote) => {
+const downloadQuotePDF = (quote: Quote) => {
     const doc = new jsPDF();
     const quoteId = `COT-${String(quote.quoteNumber).padStart(4, '0')}`;
     const pageHeight = doc.internal.pageSize.height;
@@ -128,14 +130,13 @@ const downloadPDF = (quote: Quote) => {
     yPos += 10;
     doc.setTextColor(0, 0, 0); // Reset color
 
-    const [year, month, day] = quote.date.split('-').map(Number);
-    const localDate = new Date(year, month - 1, day);
+    const localDate = new Date(quote.date);
 
     // --- Client and Service Info ---
     autoTable(doc, {
         startY: yPos,
         body: [
-            [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${localDate.toLocaleDateString('es-MX')}`, styles: { halign: 'right' } }],
+            [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'})}`, styles: { halign: 'right' } }],
             [{ content: `Empresa: ${quote.clientName}` }, { content: `Ciudad: Mérida`, styles: { halign: 'right' } }],
             [{ content: `Dirección: ${quote.clientAddress}` }, { content: `Tipo de Servicio: ${quote.tipoServicio || ''}`, styles: { halign: 'right' } }],
             [{ content: `Teléfono: ${quote.clientPhone}` }, { content: `Tipo de Trabajo: ${quote.tipoTrabajo || ''}`, styles: { halign: 'right' } }],
@@ -201,18 +202,12 @@ const downloadPDF = (quote: Quote) => {
     
     // --- Payment Conditions ---
     if (quote.paymentTerms) {
-        const paymentTermsLines = doc.splitTextToSize(quote.paymentTerms, 180);
-        const sectionHeight = (paymentTermsLines.length * 4) + 12;
-        if (yPos + sectionHeight > pageHeight - 45) { // Check if it fits before footer
-            doc.addPage();
-            yPos = 15;
-        }
-
         doc.setFontSize(10).setFont(undefined, 'bold');
         doc.text("Condiciones de Pago:", 14, yPos);
         yPos += 6;
         
         doc.setFontSize(8).setFont(undefined, 'normal');
+        const paymentTermsLines = doc.splitTextToSize(quote.paymentTerms, 180);
         doc.text(paymentTermsLines, 14, yPos);
     }
     
@@ -229,11 +224,133 @@ const downloadPDF = (quote: Quote) => {
     doc.save(`${quoteId}.pdf`);
 }
 
+const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
+    const doc = new jsPDF();
+    const poId = `OC-${String(po.purchaseOrderNumber).padStart(4, '0')}`;
+    let yPos = 20;
+
+    // --- Header ---
+    doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(41, 71, 121);
+    doc.text("LEBAREF", 14, yPos);
+    
+    doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(41, 71, 121);
+    doc.text("ORDEN DE COMPRA", 200, yPos, { align: 'right' });
+    yPos += 8;
+
+    doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(100, 100, 100);
+    const poDate = po.date ? new Date(po.date).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
+    doc.text(`FECHA: ${poDate}`, 200, yPos, { align: 'right' });
+    yPos += 4;
+    doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, 200, yPos, { align: 'right' });
+    yPos += 15;
+
+    // --- Addresses ---
+    autoTable(doc, {
+        startY: yPos,
+        theme: 'plain',
+        body: [
+             [
+                { content: 'FACTURAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 9 } },
+                { content: 'ENVIAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 9 } }
+            ],
+            [
+                { content: po.billToDetails, styles: { fontSize: 9 } },
+                { content: po.supplierDetails, styles: { fontSize: 9 } }
+            ]
+        ]
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 5;
+    
+    
+    // --- Details Table ---
+    const linkedQuote = quotes.find(q => q.id === po.quoteId);
+    const quoteDisplay = linkedQuote ? `COT-${String(linkedQuote.quoteNumber).padStart(4, '0')}` : 'N/A';
+    const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A'
+
+    autoTable(doc, {
+        startY: yPos,
+        body: [[
+            { content: `COTIZACIÓN:\n${quoteDisplay}`},
+            { content: `ENVIAR VÍA:\n${po.shippingMethod || 'N/A'}`},
+            { content: `PAGO:\n${po.paymentMethod || 'N/A'}`},
+            { content: `FECHA APROX ENTREGA:\n${deliveryDate}`},
+        ]],
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
+        headStyles: { fillColor: [255, 255, 255], textColor: 0 },
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 5;
+
+
+    // --- Items Table ---
+    const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+    const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
+    const subTotalAfterDiscount = subtotal - discountAmount;
+    const ivaAmount = subTotalAfterDiscount * (po.iva / 100);
+    const total = subTotalAfterDiscount + ivaAmount;
+    
+    autoTable(doc, {
+      startY: yPos,
+      head: [['ARTÍCULO NO.', 'DESCRIPCIÓN', 'UNIDAD', 'CANTIDAD', 'PRECIO POR UNIDAD', 'TOTAL']],
+      body: po.items.map((item, index) => [
+        index + 1,
+        item.description, 
+        item.unit || 'PZA',
+        (item.quantity || 0).toFixed(2), 
+        `$${(item.price || 0).toFixed(2)}`, 
+        `$${((item.quantity || 0) * (item.price || 0)).toFixed(2)}`
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: [220, 220, 220], textColor: 0, fontSize: 8, fontStyle: 'bold', halign: 'center' },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: { 5: { halign: 'right' }},
+      didDrawPage: (data) => {
+        yPos = data.cursor?.y ?? yPos;
+      }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY;
+
+    // --- Totals ---
+    const totalsX = 140;
+    const totalsY = finalY + 5;
+    doc.setFontSize(9);
+    doc.text('SUBTOTAL', totalsX, totalsY, { align: 'left'});
+    doc.text(`$${subtotal.toFixed(2)}`, 200, totalsY, { align: 'right'});
+    if(po.discountPercentage) {
+        doc.text(`DESCUENTO ${po.discountPercentage}%`, totalsX, totalsY + 5, { align: 'left'});
+        doc.text(`-$${discountAmount.toFixed(2)}`, 200, totalsY + 5, { align: 'right'});
+    }
+    doc.text('IVA', totalsX, totalsY + 10, { align: 'left'});
+    doc.text(`$${ivaAmount.toFixed(2)}`, 200, totalsY + 10, { align: 'right'});
+    doc.setFont("helvetica", "bold");
+    doc.text('TOTAL', totalsX, totalsY + 15, { align: 'left'});
+    doc.text(`$${total.toFixed(2)}`, 200, totalsY + 15, { align: 'right'});
+    
+    // --- Observations & Signature ---
+    const obsY = finalY + 5;
+    doc.setFont("helvetica", "normal");
+    doc.text('Observaciones / Instrucciones:', 14, obsY);
+    const splitObservations = doc.splitTextToSize(po.observations || '', 120); // Split text to fit width
+    doc.text(splitObservations, 14, obsY + 5);
+
+    const signatureY = Math.max(obsY + 30, totalsY + 30);
+    doc.text('FIRMA AUTORIZADA', 14, signatureY);
+    doc.rect(14, signatureY + 2, 80, 20); // Signature box
+
+    doc.setFontSize(8).setTextColor(150);
+    doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo electrónico:", 105, doc.internal.pageSize.height - 15, {align: 'center'});
+    doc.text("lebarefmantenimiento@gmail.com / corporativo@lebaref.com", 105, doc.internal.pageSize.height - 10, {align: 'center'});
+    
+    doc.save(`${poId}.pdf`);
+}
+
 
 export function ProjectManager() {
   const { user, isLoading: authIsLoading } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -243,6 +360,11 @@ export function ProjectManager() {
   const [isQuoteFormOpen, setIsQuoteFormOpen] = useState(false);
   const [linkingProject, setLinkingProject] = useState<Project | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
+
+  const [isPOFormOpen, setIsPOFormOpen] = useState(false);
+  const [linkingProjectForPO, setLinkingProjectForPO] = useState<Project | null>(null);
+  const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
+
 
   useEffect(() => {
     if (authIsLoading) return;
@@ -269,14 +391,22 @@ export function ProjectManager() {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
         setQuotes(data);
     }, (error) => {
-        // Not showing a toast here to avoid spamming if permissions are missing for quotes
         console.error("Could not load quotes for project linking.");
+    });
+    
+    const poQuery = collection(db, "purchase_orders");
+    const unsubscribePOs = onSnapshot(poQuery, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PurchaseOrder));
+        setPurchaseOrders(data);
+    }, (error) => {
+        console.error("Could not load purchase orders for project linking.");
     });
 
 
     return () => {
         unsubscribeProjects();
         unsubscribeQuotes();
+        unsubscribePOs();
     };
   }, [user, authIsLoading, toast]);
 
@@ -385,10 +515,84 @@ export function ProjectManager() {
         setEditingQuote(quote);
         setIsQuoteFormOpen(true);
     };
+
+  const handleLinkPurchaseOrder = useCallback(async (projectId: string, purchaseOrderId: string | null) => {
+      const projectDoc = doc(db, "projects", projectId);
+      try {
+        await updateDoc(projectDoc, { purchaseOrderId: purchaseOrderId });
+        toast({ title: "Proyecto Actualizado", description: "La orden de compra ha sido vinculada/desvinculada." });
+      } catch(error) {
+         console.error("Error linking purchase order:", error);
+         toast({ title: "Error al vincular", variant: "destructive" });
+      }
+  }, [toast]);
+
+  const handleSaveAndLinkPO = useCallback(async (poData: any) => {
+    if (!linkingProjectForPO) return;
+    try {
+        const newPOId = await runTransaction(db, async (transaction) => {
+            const counterRef = doc(db, "counters", "purchaseOrders");
+            const counterDoc = await transaction.get(counterRef);
+            let newPoNumber = 1;
+            if (counterDoc.exists()) {
+                newPoNumber = counterDoc.data().lastNumber + 1;
+            }
+            transaction.set(counterRef, { lastNumber: newPoNumber }, { merge: true });
+            const newPORef = doc(collection(db, "purchase_orders"));
+            transaction.set(newPORef, { ...poData, purchaseOrderNumber: newPoNumber });
+            return newPORef.id;
+        });
+
+        const projectDoc = doc(db, "projects", linkingProjectForPO.id);
+        await updateDoc(projectDoc, { purchaseOrderId: newPOId });
+
+        toast({ title: "Orden de Compra Creada y Vinculada", description: "La nueva orden de compra se ha vinculado al proyecto." });
+
+    } catch (error) {
+        console.error("Error creating and linking PO:", error);
+        toast({ title: "Error al vincular", description: "No se pudo crear y vincular la orden de compra.", variant: "destructive" });
+    } finally {
+        setIsPOFormOpen(false);
+        setLinkingProjectForPO(null);
+    }
+  }, [linkingProjectForPO, toast]);
+
+  const handleUpdatePO = useCallback(async (poData: any) => {
+      if (!editingPO) return;
+      try {
+          const poRef = doc(db, "purchase_orders", editingPO.id);
+          await updateDoc(poRef, poData);
+          toast({ title: "Orden de Compra Actualizada", description: `La orden para ${poData.supplierName} ha sido actualizada.` });
+      } catch (error) {
+          console.error("Error updating PO:", error);
+          toast({ title: "Error al actualizar", description: "No se pudo actualizar la orden de compra.", variant: "destructive" });
+      } finally {
+          setIsPOFormOpen(false);
+          setEditingPO(null);
+      }
+  }, [editingPO, toast]);
+
+    const handleEditPO = (po: PurchaseOrder) => {
+        setEditingPO(po);
+        setIsPOFormOpen(true);
+    };
   
   const columns: ColumnDef<Project>[] = useMemo(() => [
       { accessorKey: "client", header: "Cliente" },
-      { 
+      { accessorKey: "description", header: "Descripción", cell: ({row}) => <div className="max-w-xs whitespace-normal">{row.original.description}</div> },
+      { accessorKey: "responsible", header: "Responsable", cell: ({row}) => {
+          const name = row.original.responsible;
+          const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2);
+          return (
+            <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8 text-xs">
+                    <AvatarFallback>{initials}</AvatarFallback>
+                </Avatar>
+                <span>{name}</span>
+            </div>
+          )
+      } },
+       { 
         id: "quote",
         header: "Cotización",
         cell: ({ row }) => {
@@ -455,7 +659,7 @@ export function ProjectManager() {
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditQuote(currentQuote)}>
                             <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadPDF(currentQuote)}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadQuotePDF(currentQuote)}>
                             <Download className="h-4 w-4" />
                         </Button>
                     </div>
@@ -464,19 +668,6 @@ export function ProjectManager() {
             )
         }
       },
-      { accessorKey: "description", header: "Descripción", cell: ({row}) => <div className="max-w-xs whitespace-normal">{row.original.description}</div> },
-      { accessorKey: "responsible", header: "Responsable", cell: ({row}) => {
-          const name = row.original.responsible;
-          const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2);
-          return (
-            <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8 text-xs">
-                    <AvatarFallback>{initials}</AvatarFallback>
-                </Avatar>
-                <span>{name}</span>
-            </div>
-          )
-      } },
       { accessorKey: "status", header: "Estado", cell: ({row}) => {
          const project = row.original;
          const status = project.status;
@@ -505,10 +696,83 @@ export function ProjectManager() {
       }},
       { accessorKey: "programmedDate", header: "Fecha Prog.", cell: ({row}) => {
         if (!row.original.programmedDate) return 'N/A';
-        const [year, month, day] = row.original.programmedDate.split('-').map(Number);
-        const localDate = new Date(year, month - 1, day);
-        return localDate.toLocaleDateString('es-MX');
+        const localDate = new Date(row.original.programmedDate);
+        return localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
       }},
+       { 
+        id: "purchaseOrder",
+        header: "Orden de Compra",
+        cell: ({ row }) => {
+            const project = row.original;
+            const currentPO = purchaseOrders.find(po => po.id === project.purchaseOrderId);
+            const [open, setOpen] = useState(false);
+            
+            const otherLinkedPoIds = new Set(projects.filter(p => p.id !== project.id).map(p => p.purchaseOrderId).filter(Boolean));
+            const availablePOs = purchaseOrders.filter(po => !otherLinkedPoIds.has(po.id));
+
+            const onSelectPO = (poId: string | null) => {
+              handleLinkPurchaseOrder(project.id, poId);
+              setOpen(false);
+            }
+
+            return (
+              <div className="flex items-center gap-1">
+                <Popover open={open} onOpenChange={setOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={open} className="w-[150px] justify-between">
+                      {currentPO 
+                          ? `OC-${String(currentPO.purchaseOrderNumber).padStart(3, '0')}`
+                          : "Asignar..."
+                      }
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Buscar por proveedor o ID..." />
+                      <CommandList>
+                        <CommandEmpty>No se encontraron órdenes.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem key="ninguna-po" value="ninguna-po" onSelect={() => onSelectPO(null)}>
+                            <Check className={cn("mr-2 h-4 w-4", !project.purchaseOrderId ? "opacity-100" : "opacity-0")}/>
+                            Ninguna
+                          </CommandItem>
+                          {availablePOs.map(po => (
+                            <CommandItem 
+                              key={po.id} 
+                              value={`OC-${String(po.purchaseOrderNumber).padStart(3, '0')} ${po.supplierName}`}
+                              onSelect={() => onSelectPO(po.id)}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", project.purchaseOrderId === po.id ? "opacity-100" : "opacity-0")}/>
+                              OC-{String(po.purchaseOrderNumber).padStart(3, '0')} ({po.supplierName})
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                        <CommandSeparator />
+                          <CommandGroup>
+                              <CommandItem onSelect={() => { setOpen(false); setLinkingProjectForPO(project); setIsPOFormOpen(true); }}>
+                                  <PlusCircle className="mr-2 h-4 w-4" />
+                                  Crear y Vincular O.C.
+                              </CommandItem>
+                          </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                 {currentPO && (
+                    <div className="flex items-center">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditPO(currentPO)}>
+                            <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadPurchaseOrderPDF(currentPO, quotes)}>
+                            <Download className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
+              </div>
+            )
+        }
+      },
       { accessorKey: "priority", header: "Prioridad", cell: ({row}) => {
          const priority = row.original.priority;
          return <Badge variant="outline" className={cn('capitalize', {
@@ -546,7 +810,7 @@ export function ProjectManager() {
             )
         }
       }
-  ], [handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, handleSaveAndLinkQuote, handleUpdateQuote]);
+  ], [handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, purchaseOrders, handleLinkPurchaseOrder, handleSaveAndLinkQuote, handleUpdateQuote, handleSaveAndLinkPO, handleUpdatePO, handleEditPO, handleEditQuote]);
   
   const table = useReactTable({ 
     data: projects, 
@@ -561,6 +825,10 @@ export function ProjectManager() {
   const quoteForForm = useMemo(() => 
     editingQuote || (linkingProject ? { clientName: linkingProject.client } : null)
   , [editingQuote, linkingProject]);
+
+  const poForForm = useMemo(() => 
+    editingPO || (linkingProjectForPO ? {} : null)
+  , [editingPO, linkingProjectForPO]);
 
   
   if (isLoading && authIsLoading) {
@@ -586,7 +854,7 @@ export function ProjectManager() {
             <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Siguiente</Button>
         </div>
 
-      <ProjectFormDialog isOpen={isFormOpen} onOpenChange={setIsFormOpen} onSave={handleSaveProject} project={selectedProject} quotes={quotes} />
+      <ProjectFormDialog isOpen={isFormOpen} onOpenChange={setIsFormOpen} onSave={handleSaveProject} project={selectedProject} quotes={quotes} purchaseOrders={purchaseOrders} />
       <QuoteForm 
         isOpen={isQuoteFormOpen}
         onOpenChange={(open) => {
@@ -596,8 +864,20 @@ export function ProjectManager() {
             }
             setIsQuoteFormOpen(open);
         }}
-        onSave={editingQuote ? handleUpdateQuote : handleSaveAndLinkQuote}
+        onSave={editingQuote ? handleUpdateQuote : handleSaveAndLinkQuote as any}
         quote={quoteForForm}
+      />
+      <PurchaseOrderForm
+        isOpen={isPOFormOpen}
+        onOpenChange={(open) => {
+            if (!open) {
+                setLinkingProjectForPO(null);
+                setEditingPO(null);
+            }
+            setIsPOFormOpen(open);
+        }}
+        onSave={editingPO ? handleUpdatePO : handleSaveAndLinkPO}
+        purchaseOrder={poForForm as PurchaseOrder}
       />
     </div>
   );
@@ -609,9 +889,10 @@ interface ProjectFormDialogProps {
   onSave: (data: Omit<Project, 'id' | 'lastUpdated' | 'createdAt'>) => void;
   project: Project | null;
   quotes: Quote[];
+  purchaseOrders: PurchaseOrder[];
 }
 
-function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes }: ProjectFormDialogProps) {
+function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purchaseOrders }: ProjectFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const formatDate = (date: Date) => {
         const year = date.getFullYear();
@@ -628,7 +909,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes }: Pr
     useEffect(() => {
         if (isOpen) {
           if (project) {
-            form.reset({ ...project, programmedDate: project.programmedDate.split('T')[0]});
+            form.reset({ ...project, programmedDate: new Date(project.programmedDate).toISOString().split('T')[0]});
           } else {
             form.reset({ client: "", description: "", responsible: "", status: "Nuevo", programmedDate: formatDate(new Date()), priority: "Media", quoteId: undefined, purchaseOrderId: undefined });
           }
@@ -673,7 +954,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes }: Pr
                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                              <FormField control={form.control} name="quoteId" render={({ field }) => (
                                 <FormItem><FormLabel>Cotización Vinculada</FormLabel>
-                                <Select onValueChange={(value) => field.onChange(value === 'none' ? null : value)} value={field.value || ""}>
+                                <Select onValueChange={(value) => field.onChange(value === 'none' ? null : value)} value={field.value || "none"}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar cotización..." /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         <SelectItem value="none">Ninguna</SelectItem>
@@ -688,9 +969,16 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes }: Pr
                             )} />
                              <FormField control={form.control} name="purchaseOrderId" render={({ field }) => (
                                 <FormItem><FormLabel>Orden de Compra Vinculada</FormLabel>
-                                <Select disabled>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Próximamente..." /></SelectTrigger></FormControl>
-                                    <SelectContent></SelectContent>
+                                 <Select onValueChange={(value) => field.onChange(value === 'none' ? null : value)} value={field.value || "none"}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar orden..." /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="none">Ninguna</SelectItem>
+                                        {purchaseOrders.map(po => (
+                                            <SelectItem key={po.id} value={po.id}>
+                                               OC-{String(po.purchaseOrderNumber).padStart(3, '0')} ({po.supplierName})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
                                 </Select>
                                 <FormMessage /></FormItem>
                             )} />
