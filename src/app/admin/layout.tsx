@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Home, Briefcase, FileText, Users, ShoppingCart, Truck, Ticket, User, LogOut, Menu, Wrench, Package } from "lucide-react";
+import { Home, Briefcase, FileText, Users, ShoppingCart, Truck, User, LogOut, Menu, Wrench, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -38,7 +38,6 @@ export default function AdminLayout({
     const mainLinks = [
         { href: "/admin", label: dashboardLabel, icon: Home, exact: true },
         { href: "/admin/projects", label: "Proyectos", icon: Briefcase },
-        { href: "/admin/tickets", label: "Tickets de Servicio", icon: Ticket },
     ];
     
     const salesLinks = [
