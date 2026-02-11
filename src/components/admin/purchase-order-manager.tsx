@@ -90,15 +90,16 @@ const downloadPDF = (po: PurchaseOrder) => {
     let yPos = 20;
 
     // --- Header ---
-    doc.addImage('/logo.png', 'PNG', 14, 15, 30, 15);
-    yPos += 15;
+    doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(41, 71, 121);
+    doc.text("LEBAREF", 14, yPos);
     
     doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(41, 71, 121);
-    doc.text("ORDEN DE COMPRA", 200, 20, { align: 'right' });
+    doc.text("ORDEN DE COMPRA", 200, yPos, { align: 'right' });
     yPos += 8;
 
     doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(100, 100, 100);
-    doc.text(`FECHA: ${new Date(po.date.replace(/-/g, '/')).toLocaleDateString('es-MX')}`, 200, yPos, { align: 'right' });
+    const poDate = po.date ? new Date(po.date.replace(/-/g, '/')).toLocaleDateString('es-MX') : 'N/A';
+    doc.text(`FECHA: ${poDate}`, 200, yPos, { align: 'right' });
     yPos += 4;
     doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, 200, yPos, { align: 'right' });
     yPos += 15;
