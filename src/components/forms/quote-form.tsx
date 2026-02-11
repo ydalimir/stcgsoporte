@@ -41,6 +41,7 @@ const quoteItemSchema = z.object({
   description: z.string().min(1, "La descripción es requerida."),
   quantity: z.coerce.number().min(1, "La cantidad debe ser al menos 1."),
   price: z.coerce.number().min(0, "El precio no puede ser negativo."),
+  unidad: z.string().optional(),
 });
 
 const quoteFormSchema = z.object({
@@ -50,6 +51,9 @@ const quoteFormSchema = z.object({
   clientAddress: z.string().min(1, "La dirección es requerida."),
   date: z.string().min(1, "La fecha es requerida."),
   status: z.enum(["Borrador", "Enviada", "Aceptada", "Rechazada"]),
+  tipoServicio: z.string().optional(),
+  tipoTrabajo: z.string().optional(),
+  equipoLugar: z.string().optional(),
   items: z.array(quoteItemSchema).min(1, "Debe agregar al menos un ítem."),
   expirationDate: z.string().optional(),
   rfc: z.string().optional(),
@@ -67,6 +71,14 @@ interface QuoteFormProps {
   quote: Partial<Quote> | null;
 }
 
+const defaultPolicies = `1- EQUIPO NUEVO: La garantía para equipos de refrigeración suministrados por nosotros cubre defectos de fabricación por un período de 1 año a partir de la fecha de instalación. Para componentes especificos como compresores, la garantia puede extenderse hasta 5 años para uso residencial y 3 años para uso comercial o público. Es obligatorio realizar un minimo de 2 mantenimientos preventivos anuales para mantener la validez de esta garantia. Aplican restricciones según los términos y condiciones del fabricante. Para otros equipos suministrados por nosotros, la garantia será la que brinde el fabricante, y los alcances de la misma estarán sujetos a lo determinado por dicho fabricante.
+2- INSTALACIÓN DE EQUIPOS: Ofrecemos una garantia de 90 dias por la mano de obra en la instalación de equipos, siempre que haya sido realizada por nuestros técnicos especializados. Esta garantia cubre cualquier defecto o falla derivada directamente de la instalación. Sin embargo, no se cubren daños resultantes del uso indebido, modificaciones no autorizadas, o condiciones ambientales adversas no reportadas previamente.
+3- MANTENIMIENTO PREVENTIVO Y/O CORRECTIVO: Nuestros servicios de mantenimiento preventivo y/o correctivo están respaldados por una garantia de 60 días sobre la mano de obra efectuada. Esta garantía se limita a los trabajos específicos realizados y no cubre componentes que no hayan sido objeto de mantenimiento o revisión. Adicionalmente, no se garantiza contra fallos originados por un uso inadecuado, negligencia o falta de mantenimiento regular.
+4- REFACCIONES Y PIEZAS DE REEMPLAZO: La garantia sobre refacciones y piezas de reemplazo será la que determine el fabricante correspondiente. Las piezas electrónicas, como tarjetas de control y circuitos, no cuentan con garantia, a menos que se especifique explicitamente. Es responsabilidad del cliente asegurarse de que el equipo esté correctamente instalado y mantenido para evitar daños que invaliden la garantia.
+5- SISTEMAS ELÉCTRICOS Y ELECTRÓNICOS: Ofrecemos 60 días de garantía limitada sobre instalaciones eléctricas y electrónicas, bajo la condición de que el sistema cuente con una correcta tierra fisica y cumpla con todas las normativas de seguridad aplicables. Cualquier alteración o instalación incorrecta que no haya sido realizada por nuestros especialistas anulará esta garantia.
+6- INSTALACIONES GENERALES Y SISTEMAS DEFECTUOSOS: Proporcionamos una garantía de 60 días para cualquier trabajo de instalación o reparación realizado por nuestro equipo, siempre y cuando los defectos sean atribuibles a una ejecución incorrecta. Esta garantia no cubre daños posteriores ocasionados por factores externos, negligencia del usuario o intervenciones de terceros.
+7- CONDICIONES GENERALES: Las garantias mencionadas no aplican en situaciones de mal uso, desgaste natural, accidentes, daños por condiciones ambientales extremas, o intervenciones no autorizadas. Todas las garantias están sujetas a los términos y condiciones establecidos en el contrato de servicio, así como a la normativa vigente en la materia. Es responsabilidad del cliente seguir las recomendaciones de mantenimiento proporcionadas por nosotros para garantizar la durabilidad y correcto funcionamiento de los equipos e instalaciones.`;
+
 const defaultValues = {
   clientName: "",
   clientPhone: "",
@@ -74,11 +86,14 @@ const defaultValues = {
   clientAddress: "",
   date: new Date().toISOString().split("T")[0],
   status: "Borrador" as Quote['status'],
+  tipoServicio: "Correctivo",
+  tipoTrabajo: "",
+  equipoLugar: "",
   items: [],
   expirationDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
   rfc: "",
   observations: "",
-  policies: "Esta cotización tiene una validez de 15 días a partir de la fecha de emisión. Los precios no incluyen IVA. El tiempo de entrega puede variar.",
+  policies: defaultPolicies,
   iva: 16,
 };
 
@@ -157,12 +172,12 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     if (type === 'service') {
         const service = services.find(s => s.id === itemId);
         if (service) {
-          append({ description: service.title, quantity: 1, price: service.price });
+          append({ description: service.title, quantity: 1, price: service.price, unidad: 'Servicio' });
         }
     } else {
         const part = spareParts.find(p => p.id === itemId);
         if (part) {
-            append({ description: part.name, quantity: 1, price: part.price });
+            append({ description: part.name, quantity: 1, price: part.price, unidad: 'PZA' });
         }
     }
     setIsComboboxOpen(false);
@@ -222,6 +237,21 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                   )} />
                 </div>
               </div>
+              
+              <div className="border p-4 rounded-lg">
+                <h3 className="text-lg font-medium mb-4">Detalles del Servicio</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <FormField name="tipoServicio" control={form.control} render={({ field }) => (
+                        <FormItem><FormLabel>Tipo de Servicio</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField name="tipoTrabajo" control={form.control} render={({ field }) => (
+                        <FormItem><FormLabel>Tipo de Trabajo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField name="equipoLugar" control={form.control} render={({ field }) => (
+                        <FormItem><FormLabel>Equipo/Lugar</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                </div>
+              </div>
 
               {/* Items Section */}
               <div className="border p-4 rounded-lg">
@@ -231,6 +261,9 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                         <div key={field.id} className="flex items-end gap-2">
                             <FormField name={`items.${index}.description`} control={form.control} render={({ field }) => (
                                 <FormItem className="flex-grow"><FormLabel className="text-xs">Descripción</FormLabel><FormControl><Input placeholder="Descripción del item" {...field} /></FormControl></FormItem>
+                            )} />
+                            <FormField name={`items.${index}.unidad`} control={form.control} render={({ field }) => (
+                                <FormItem className="w-20"><FormLabel className="text-xs">Unidad</FormLabel><FormControl><Input placeholder="PZA" {...field} /></FormControl></FormItem>
                             )} />
                              <FormField name={`items.${index}.quantity`} control={form.control} render={({ field }) => (
                                 <FormItem className="w-24"><FormLabel className="text-xs">Cant.</FormLabel><FormControl><Input type="number" placeholder="Cant." {...field} /></FormControl></FormItem>
@@ -284,7 +317,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                         </PopoverContent>
                     </Popover>
 
-                     <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, price: 0 })}>
+                     <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, price: 0, unidad: 'PZA' })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Agregar Item Manual
                     </Button>
                 </div>

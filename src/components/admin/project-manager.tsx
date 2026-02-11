@@ -102,101 +102,136 @@ export type Project = z.infer<typeof projectSchema> & {
 
 const downloadPDF = (quote: Quote) => {
     const doc = new jsPDF();
-    const quoteId = `COT-${String(quote.quoteNumber).padStart(3, '0')}`;
+    const quoteId = `COT-${String(quote.quoteNumber).padStart(4, '0')}`;
     let yPos = 15;
     
     // --- Header ---
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
-    doc.text("LEBAREF", 14, yPos);
+    doc.setFontSize(18);
+    doc.text("Leboref", 14, yPos);
     
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text("Servicio Técnico Especializado", 14, yPos + 5);
+    doc.setFontSize(9);
+    doc.text("Servicio de Mantenimiento General", 14, yPos + 6);
+    yPos += 10;
+    doc.text("Calle SSC No. 851 entre 100A y 104, Fraccionamiento las Américas CP. 97302, Mérida Yucatán", 14, yPos);
+    yPos += 4;
+    doc.text("Oficinas: 990-101-0221", 14, yPos);
+    doc.text("Correo: corporativo@lebaref.com", (doc.internal.pageSize.getWidth() / 2) - 0, yPos);
+    yPos += 4;
+    doc.text("Administrativo: 999-593-5287", 14, yPos);
     
+    // Right side header
     const headerDetailsX = 196;
+    let rightHeaderY = 15;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text(`Cotización`, headerDetailsX, yPos, { align: 'right' });
+    doc.text(`Cotización`, headerDetailsX, rightHeaderY, { align: 'right' });
+    doc.text(`${quoteId}`, headerDetailsX, rightHeaderY + 6, { align: 'right' });
     
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(`#${quoteId}`, headerDetailsX, yPos + 5, { align: 'right' });
-    doc.text(`Fecha: ${new Date(quote.date).toLocaleDateString('es-MX')}`, headerDetailsX, yPos + 10, { align: 'right' });
-    if(quote.expirationDate) {
-      doc.text(`Válida hasta: ${new Date(quote.expirationDate).toLocaleDateString('es-MX')}`, headerDetailsX, yPos + 15, { align: 'right' });
-    }
-    
-    yPos += 25;
+    yPos += 10;
     doc.setDrawColor(221, 221, 221); // A light grey color
     doc.line(14, yPos, 196, yPos);
-    yPos += 10;
-
-    // --- Client Info ---
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text("COTIZADO PARA:", 14, yPos);
     yPos += 5;
 
-    doc.setFont("helvetica", "normal");
-    doc.text(quote.clientName, 14, yPos);
-    if(quote.clientAddress) yPos += 5; doc.text(quote.clientAddress, 14, yPos);
-    if(quote.clientPhone) yPos += 5; doc.text(quote.clientPhone, 14, yPos);
-    if(quote.rfc) yPos += 5; doc.text(`RFC: ${quote.rfc}`, 14, yPos);
-    yPos += 15;
+    // --- Client and Service Info ---
+    autoTable(doc, {
+        startY: yPos,
+        body: [
+            [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${new Date(quote.date).toLocaleDateString('es-MX')}`, styles: { halign: 'right' } }],
+            [{ content: `Empresa: ${quote.clientName}` }, { content: `Ciudad: Mérida`, styles: { halign: 'right' } }],
+            [{ content: `Dirección: ${quote.clientAddress}` }, { content: `Tipo de Servicio: ${quote.tipoServicio || ''}`, styles: { halign: 'right' } }],
+            [{ content: `Teléfono: ${quote.clientPhone}` }, { content: `Tipo de Trabajo: ${quote.tipoTrabajo || ''}`, styles: { halign: 'right' } }],
+            [{ content: `RFC: ${quote.rfc || ''}`}, ''],
+            [{ content: `Equipo/Lugar: ${quote.equipoLugar || ''}`, colSpan: 2 }],
+        ],
+        theme: 'plain',
+        styles: { fontSize: 9, cellPadding: 1 }
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 5;
+
 
     // --- Items Table ---
     const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
     const ivaPercentage = quote.iva ?? 16;
     const ivaAmount = subtotal * (ivaPercentage / 100);
     const total = quote.total ?? subtotal + ivaAmount;
-
-    const foot = [
-      ['', '', { content: 'Subtotal', styles: { halign: 'right' } }, { content: `$${subtotal.toFixed(2)}`, styles: { halign: 'right' } }],
-      ['', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toFixed(2)}`, styles: { halign: 'right' } }],
-      ['', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toFixed(2)}`, styles: { fontStyle: 'bold', halign: 'right' } }],
-    ];
     
     autoTable(doc, {
       startY: yPos,
-      head: [['Descripción', 'Cantidad', 'Precio Unitario', 'Importe']],
-      body: quote.items.map(item => [
+      head: [['No.', 'Descripción', 'Unidad', 'Cantidad', 'Precio', 'Importe']],
+      body: quote.items.map((item, index) => [
+        index + 1,
         item.description, 
-        item.quantity, 
+        item.unidad || 'PZA',
+        (item.quantity || 0).toFixed(2), 
         `$${(item.price || 0).toFixed(2)}`, 
         `$${((item.quantity || 0) * (item.price || 0)).toFixed(2)}`
       ]),
-      foot: foot,
+      foot: [
+        ['', '', '', '', { content: 'Subtotal', styles: { halign: 'right' } }, { content: `$${subtotal.toFixed(2)}`, styles: { halign: 'right' } }],
+        ['', '', '', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toFixed(2)}`, styles: { halign: 'right' } }],
+        ['', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toFixed(2)}`, styles: { fontStyle: 'bold', halign: 'right' } }],
+      ],
       headStyles: { fillColor: [41, 71, 121] },
-      footStyles: {
-        cellPadding: { top: 2, right: 4, bottom: 2, left: 4 },
-      },
       didDrawPage: (data) => {
         yPos = data.cursor?.y ?? yPos;
       }
     });
-
-    yPos = (doc as any).lastAutoTable.finalY + 15;
-
-    // --- Observations and Policies ---
+    yPos = (doc as any).lastAutoTable.finalY + 10;
+    
+    // --- Comentarios y Diagnostico ---
     if (quote.observations) {
-        doc.setFontSize(10).setFont(undefined, 'bold');
-        doc.text("Observaciones:", 14, yPos);
+        doc.setFontSize(9).setFont(undefined, 'bold');
+        doc.text("Comentarios y Diagnóstico:", 14, yPos);
         yPos += 5;
         doc.setFontSize(9).setFont(undefined, 'normal');
         const splitObservations = doc.splitTextToSize(quote.observations, 180);
         doc.text(splitObservations, 14, yPos);
-        yPos += splitObservations.length * 5 + 10;
+        yPos += splitObservations.length * 4 + 5;
     }
+    
+    // --- Validity Notice ---
+    const expirationDays = quote.expirationDate ? Math.ceil((new Date(quote.expirationDate).getTime() - new Date(quote.date).getTime()) / (1000 * 60 * 60 * 24)) : 15;
+    doc.setFontSize(8).setFont(undefined, 'normal');
+    doc.text(`Cotización Válida ${expirationDays} días. Pasado este periodo, por favor verifique nuevamente la validez de la misma.`, 14, yPos);
+    yPos += 10;
 
+    // --- Garantias ---
     if (quote.policies) {
         doc.setFontSize(10).setFont(undefined, 'bold');
-        doc.text("Políticas y Términos:", 14, yPos);
+        doc.text("Garantías:", 14, yPos);
         yPos += 5;
-        doc.setFontSize(9).setFont(undefined, 'normal');
+        doc.setFontSize(7).setFont(undefined, 'normal');
         const splitPolicies = doc.splitTextToSize(quote.policies, 180);
         doc.text(splitPolicies, 14, yPos);
+        yPos += splitPolicies.length * 3 + 5;
     }
+    
+    // --- Payment Conditions ---
+    doc.setFontSize(10).setFont(undefined, 'bold');
+    doc.text("Condiciones de Pago:", 14, yPos);
+    yPos += 5;
+    autoTable(doc, {
+      startY: yPos,
+      body: [
+        ['Formas de Pago:', 'Transferencia Bancaria / Depósitos'],
+        ['Banco:', 'Banco Mercantil del Norte, BANORTE'],
+        ['Cuenta:', '1053332481'],
+        ['Clabe Interbancaria:', '072 910 01053332481 1'],
+        ['Beneficiario:', 'LEBAREF SERVICIO DE MANTENIMIENTO GENERAL'],
+        ['RFC:', 'LSM150727IP0']
+      ],
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 1 },
+      headStyles: { fontStyle: 'bold' }
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 15;
+    
+    // --- Signature ---
+    doc.line(120, yPos, 190, yPos);
+    yPos += 5;
+    doc.text('FERNANDO SALVADOR MONTESDE OCA PEREZ', 125, yPos);
     
     doc.save(`${quoteId}.pdf`);
 }
