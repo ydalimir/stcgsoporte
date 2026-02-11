@@ -106,24 +106,27 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     yPos += 15;
 
     // --- Addresses ---
-    const billToLines = po.billToDetails.split('\n');
-    const shipToLines = po.supplierDetails.split('\n');
-    doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(0, 0, 0);
-    doc.text("FACTURAR A:", 14, yPos);
-    doc.text("ENVIAR A:", 110, yPos);
-    yPos += 5;
-    doc.setFont("helvetica", "normal").setFontSize(9);
-
-    const maxLines = Math.max(billToLines.length, shipToLines.length);
-    for(let i = 0; i < maxLines; i++) {
-        if(billToLines[i]) doc.text(billToLines[i], 14, yPos + (i * 4));
-        if(shipToLines[i]) doc.text(shipToLines[i], 110, yPos + (i * 4));
-    }
-    yPos += maxLines * 4 + 10;
+    autoTable(doc, {
+        startY: yPos,
+        theme: 'plain',
+        body: [
+             [
+                { content: 'FACTURAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 9 } },
+                { content: 'ENVIAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 9 } }
+            ],
+            [
+                { content: po.billToDetails, styles: { fontSize: 9 } },
+                { content: po.supplierDetails, styles: { fontSize: 9 } }
+            ]
+        ]
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 5;
+    
     
     // --- Details Table ---
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
     const quoteDisplay = linkedQuote ? `COT-${String(linkedQuote.quoteNumber).padStart(4, '0')}` : 'N/A';
+    const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '/')).toLocaleDateString('es-MX') : 'N/A'
 
     autoTable(doc, {
         startY: yPos,
@@ -131,7 +134,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
             { content: `COTIZACIÓN:\n${quoteDisplay}`},
             { content: `ENVIAR VÍA:\n${po.shippingMethod || 'N/A'}`},
             { content: `PAGO:\n${po.paymentMethod || 'N/A'}`},
-            { content: `FECHA APROX ENTREGA:\n${po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '/')).toLocaleDateString('es-MX') : 'N/A'}`},
+            { content: `FECHA APROX ENTREGA:\n${deliveryDate}`},
         ]],
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
@@ -189,7 +192,8 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     const obsY = finalY + 5;
     doc.setFont("helvetica", "normal");
     doc.text('Observaciones / Instrucciones:', 14, obsY);
-    doc.text(po.observations || '', 14, obsY + 5);
+    const splitObservations = doc.splitTextToSize(po.observations || '', 120); // Split text to fit width
+    doc.text(splitObservations, 14, obsY + 5);
 
     const signatureY = Math.max(obsY + 30, totalsY + 30);
     doc.text('FIRMA AUTORIZADA', 14, signatureY);
