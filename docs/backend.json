@@ -80,12 +80,28 @@
       "type": "object",
       "properties": {
         "quoteNumber": { "type": "number"},
-        "clientName": { "type": "string" },
+        "clientId": { "type": "string", "description": "The ID of the linked client." },
+        "clientName": { "type": "string", "description": "The name of the client, can be manually entered or from linked client." },
+        "clientPhone": { "type": "string" },
+        "clientEmail": { "type": "string", "format": "email" },
+        "clientAddress": { "type": "string" },
+        "rfc": { "type": "string" },
         "total": { "type": "number" },
-        "status": { "type": "string" },
-        "date": { "type": "string", "format": "date" }
+        "status": { "type": "string", "enum": ["Borrador", "Enviada", "Aceptada", "Rechazada"] },
+        "date": { "type": "string", "format": "date" },
+        "expirationDate": { "type": "string", "format": "date" },
+        "items": { "type": "array", "items": { "type": "object", "properties": { "description": {"type": "string"}, "quantity": {"type": "number"}, "price": {"type": "number"}, "unidad": {"type": "string"} } } },
+        "observations": { "type": "string" },
+        "policies": { "type": "string" },
+        "paymentTerms": { "type": "string" },
+        "iva": { "type": "number" },
+        "subtotal": { "type": "number" },
+        "linkedTicketId": { "type": "string" },
+        "tipoServicio": { "type": "string" },
+        "tipoTrabajo": { "type": "string" },
+        "equipoLugar": { "type": "string" }
       },
-      "required": ["clientName", "total", "status", "date"]
+      "required": ["clientName", "clientPhone", "clientAddress", "date", "status", "items"]
     },
     "Service": {
       "title": "Service",
@@ -94,9 +110,11 @@
       "properties": {
         "title": { "type": "string" },
         "sku": { "type": "string" },
-        "price": { "type": "number" }
+        "price": { "type": "number" },
+        "serviceType": { "type": "string", "enum": ["correctivo", "preventivo", "instalacion"] },
+        "description": { "type": "string" }
       },
-      "required": ["title", "sku", "price"]
+      "required": ["title", "sku", "price", "serviceType"]
     },
     "SparePart": {
       "title": "Spare Part",
@@ -104,10 +122,12 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
+        "brand": { "type": "string" },
         "sku": { "type": "string" },
-        "price": { "type": "number" }
+        "price": { "type": "number" },
+        "description": { "type": "string" }
       },
-      "required": ["name", "sku", "price"]
+      "required": ["name", "sku", "price", "brand"]
     }
   },
   "auth": {
@@ -152,6 +172,3 @@
     }
   }
 }
-
-    
-    

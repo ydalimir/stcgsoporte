@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { Separator } from "../ui/separator";
 import { errorEmitter } from "@/lib/error-emitter";
 import { FirestorePermissionError } from "@/lib/errors";
+import { Client } from "../admin/client-manager";
 
 
 const quoteItemSchema = z.object({
@@ -97,7 +98,7 @@ const defaultValues = {
   clientPhone: "",
   clientEmail: "",
   clientAddress: "",
-  date: formatDate(today),
+  date: formatDate(new Date()),
   status: "Borrador" as Quote['status'],
   tipoServicio: "Correctivo",
   tipoTrabajo: "",
@@ -114,8 +115,10 @@ const defaultValues = {
 export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProps) {
   const [services, setServices] = useState<Service[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComboboxOpen, setIsComboboxOpen] = useState(false);
+  const [isClientComboboxOpen, setIsClientComboboxOpen] = useState(false);
 
 
   useEffect(() => {
@@ -140,9 +143,19 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
             operation: 'list',
         }));
     });
+      
+      const qClients = collection(db, "clients");
+      const unsubscribeClients = onSnapshot(qClients, (snapshot) => {
+        const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+        setClients(clientsData);
+      }, (error) => {
+        console.error("Could not load clients: ", error);
+      });
+
       return () => {
         unsubscribeServices();
         unsubscribeParts();
+        unsubscribeClients();
       }
   }, []);
 
@@ -215,9 +228,78 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
               <div className="border p-4 rounded-lg">
                 <h3 className="text-lg font-medium mb-4">Información General</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <FormField name="clientName" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Cliente</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
+                 <FormField
+                    name="clientName"
+                    control={form.control}
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                        <FormLabel>Cliente</FormLabel>
+                        <Popover open={isClientComboboxOpen} onOpenChange={setIsClientComboboxOpen}>
+                            <PopoverTrigger asChild>
+                            <FormControl>
+                                <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                    "w-full justify-between",
+                                    !field.value && "text-muted-foreground"
+                                )}
+                                >
+                                {field.value || "Seleccionar o escribir un cliente"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command filter={(value, search) => {
+                                const clientName = value.split('||')[0];
+                                if (clientName.toLowerCase().includes(search.toLowerCase())) return 1;
+                                return 0;
+                            }}>
+                                <CommandInput
+                                placeholder="Buscar cliente por nombre o RFC..."
+                                onValueChange={(search) => {
+                                    field.onChange(search);
+                                }}
+                                />
+                                <CommandList>
+                                <CommandEmpty>No se encontró cliente. Puede crear uno nuevo al terminar de escribir.</CommandEmpty>
+                                <CommandGroup>
+                                    {clients.map((client) => (
+                                    <CommandItem
+                                        value={`${client.name}||${client.rfc}`}
+                                        key={client.id}
+                                        onSelect={() => {
+                                            form.setValue("clientName", client.name);
+                                            form.setValue("clientPhone", client.phone);
+                                            form.setValue("clientAddress", client.address || "");
+                                            form.setValue("clientEmail", client.email || "");
+                                            form.setValue("rfc", client.rfc || "");
+                                            field.onChange(client.name);
+                                            setIsClientComboboxOpen(false);
+                                        }}
+                                    >
+                                        <Check
+                                        className={cn(
+                                            "mr-2 h-4 w-4",
+                                            client.name === field.value ? "opacity-100" : "opacity-0"
+                                        )}
+                                        />
+                                        <div>
+                                            <p>{client.name}</p>
+                                            <p className="text-xs text-muted-foreground">{client.rfc}</p>
+                                        </div>
+                                    </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                                </CommandList>
+                            </Command>
+                            </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
                   <FormField name="clientPhone" control={form.control} render={({ field }) => (
                       <FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
@@ -256,13 +338,13 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                 <h3 className="text-lg font-medium mb-4">Detalles del Servicio</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField name="tipoServicio" control={form.control} render={({ field }) => (
-                        <FormItem><FormLabel>Tipo de Servicio</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Tipo de Servicio</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField name="tipoTrabajo" control={form.control} render={({ field }) => (
-                        <FormItem><FormLabel>Tipo de Trabajo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Tipo de Trabajo</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField name="equipoLugar" control={form.control} render={({ field }) => (
-                        <FormItem><FormLabel>Equipo/Lugar</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Equipo/Lugar</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
                     )} />
                 </div>
               </div>
@@ -342,13 +424,25 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <FormField name="observations" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Comentarios y Diagnóstico</FormLabel><FormControl><Textarea placeholder="Añadir notas u observaciones específicas para esta cotización..." className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem>
+                        <FormLabel>Comentarios y Diagnóstico</FormLabel>
+                        <FormControl><Textarea placeholder="Añadir notas u observaciones específicas para esta cotización..." className="min-h-[100px]" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
                   )} />
                   <FormField name="policies" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Garantías</FormLabel><FormControl><Textarea placeholder="Describa las garantías del servicio o producto..." className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem>
+                        <FormLabel>Garantías</FormLabel>
+                        <FormControl><Textarea placeholder="Describa las garantías del servicio o producto..." className="min-h-[100px]" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
                   )} />
                   <FormField name="paymentTerms" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Condiciones de Pago</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem>
+                        <FormLabel>Condiciones de Pago</FormLabel>
+                        <FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
                   )} />
                 </div>
                 
