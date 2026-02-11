@@ -51,23 +51,59 @@ export default function AdminDashboardPage() {
     }
 
     setIsLoading(true);
-    const q = query(collection(db, "quotes"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    
+    const unsubs: (()=>void)[] = [];
+    let loadedCount = 0;
+    const totalToLoad = 3;
+
+    const onDataLoaded = () => {
+        loadedCount++;
+        if(loadedCount === totalToLoad) {
+            setIsLoading(false);
+        }
+    }
+    
+    const quotesQuery = query(collection(db, "quotes"));
+    unsubs.push(onSnapshot(quotesQuery, (snapshot) => {
       const quotes = snapshot.docs.map(doc => doc.data());
       const pendingQuotes = quotes.filter(q => q.status === 'Enviada' || q.status === 'Borrador').length;
-      
       setStats(prev => ({ ...prev, quotes: quotes.length, pendingQuotes }));
-      setIsLoading(false);
+      onDataLoaded();
     }, (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: "quotes",
             operation: 'list',
         }));
-        setIsLoading(false);
-    });
+        onDataLoaded();
+    }));
 
+    const projectsQuery = query(collection(db, "projects"));
+    unsubs.push(onSnapshot(projectsQuery, (snapshot) => {
+        setStats(prev => ({ ...prev, projects: snapshot.docs.length }));
+        onDataLoaded();
+    }, (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: "projects",
+            operation: 'list',
+        }));
+        onDataLoaded();
+    }));
+    
+    const purchaseOrdersQuery = query(collection(db, "purchase_orders"));
+    unsubs.push(onSnapshot(purchaseOrdersQuery, (snapshot) => {
+        setStats(prev => ({ ...prev, purchaseOrders: snapshot.docs.length }));
+        onDataLoaded();
+    }, (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: "purchase_orders",
+            operation: 'list',
+        }));
+        onDataLoaded();
+    }));
 
-    return () => unsubscribe();
+    return () => {
+        unsubs.forEach(unsub => unsub());
+    };
   }, [user, authIsLoading, router]);
 
    if (authIsLoading || isLoading) {
@@ -98,13 +134,13 @@ export default function AdminDashboardPage() {
           title="Órdenes de Compra" 
           value={stats.purchaseOrders}
           icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
-          description="Próximamente."
+          description="Total de órdenes de compra creadas."
         />
          <StatCard 
           title="Proyectos" 
           value={stats.projects}
           icon={<Briefcase className="h-4 w-4 text-muted-foreground" />}
-          description="Próximamente"
+          description="Total de proyectos registrados."
         />
       </div>
       <div className="mt-8">
