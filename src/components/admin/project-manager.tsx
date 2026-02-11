@@ -918,15 +918,20 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
 
     const form = useForm<z.infer<typeof projectSchema>>({
         resolver: zodResolver(projectSchema),
-        defaultValues: { client: "", description: "", responsible: "", status: "Nuevo", programmedDate: formatDate(new Date()), priority: "Media", quoteId: undefined, purchaseOrderId: undefined }
+        defaultValues: { client: "", description: "", responsible: "", status: "Nuevo", programmedDate: formatDate(new Date()), priority: "Media", quoteId: null, purchaseOrderId: null }
     });
 
     useEffect(() => {
         if (isOpen) {
           if (project) {
-            form.reset({ ...project, programmedDate: project.programmedDate });
+            form.reset({ 
+                ...project, 
+                programmedDate: project.programmedDate,
+                quoteId: project.quoteId || null,
+                purchaseOrderId: project.purchaseOrderId || null,
+            });
           } else {
-            form.reset({ client: "", description: "", responsible: "", status: "Nuevo", programmedDate: formatDate(new Date()), priority: "Media", quoteId: undefined, purchaseOrderId: undefined });
+            form.reset({ client: "", description: "", responsible: "", status: "Nuevo", programmedDate: formatDate(new Date()), priority: "Media", quoteId: null, purchaseOrderId: null });
           }
         }
       }, [project, isOpen, form]);
