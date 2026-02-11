@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -250,10 +251,10 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder 
                     <FormField control={form.control} name="quoteId" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Cotización Vinculada</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value ?? undefined}>
+                            <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value || ''}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar cotización..." /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                    <SelectItem value="">Ninguna</SelectItem>
+                                    <SelectItem value="none">Ninguna</SelectItem>
                                     {quotes.map(q => (
                                         <SelectItem key={q.id} value={q.id}>
                                             COT-{String(q.quoteNumber).padStart(3, '0')} ({q.clientName})
