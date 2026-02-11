@@ -31,7 +31,7 @@ export default function AdminLayout({
     const router = useRouter();
 
     const mainLinks = [
-        { href: "/admin", label: "Dashboard", icon: Home, exact: true },
+        { href: "/admin", label: "Inicio", icon: Home, exact: true },
         { href: "/admin/projects", label: "Proyectos", icon: Briefcase },
     ];
     
