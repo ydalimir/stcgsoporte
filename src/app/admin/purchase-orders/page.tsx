@@ -1,4 +1,5 @@
 
+import { PurchaseOrderManager } from "@/components/admin/purchase-order-manager";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart } from "lucide-react";
 
@@ -10,12 +11,10 @@ export default function PurchaseOrdersPage() {
                     <ShoppingCart className="w-6 h-6" />
                     <CardTitle>Órdenes de Compra</CardTitle>
                 </div>
-                <CardDescription>Crear y gestionar órdenes de compra para proveedores. Próximamente.</CardDescription>
+                <CardDescription>Crear, ver, editar y eliminar órdenes de compra a proveedores.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                    <p className="text-muted-foreground">La sección de órdenes de compra está en construcción.</p>
-                </div>
+                <PurchaseOrderManager />
             </CardContent>
         </Card>
     )

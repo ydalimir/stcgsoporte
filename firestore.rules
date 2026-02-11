@@ -1,10 +1,11 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
   
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     match /users/{userId} {
@@ -47,6 +48,20 @@ service cloud.firestore {
       allow list: if isAdmin();
     }
     
+    match /suppliers/{supplierId} {
+      allow read, write: if isAdmin();
+    }
+     match /suppliers {
+      allow list: if isAdmin();
+    }
+
+    match /purchase_orders/{orderId} {
+        allow read, write: if isAdmin();
+    }
+     match /purchase_orders {
+        allow list: if isAdmin();
+    }
+
     match /counters/{counterId} {
         allow read, write: if isAdmin();
     }

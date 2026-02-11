@@ -54,9 +54,36 @@
             "name": { "type": "string" },
             "contactPerson": { "type": "string" },
             "phone": { "type": "string" },
-            "email": { "type": "string", "format": "email" }
+            "email": { "type": "string", "format": "email" },
+            "address": { "type": "string" },
+            "rfc": { "type": "string" }
         },
         "required": ["name"]
+    },
+    "PurchaseOrder": {
+      "title": "Purchase Order",
+      "description": "Represents a purchase order sent to a supplier.",
+      "type": "object",
+      "properties": {
+        "purchaseOrderNumber": { "type": "number" },
+        "date": { "type": "string", "format": "date" },
+        "supplierId": { "type": "string", "description": "The ID of the linked supplier." },
+        "supplierName": { "type": "string" },
+        "supplierDetails": { "type": "string", "description": "Full address and contact details of the supplier." },
+        "billToDetails": { "type": "string", "description": "Full address and contact details for billing (usually LEBAREF)." },
+        "quoteLink": { "type": "string" },
+        "shippingMethod": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "deliveryDate": { "type": "string", "format": "date" },
+        "items": { "type": "array", "items": { "type": "object", "properties": { "description": {"type": "string"}, "unit": {"type": "string"}, "quantity": {"type": "number"}, "price": {"type": "number"} } } },
+        "observations": { "type": "string" },
+        "discountPercentage": { "type": "number" },
+        "subtotal": { "type": "number" },
+        "iva": { "type": "number" },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["Borrador", "Enviada", "Recibida Parcialmente", "Recibida"] }
+      },
+      "required": ["purchaseOrderNumber", "date", "supplierName", "items", "total", "status"]
     },
     "Ticket": {
         "title": "Service Ticket",
@@ -149,6 +176,10 @@
     "/quotes/{quoteId}": {
       "schema": { "$ref": "#/entities/Quote" },
       "description": "Stores quotes."
+    },
+     "/purchase_orders/{orderId}": {
+      "schema": { "$ref": "#/entities/PurchaseOrder" },
+      "description": "Stores purchase orders sent to suppliers."
     },
     "/services/{serviceId}": {
       "schema": { "$ref": "#/entities/Service" },

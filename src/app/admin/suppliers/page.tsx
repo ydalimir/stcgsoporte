@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Truck } from "lucide-react";
+import { SupplierManager } from "@/components/admin/supplier-manager";
 
 export default function SuppliersPage() {
     return (
@@ -10,12 +11,10 @@ export default function SuppliersPage() {
                     <Truck className="w-6 h-6" />
                     <CardTitle>Proveedores</CardTitle>
                 </div>
-                <CardDescription>Añadir, ver y gestionar la información de tus proveedores. Próximamente.</CardDescription>
+                <CardDescription>Añadir, ver y gestionar la información de tus proveedores.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                    <p className="text-muted-foreground">La sección de proveedores está en construcción.</p>
-                </div>
+                <SupplierManager />
             </CardContent>
         </Card>
     )
