@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -144,20 +145,19 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
 const downloadPDF = (quote: Quote) => {
     const doc = new jsPDF();
     const quoteId = `COT-${String(quote.quoteNumber).padStart(4, '0')}`;
+    const pageHeight = doc.internal.pageSize.height;
     let yPos = 15;
-    
+
     // --- Header ---
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.text("Leboref", 14, yPos);
     
-    // Right side header
     const headerDetailsX = 196;
-    let rightHeaderY = 15;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text(`Cotización`, headerDetailsX, rightHeaderY, { align: 'right' });
-    doc.text(`${quoteId}`, headerDetailsX, rightHeaderY + 6, { align: 'right' });
+    doc.text(`Cotización`, headerDetailsX, yPos, { align: 'right' });
+    doc.text(`${quoteId}`, headerDetailsX, yPos + 6, { align: 'right' });
     
     yPos = 35;
     doc.setDrawColor(221, 221, 221); // A light grey color
@@ -221,12 +221,6 @@ const downloadPDF = (quote: Quote) => {
         yPos += splitObservations.length * 4 + 5;
     }
     
-    // --- Validity Notice ---
-    const expirationDays = quote.expirationDate ? Math.ceil((new Date(quote.expirationDate).getTime() - new Date(quote.date).getTime()) / (1000 * 60 * 60 * 24)) : 15;
-    doc.setFontSize(8).setFont(undefined, 'normal');
-    doc.text(`Cotización Válida ${expirationDays} días. Pasado este periodo, por favor verifique nuevamente la validez de la misma.`, 14, yPos);
-    yPos += 10;
-
     // --- Garantias ---
     if (quote.policies) {
         doc.setFontSize(10).setFont(undefined, 'bold');
@@ -240,14 +234,35 @@ const downloadPDF = (quote: Quote) => {
     
     // --- Payment Conditions ---
     if (quote.paymentTerms) {
-        doc.setFontSize(10).setFont(undefined, 'bold');
-        doc.text("Condiciones de Pago:", 14, yPos);
-        yPos += 5;
-        doc.setFontSize(8).setFont(undefined, 'normal');
-        const splitTerms = doc.splitTextToSize(quote.paymentTerms, 180);
-        doc.text(splitTerms, 14, yPos);
-        yPos += splitTerms.length * 3 + 5;
+        const paymentTermsLines = doc.splitTextToSize(quote.paymentTerms, 172);
+        const rectHeight = (paymentTermsLines.length * 4) + 20;
+        if (yPos + rectHeight > pageHeight - 45) { // 45 for footer margin
+            doc.addPage();
+            yPos = 15;
+        }
+
+        doc.setFillColor(245, 245, 245); // Light grey background
+        doc.setDrawColor(220, 220, 220); // Border color
+        doc.roundedRect(14, yPos, 182, rectHeight, 3, 3, 'FD');
+        
+        yPos += 7;
+        doc.setFontSize(10).setFont(undefined, 'bold').setTextColor(41, 71, 121);
+        doc.text("Condiciones de Pago:", 20, yPos);
+        yPos += 6;
+        
+        doc.setFontSize(8).setFont(undefined, 'normal').setTextColor(0,0,0);
+        doc.text(paymentTermsLines, 20, yPos);
     }
+    
+    // --- Footer with Signature ---
+    const finalY = pageHeight - 35;
+    doc.setDrawColor(150, 150, 150);
+    doc.line(70, finalY, 140, finalY); // Signature line
+    doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
+    doc.text("FIRMA DE ACEPTACIÓN", 105, finalY + 5, { align: 'center' });
+    
+    doc.setFontSize(8).setTextColor(150);
+    doc.text("Gracias por su preferencia.", 14, pageHeight - 10);
     
     doc.save(`${quoteId}.pdf`);
 }
