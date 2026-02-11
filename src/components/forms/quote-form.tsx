@@ -93,13 +93,13 @@ Clabe Interbancaria: 072 910 01053332481 1
 Beneficiario: LEBAREF SERVICIO DE MANTENIMIENTO GENERAL
 RFC: LSM150727IP0`;
 
-const defaultValues = {
+const defaultValues: QuoteFormValues = {
   clientName: "",
   clientPhone: "",
   clientEmail: "",
   clientAddress: "",
   date: formatDate(new Date()),
-  status: "Borrador" as Quote['status'],
+  status: "Borrador",
   tipoServicio: "Correctivo",
   tipoTrabajo: "",
   equipoLugar: "",
@@ -171,13 +171,30 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
 
   useEffect(() => {
     if (isOpen) {
-        const resetValues = { 
-            ...defaultValues, 
-            ...quote,
-            date: quote?.date ? quote.date.split('T')[0] : defaultValues.date,
-            expirationDate: quote?.expirationDate ? quote.expirationDate.split('T')[0] : defaultValues.expirationDate,
-          };
-        form.reset(resetValues);
+      if (quote) {
+        // When editing, explicitly set form values from the quote prop to avoid issues.
+        form.reset({
+          clientName: quote.clientName || "",
+          clientPhone: quote.clientPhone || "",
+          clientEmail: quote.clientEmail || "",
+          clientAddress: quote.clientAddress || "",
+          date: quote.date ? quote.date.split('T')[0] : formatDate(new Date()),
+          status: quote.status || "Borrador",
+          tipoServicio: quote.tipoServicio || "Correctivo",
+          tipoTrabajo: quote.tipoTrabajo || "",
+          equipoLugar: quote.equipoLugar || "",
+          items: quote.items || [],
+          expirationDate: quote.expirationDate ? quote.expirationDate.split('T')[0] : formatDate(expiration),
+          rfc: quote.rfc || "",
+          observations: quote.observations || "",
+          policies: quote.policies || "",
+          paymentTerms: quote.paymentTerms || defaultPaymentTerms,
+          iva: quote.iva ?? 16,
+        });
+      } else {
+        // When creating a new quote, use the default values.
+        form.reset(defaultValues);
+      }
     }
   }, [quote, isOpen, form]);
 
@@ -488,3 +505,5 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
     </Dialog>
   );
 }
+
+    
