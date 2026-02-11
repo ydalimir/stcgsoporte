@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Home, Briefcase, FileText, Users, ShoppingCart, Truck, Ticket, User, LogOut, Menu } from "lucide-react";
+import { Home, Briefcase, FileText, Users, ShoppingCart, Truck, Ticket, User, LogOut, Menu, Wrench, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -38,6 +38,7 @@ export default function AdminLayout({
     const mainLinks = [
         { href: "/admin", label: dashboardLabel, icon: Home, exact: true },
         { href: "/admin/projects", label: "Proyectos", icon: Briefcase },
+        { href: "/admin/tickets", label: "Tickets de Servicio", icon: Ticket },
     ];
     
     const salesLinks = [
@@ -50,8 +51,9 @@ export default function AdminLayout({
         { href: "/admin/suppliers", label: "Proveedores", icon: Truck },
     ];
 
-    const operationsLinks = [
-        { href: "/admin/tickets", label: "Tickets de Servicio", icon: Ticket },
+    const warehouseLinks = [
+        { href: "/admin/services", label: "Servicios", icon: Wrench },
+        { href: "/admin/spare-parts", label: "Refacciones", icon: Package },
     ];
 
     const adminControlLink = { href: "/admin/users", label: "Control de Usuarios", icon: User };
@@ -102,7 +104,7 @@ export default function AdminLayout({
               {mainLinks.map((link) => <NavLink key={link.href} link={link} />)}
               <NavGroup title="Ventas" links={salesLinks} />
               <NavGroup title="Compras" links={purchasesLinks} />
-              <NavGroup title="Operaciones" links={operationsLinks} />
+              <NavGroup title="Almacenes" links={warehouseLinks} />
             </nav>
           </div>
             <div className="mt-auto p-4">
@@ -130,7 +132,7 @@ export default function AdminLayout({
                         <Logo href="/admin" />
                     </div>
                     <nav className="grid gap-2 text-lg font-medium p-4">
-                        {[...mainLinks, ...salesLinks, ...purchasesLinks, ...operationsLinks, adminControlLink].map((link) => <NavLink key={link.href} link={link} isMobile={true} />)}
+                        {[...mainLinks, ...salesLinks, ...purchasesLinks, ...warehouseLinks, adminControlLink].map((link) => <NavLink key={link.href} link={link} isMobile={true} />)}
                     </nav>
                 </SheetContent>
             </Sheet>
