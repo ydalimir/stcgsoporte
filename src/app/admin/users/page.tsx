@@ -264,7 +264,7 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
         await onSave(data);
         setIsSubmitting(false);
     };
-
+    
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl">
@@ -314,20 +314,21 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                                     {modules.map((item) => (
                                         <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
                                             <FormControl>
-                                            <Checkbox
-                                                checked={field.value?.includes(item.id)}
-                                                onCheckedChange={(checked) => {
-                                                    if (checked) {
-                                                        field.onChange([...(field.value || []), item.id]);
-                                                    } else {
-                                                        field.onChange(
-                                                            (field.value || []).filter(
-                                                                (value) => value !== item.id
-                                                            )
-                                                        );
-                                                    }
-                                                }}
-                                            />
+                                                <Checkbox
+                                                    checked={field.value?.includes(item.id)}
+                                                    onCheckedChange={(checked) => {
+                                                        const currentPermissions = field.value || [];
+                                                        if (checked) {
+                                                            field.onChange([...currentPermissions, item.id]);
+                                                        } else {
+                                                            field.onChange(
+                                                                currentPermissions.filter(
+                                                                    (value) => value !== item.id
+                                                                )
+                                                            );
+                                                        }
+                                                    }}
+                                                />
                                             </FormControl>
                                             <FormLabel className="font-normal">{item.label}</FormLabel>
                                         </FormItem>
