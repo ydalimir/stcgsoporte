@@ -8,7 +8,12 @@
         "uid": { "type": "string", "description": "The user's unique ID." },
         "email": { "type": "string", "format": "email" },
         "displayName": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "user"] },
+        "role": { "type": "string", "enum": ["admin", "employee"] },
+        "permissions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of modules the user has access to, e.g. ['projects', 'clients']"
+        },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email", "role"]

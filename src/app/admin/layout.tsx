@@ -1,9 +1,10 @@
+
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Home, Briefcase, FileText, Users, ShoppingCart, Truck, User, LogOut, Menu, Wrench, Package, Calendar as CalendarIcon } from "lucide-react";
+import { Home, Briefcase, FileText, Users, ShoppingCart, Truck, User, LogOut, Menu, Wrench, Package, Calendar, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,12 +17,18 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { doc, onSnapshot } from "firebase/firestore";
+import { Loader2 } from "lucide-react";
+
+type UserProfile = {
+    role: 'admin' | 'employee';
+    permissions?: { [key: string]: boolean };
+};
 
 export default function AdminLayout({
   children,
@@ -29,36 +36,78 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
     const pathname = usePathname();
-    const { user } = useAuth();
+    const { user, isLoading: authIsLoading } = useAuth();
     const router = useRouter();
-    const [dashboardLabel, setDashboardLabel] = useState("Dashboard");
-    const [date, setDate] = useState<Date | undefined>(new Date());
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+    const [isProfileLoading, setIsProfileLoading] = useState(true);
 
     useEffect(() => {
-        setDashboardLabel("Inicio");
-    }, []);
+        if (authIsLoading) return;
+        if (!user) {
+            router.push('/');
+            return;
+        }
+
+        setIsProfileLoading(true);
+        const docRef = doc(db, "users", user.uid);
+        const unsubscribe = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setUserProfile(docSnap.data() as UserProfile);
+            } else {
+                // This case can happen if the user doc hasn't been created yet.
+                // For now, we assume a logged-in user in /admin should have a doc.
+                // You might want to handle this more gracefully, e.g., redirect or show an error.
+                console.error("User profile document not found!");
+                setUserProfile(null);
+            }
+            setIsProfileLoading(false);
+        }, (error) => {
+            console.error("Error fetching user profile:", error);
+            setIsProfileLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [user, authIsLoading, router]);
+
+    const hasAccess = (module: string) => {
+        if (userProfile?.role === 'admin') return true;
+        return userProfile?.permissions?.[module] ?? false;
+    };
 
     const mainLinks = [
-        { href: "/admin", label: dashboardLabel, icon: Home, exact: true },
-        { href: "/admin/projects", label: "Proyectos", icon: Briefcase },
-    ];
+        { href: "/admin", label: "Inicio", icon: Home, id: "dashboard", exact: true },
+        { href: "/admin/projects", label: "Proyectos", icon: Briefcase, id: "projects" },
+    ].filter(link => hasAccess(link.id) || link.id === 'dashboard');
     
     const salesLinks = [
-        { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
-        { href: "/admin/clients", label: "Clientes", icon: Users },
-    ];
+        { href: "/admin/quotes", label: "Cotizaciones", icon: FileText, id: "quotes" },
+        { href: "/admin/clients", label: "Clientes", icon: Users, id: "clients" },
+    ].filter(link => hasAccess(link.id));
     
     const purchasesLinks = [
-        { href: "/admin/purchase-orders", label: "Órdenes de Compra", icon: ShoppingCart },
-        { href: "/admin/suppliers", label: "Proveedores", icon: Truck },
-    ];
+        { href: "/admin/purchase-orders", label: "Órdenes de Compra", icon: ShoppingCart, id: "purchase_orders" },
+        { href: "/admin/suppliers", label: "Proveedores", icon: Truck, id: "suppliers" },
+    ].filter(link => hasAccess(link.id));
+    
+    const operationsLinks = [
+        { href: "/admin/tickets", label: "Tickets de Servicio", icon: Ticket, id: "tickets"},
+    ].filter(link => hasAccess(link.id));
 
     const warehouseLinks = [
-        { href: "/admin/services", label: "Servicios", icon: Wrench },
-        { href: "/admin/spare-parts", label: "Refacciones", icon: Package },
-    ];
+        { href: "/admin/services", label: "Servicios", icon: Wrench, id: "services" },
+        { href: "/admin/spare-parts", label: "Refacciones", icon: Package, id: "spare_parts" },
+    ].filter(link => hasAccess(link.id));
 
-    const adminControlLink = { href: "/admin/users", label: "Control de Usuarios", icon: User };
+    const adminControlLink = { href: "/admin/users", label: "Control de Usuarios", icon: User, id: "users" };
+    
+    const allNavLinks = [
+        ...mainLinks,
+        ...salesLinks,
+        ...purchasesLinks,
+        ...operationsLinks,
+        ...warehouseLinks,
+        ...(hasAccess(adminControlLink.id) ? [adminControlLink] : [])
+    ];
 
     const handleSignOut = async () => {
         await auth.signOut();
@@ -66,9 +115,7 @@ export default function AdminLayout({
     };
 
     const isActive = (href: string, exact = false) => {
-        if (exact) {
-            return pathname === href;
-        }
+        if (exact) return pathname === href;
         return pathname.startsWith(href);
     }
 
@@ -86,106 +133,99 @@ export default function AdminLayout({
         </Link>
     );
 
-    const NavGroup = ({ title, links, isMobile = false }: { title: string, links: any[], isMobile?: boolean }) => (
-        <div className="py-2">
-            {!isMobile && <h3 className="mb-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</h3>}
-            {links.map((link) => <NavLink key={link.href} link={link} isMobile={isMobile} />)}
-        </div>
-    );
+    const NavGroup = ({ title, links, isMobile = false }: { title: string, links: any[], isMobile?: boolean }) => {
+        if (links.length === 0) return null;
+        return (
+            <div className="py-2">
+                {!isMobile && <h3 className="mb-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</h3>}
+                {links.map((link) => <NavLink key={link.href} link={link} isMobile={isMobile} />)}
+            </div>
+        );
+    }
     
+    if (authIsLoading || isProfileLoading) {
+        return (
+          <div className="flex h-screen w-full items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        );
+    }
 
-  return (
-    <div className="grid h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-      <div className="hidden border-r bg-muted/40 md:block">
-        <div className="flex h-full max-h-screen flex-col gap-2">
-          <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-            <Logo href="/admin" />
-          </div>
-          <div className="flex-1 overflow-auto py-2">
-            <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-              {mainLinks.map((link) => <NavLink key={link.href} link={link} />)}
-              <NavGroup title="Ventas" links={salesLinks} />
-              <NavGroup title="Compras" links={purchasesLinks} />
-              <NavGroup title="Almacenes" links={warehouseLinks} />
-            </nav>
-          </div>
-            <div className="mt-auto p-4">
-                <div className="px-2 lg:px-4 mb-4">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-full justify-start">
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                Calendario
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                            <Calendar
-                                mode="single"
-                                selected={date}
-                                onSelect={setDate}
-                                initialFocus
-                            />
-                        </PopoverContent>
-                    </Popover>
-                </div>
-                 <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-                    <NavLink link={adminControlLink} />
+    return (
+        <div className="grid h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+        <div className="hidden border-r bg-muted/40 md:block">
+            <div className="flex h-full max-h-screen flex-col gap-2">
+            <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+                <Logo href="/admin" />
+            </div>
+            <div className="flex-1 overflow-auto py-2">
+                <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+                {mainLinks.map((link) => <NavLink key={link.href} link={link} />)}
+                <NavGroup title="Ventas" links={salesLinks} />
+                <NavGroup title="Compras" links={purchasesLinks} />
+                <NavGroup title="Almacenes" links={warehouseLinks} />
                 </nav>
             </div>
-        </div>
-      </div>
-      <div className="flex flex-col h-screen overflow-hidden">
-        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6 shrink-0">
-            <Sheet>
-                <SheetTrigger asChild>
-                    <Button
-                    variant="outline"
-                    size="icon"
-                    className="shrink-0 md:hidden"
-                    >
-                    <Menu className="h-5 w-5" />
-                    <span className="sr-only">Toggle navigation menu</span>
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="flex flex-col p-0">
-                    <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-                        <Logo href="/admin" />
-                    </div>
-                    <nav className="grid gap-2 text-lg font-medium p-4">
-                        {[...mainLinks, ...salesLinks, ...purchasesLinks, ...warehouseLinks, adminControlLink].map((link) => <NavLink key={link.href} link={link} isMobile={true} />)}
-                    </nav>
-                </SheetContent>
-            </Sheet>
-            <div className="w-full flex-1">
-                {/* Optional: Add a search bar or other header content here */}
+                <div className="mt-auto p-4">
+                    {hasAccess(adminControlLink.id) && (
+                        <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+                            <NavLink link={adminControlLink} />
+                        </nav>
+                    )}
+                </div>
             </div>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="icon" className="rounded-full">
-                    <Avatar className="h-8 w-8">
-                       <AvatarFallback>
-                           <User className="h-5 w-5" />
-                       </AvatarFallback>
-                    </Avatar>
-                    <span className="sr-only">Toggle user menu</span>
-                </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => router.push('/profile')}>Perfil</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Cerrar Sesión
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </header>
-        <main className="flex-1 overflow-auto p-4 lg:p-6">
-          {children}
-        </main>
-      </div>
-    </div>
-  );
+        </div>
+        <div className="flex flex-col h-screen overflow-hidden">
+            <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6 shrink-0">
+                <Sheet>
+                    <SheetTrigger asChild>
+                        <Button
+                        variant="outline"
+                        size="icon"
+                        className="shrink-0 md:hidden"
+                        >
+                        <Menu className="h-5 w-5" />
+                        <span className="sr-only">Toggle navigation menu</span>
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="flex flex-col p-0">
+                        <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+                            <Logo href="/admin" />
+                        </div>
+                        <nav className="grid gap-2 text-lg font-medium p-4">
+                            {allNavLinks.map((link) => <NavLink key={link.href} link={link} isMobile={true} />)}
+                        </nav>
+                    </SheetContent>
+                </Sheet>
+                <div className="w-full flex-1">
+                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" size="icon" className="rounded-full">
+                        <Avatar className="h-8 w-8">
+                        <AvatarFallback>
+                            <User className="h-5 w-5" />
+                        </AvatarFallback>
+                        </Avatar>
+                        <span className="sr-only">Toggle user menu</span>
+                    </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => router.push('/profile')}>Perfil</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleSignOut}>
+                            <LogOut className="mr-2 h-4 w-4" />
+                            Cerrar Sesión
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </header>
+            <main className="flex-1 overflow-auto p-4 lg:p-6">
+            {children}
+            </main>
+        </div>
+        </div>
+    );
 }

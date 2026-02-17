@@ -1,20 +1,61 @@
 
 "use client";
 
-import { useState } from "react";
-import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { UserPlus, Loader2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { Loader2, PlusCircle, MoreHorizontal, Edit, Trash2, Eye, EyeOff, User, UserPlus } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/hooks/use-auth";
 import { errorEmitter } from "@/lib/error-emitter";
 import { FirestorePermissionError } from "@/lib/errors";
-
-// Import secondary app instance for user creation
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 
 // IMPORTANT: We need a secondary Firebase app instance to create users
@@ -24,154 +65,293 @@ const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 const apps = getApps();
 const userCreationApp = apps.find(app => app.name === 'userCreation') || initializeApp(firebaseConfig, 'userCreation');
 const userCreationAuth = getAuth(userCreationApp);
 
+const modules = [
+    { id: 'projects', label: 'Proyectos' },
+    { id: 'quotes', label: 'Cotizaciones' },
+    { id: 'clients', label: 'Clientes' },
+    { id: 'purchase_orders', label: 'Órdenes de Compra' },
+    { id: 'suppliers', label: 'Proveedores' },
+    { id: 'tickets', label: 'Tickets de Servicio' },
+    { id: 'services', label: 'Servicios' },
+    { id: 'spare_parts', label: 'Refacciones' },
+] as const;
+
+const userSchema = z.object({
+  id: z.string().optional(),
+  displayName: z.string().min(2, "El nombre es requerido."),
+  email: z.string().email("Correo electrónico inválido."),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres.").optional(),
+  role: z.enum(["admin", "employee"], { required_error: "Debe seleccionar un rol." }),
+  permissions: z.array(z.string()).optional(),
+});
+
+type UserProfile = z.infer<typeof userSchema> & { uid: string, createdAt: any };
 
 export default function UsersPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
+    const { user: adminUser, isLoading: authIsLoading } = useAuth();
+    const [users, setUsers] = useState<UserProfile[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+    const { toast } = useToast();
 
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    try {
-      // Create user with the secondary auth instance
-      const userCredential = await createUserWithEmailAndPassword(userCreationAuth, email, password);
-      const user = userCredential.user;
-
-      // Save user profile in Firestore with 'admin' role
-      const userDocRef = doc(db, "users", user.uid);
-      const newUserProfile = {
-        uid: user.uid,
-        email: user.email,
-        displayName: displayName || user.email,
-        role: "admin", // Assign admin role by default
-        createdAt: serverTimestamp(),
-      };
-      
-      // Use the main db instance to write the document
-      await setDoc(userDocRef, newUserProfile)
-        .catch(serverError => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: userDocRef.path,
-                operation: 'create',
-                requestResourceData: newUserProfile
-            }));
-             throw serverError; // re-throw to be caught by outer try-catch
+    useEffect(() => {
+        if (!adminUser) return;
+        setIsLoading(true);
+        const usersQuery = collection(db, "users");
+        const unsubscribe = onSnapshot(usersQuery, (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile));
+            setUsers(data);
+            setIsLoading(false);
+        }, (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'users', operation: 'list' }));
+            toast({ title: "Error de Permisos", description: "No tienes permiso para ver los usuarios.", variant: "destructive" });
+            setIsLoading(false);
         });
 
-      toast({
-        title: "Usuario Administrador Creado",
-        description: `La cuenta para ${user.email} ha sido creada con éxito.`,
-      });
+        return () => unsubscribe();
+    }, [adminUser, toast]);
 
-      // Clear form
-      setEmail("");
-      setPassword("");
-      setDisplayName("");
+    const handleSaveUser = useCallback(async (data: z.infer<typeof userSchema>) => {
+        try {
+            if (selectedUser?.uid) { // UPDATE
+                const userDoc = doc(db, "users", selectedUser.uid);
+                const { password, ...updateData } = data;
+                
+                const finalPermissions = data.role === 'admin' ? [] : (data.permissions || []);
+                const permissionsObject = finalPermissions.reduce((acc, p) => ({ ...acc, [p]: true }), {});
 
-    } catch (error: any) {
-      console.error("Error creating user:", error);
-      let description = "Ocurrió un error inesperado.";
-      if (error.code === 'auth/email-already-in-use') {
-        description = "Este correo electrónico ya está en uso.";
-      } else if (error.code === 'auth/weak-password') {
-        description = "La contraseña debe tener al menos 6 caracteres.";
-      }
-      toast({
-        title: "Error al Crear Usuario",
-        description,
-        variant: "destructive",
-      });
-    } finally {
-      // Sign out the newly created user from the secondary instance to avoid conflicts
-      await userCreationAuth.signOut();
-      setIsSubmitting(false);
+                await updateDoc(userDoc, { ...updateData, permissions: permissionsObject });
+                toast({ title: "Usuario Actualizado", description: `El perfil de ${data.displayName} ha sido actualizado.` });
+            } else { // CREATE
+                if (!data.password) {
+                    toast({ title: "Error", description: "La contraseña es requerida para nuevos usuarios.", variant: "destructive" });
+                    return;
+                }
+                const userCredential = await createUserWithEmailAndPassword(userCreationAuth, data.email, data.password);
+                const newUser = userCredential.user;
+                
+                const finalPermissions = data.role === 'admin' ? [] : (data.permissions || []);
+                const permissionsObject = finalPermissions.reduce((acc, p) => ({ ...acc, [p]: true }), {});
+
+                await setDoc(doc(db, "users", newUser.uid), {
+                    uid: newUser.uid,
+                    displayName: data.displayName,
+                    email: data.email,
+                    role: data.role,
+                    permissions: permissionsObject,
+                    createdAt: serverTimestamp(),
+                });
+                
+                await userCreationAuth.signOut();
+
+                toast({ title: "Usuario Creado", description: `La cuenta para ${data.email} ha sido creada.` });
+            }
+            setIsFormOpen(false);
+            setSelectedUser(null);
+        } catch (error: any) {
+            console.error("Error saving user:", error);
+            const description = error.code === 'auth/email-already-in-use' ? 'El correo electrónico ya está en uso.' : 'No se pudo guardar el usuario.';
+            toast({ title: "Error al guardar", description, variant: "destructive" });
+        }
+    }, [selectedUser, toast]);
+    
+    const columns: ColumnDef<UserProfile>[] = useMemo(() => [
+        { accessorKey: "displayName", header: "Nombre" },
+        { accessorKey: "email", header: "Correo" },
+        { accessorKey: "role", header: "Rol" },
+        { id: "actions",
+          cell: ({ row }) => (
+              <DropdownMenu>
+                  <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                      <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => { setSelectedUser(row.original); setIsFormOpen(true); }}><Edit className="mr-2 h-4 w-4"/> Editar</DropdownMenuItem>
+                  </DropdownMenuContent>
+              </DropdownMenu>
+          )
+        }
+    ], []);
+  
+    const table = useReactTable({ data: users, columns, getCoreRowModel: getCoreRowModel() });
+  
+    if (isLoading && authIsLoading) {
+      return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
     }
-  };
 
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <UserPlus className="w-6 h-6" />
-          <CardTitle>Crear Nuevo Usuario</CardTitle>
-        </div>
-        <CardDescription>
-          Añadir un nuevo miembro al equipo. Por defecto, se le asignará el rol de **administrador**.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleCreateUser} className="space-y-6 max-w-md mx-auto">
-           <div className="space-y-2">
-            <Label htmlFor="displayName">Nombre Completo</Label>
-            <Input
-              id="displayName"
-              type="text"
-              placeholder="Ej: Jane Doe"
-              required
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Correo Electrónico</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="correo@ejemplo.com"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Mínimo 6 caracteres"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute top-1/2 right-2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
-                onClick={() => setShowPassword((prev) => !prev)}
-              >
-                {showPassword ? <EyeOff /> : <Eye />}
-              </Button>
-            </div>
-          </div>
-          <Button className="w-full" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creando Usuario...
-              </>
-            ) : (
-              "Crear Usuario Administrador"
-            )}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
-  );
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex items-center gap-3">
+                    <User className="w-6 h-6" />
+                    <CardTitle>Control de Usuarios</CardTitle>
+                </div>
+                <CardDescription>Añadir, ver y gestionar los usuarios y sus permisos.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex justify-end mb-4">
+                    <Button onClick={() => { setSelectedUser(null); setIsFormOpen(true);}}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Agregar Usuario
+                    </Button>
+                </div>
+                <div className="rounded-md border">
+                    <Table>
+                        <TableHeader>{table.getHeaderGroups().map(headerGroup => (<TableRow key={headerGroup.id}>{headerGroup.headers.map(header => <TableHead key={header.id}>{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>)}</TableRow>))}</TableHeader>
+                        <TableBody>
+                            {table.getRowModel().rows?.length ? (
+                                table.getRowModel().rows.map(row => (
+                                    <TableRow key={row.id}>{row.getVisibleCells().map(cell => (
+                                        <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                                    ))}</TableRow>
+                                ))
+                            ) : (
+                                <TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No hay usuarios.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+                 <UserFormDialog
+                    isOpen={isFormOpen}
+                    onOpenChange={setIsFormOpen}
+                    onSave={handleSaveUser}
+                    user={selectedUser}
+                />
+            </CardContent>
+        </Card>
+    );
+}
+
+interface UserFormDialogProps {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  onSave: (data: z.infer<typeof userSchema>) => void;
+  user: UserProfile | null;
+}
+
+function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogProps) {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const form = useForm<z.infer<typeof userSchema>>({
+        resolver: zodResolver(userSchema),
+        defaultValues: { role: "employee", permissions: [] }
+    });
+
+    const role = form.watch("role");
+
+    useEffect(() => {
+        if (isOpen) {
+          if (user) {
+            form.reset({
+                ...user,
+                permissions: user.permissions ? Object.keys(user.permissions).filter(k => user.permissions[k as keyof typeof user.permissions]) : []
+            });
+          } else {
+            form.reset({ displayName: "", email: "", password: "", role: "employee", permissions: [] });
+          }
+        }
+      }, [user, isOpen, form]);
+
+    const handleSubmit = async (data: z.infer<typeof userSchema>) => {
+        setIsSubmitting(true);
+        await onSave(data);
+        setIsSubmitting(false);
+    }
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>{user ? 'Editar Usuario' : 'Crear Nuevo Usuario'}</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-1">
+                        <FormField control={form.control} name="displayName" render={({ field }) => (
+                            <FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="Ej: Juan Pérez" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="email" render={({ field }) => (
+                            <FormItem><FormLabel>Correo Electrónico</FormLabel><FormControl><Input type="email" placeholder="correo@ejemplo.com" {...field} disabled={!!user} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        {!user && <FormField control={form.control} name="password" render={({ field }) => (
+                            <FormItem><FormLabel>Contraseña</FormLabel>
+                                <div className="relative">
+                                    <FormControl><Input type={showPassword ? "text" : "password"} {...field} /></FormControl>
+                                    <Button type="button" variant="ghost" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(p => !p)}><{showPassword ? EyeOff : Eye} /></Button>
+                                </div><FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="role" render={({ field }) => (
+                            <FormItem className="space-y-3"><FormLabel>Rol</FormLabel>
+                                <FormControl>
+                                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
+                                        <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="employee" /></FormControl><FormLabel className="font-normal">Empleado</FormLabel></FormItem>
+                                        <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="admin" /></FormControl><FormLabel className="font-normal">Administrador</FormLabel></FormItem>
+                                    </RadioGroup>
+                                </FormControl><FormMessage />
+                            </FormItem>
+                        )} />
+
+                        {role === 'employee' && (
+                             <FormField
+                                control={form.control}
+                                name="permissions"
+                                render={() => (
+                                <FormItem>
+                                    <div className="mb-4">
+                                        <FormLabel className="text-base">Permisos de Módulo</FormLabel>
+                                        <FormDescription>Selecciona los módulos a los que este empleado tendrá acceso (solo lectura).</FormDescription>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                    {modules.map((item) => (
+                                        <FormField
+                                        key={item.id}
+                                        control={form.control}
+                                        name="permissions"
+                                        render={({ field }) => {
+                                            return (
+                                            <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
+                                                <FormControl>
+                                                <Checkbox
+                                                    checked={field.value?.includes(item.id)}
+                                                    onCheckedChange={(checked) => {
+                                                    return checked
+                                                        ? field.onChange([...(field.value || []), item.id])
+                                                        : field.onChange(
+                                                            field.value?.filter(
+                                                                (value) => value !== item.id
+                                                            )
+                                                            )
+                                                    }}
+                                                />
+                                                </FormControl>
+                                                <FormLabel className="font-normal">{item.label}</FormLabel>
+                                            </FormItem>
+                                            )
+                                        }}
+                                        />
+                                    ))}
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                        )}
+
+                         <DialogFooter className="sticky bottom-0 bg-background pt-4 z-10">
+                            <DialogClose asChild><Button type="button" variant="ghost">Cancelar</Button></DialogClose>
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {user ? "Guardar Cambios" : "Crear Usuario"}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    )
 }
