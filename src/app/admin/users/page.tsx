@@ -11,6 +11,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -31,7 +32,6 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -246,9 +246,12 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
     useEffect(() => {
         if (isOpen) {
           if (user) {
+            const userPermissions = user.permissions 
+              ? Object.keys(user.permissions).filter(k => (user.permissions as any)[k])
+              : [];
             form.reset({
                 ...user,
-                permissions: user.permissions ? Object.keys(user.permissions).filter(k => user.permissions[k as keyof typeof user.permissions]) : []
+                permissions: userPermissions
             });
           } else {
             form.reset({ displayName: "", email: "", password: "", role: "employee", permissions: [] });
@@ -260,7 +263,7 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
         setIsSubmitting(true);
         await onSave(data);
         setIsSubmitting(false);
-    }
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -281,7 +284,7 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                                 <div className="relative">
                                     <FormControl><Input type={showPassword ? "text" : "password"} {...field} /></FormControl>
                                     <Button type="button" variant="ghost" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(p => !p)}>
-                                        {showPassword ? <EyeOff /> : <Eye />}
+                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </Button>
                                 </div><FormMessage />
                             </FormItem>
@@ -298,10 +301,10 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                         )} />
 
                         {role === 'employee' && (
-                             <FormField
+                            <FormField
                                 control={form.control}
                                 name="permissions"
-                                render={() => (
+                                render={({ field }) => (
                                 <FormItem>
                                     <div className="mb-4">
                                         <FormLabel className="text-base">Permisos de Módulo</FormLabel>
@@ -309,30 +312,25 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                     {modules.map((item) => (
-                                        <FormField
-                                        key={item.id}
-                                        control={form.control}
-                                        name="permissions"
-                                        render={({ field }) => {
-                                            return (
-                                            <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
-                                                <FormControl>
-                                                <Checkbox
-                                                    checked={field.value?.includes(item.id)}
-                                                    onCheckedChange={(checked) => {
-                                                      if (checked) {
+                                        <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
+                                            <FormControl>
+                                            <Checkbox
+                                                checked={field.value?.includes(item.id)}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) {
                                                         field.onChange([...(field.value || []), item.id]);
-                                                      } else {
-                                                        field.onChange(field.value?.filter((value) => value !== item.id));
-                                                      }
-                                                    }}
-                                                />
-                                                </FormControl>
-                                                <FormLabel className="font-normal">{item.label}</FormLabel>
-                                            </FormItem>
-                                            )
-                                        }}
-                                        />
+                                                    } else {
+                                                        field.onChange(
+                                                            (field.value || []).filter(
+                                                                (value) => value !== item.id
+                                                            )
+                                                        );
+                                                    }
+                                                }}
+                                            />
+                                            </FormControl>
+                                            <FormLabel className="font-normal">{item.label}</FormLabel>
+                                        </FormItem>
                                     ))}
                                     </div>
                                     <FormMessage />
