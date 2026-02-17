@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -246,19 +247,22 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
     useEffect(() => {
         if (isOpen) {
           if (user) {
-            const userPermissions = user.permissions 
-              ? Object.keys(user.permissions).filter(k => (user.permissions as any)[k])
+            const userPermissions = user.permissions
+              ? Array.isArray(user.permissions)
+                ? user.permissions
+                : Object.keys(user.permissions).filter(k => (user.permissions as any)[k])
               : [];
             form.reset({
                 ...user,
-                permissions: userPermissions
+                permissions: userPermissions,
+                password: '' // Don't show existing password
             });
           } else {
             form.reset({ displayName: "", email: "", password: "", role: "employee", permissions: [] });
           }
         }
       }, [user, isOpen, form]);
-
+    
     const handleSubmit = async (data: z.infer<typeof userSchema>) => {
         setIsSubmitting(true);
         await onSave(data);
@@ -304,7 +308,7 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                             <FormField
                                 control={form.control}
                                 name="permissions"
-                                render={({ field }) => (
+                                render={() => (
                                 <FormItem>
                                     <div className="mb-4">
                                         <FormLabel className="text-base">Permisos de Módulo</FormLabel>
@@ -312,26 +316,36 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                     {modules.map((item) => (
-                                        <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
-                                            <FormControl>
-                                                <Checkbox
-                                                    checked={field.value?.includes(item.id)}
-                                                    onCheckedChange={(checked) => {
-                                                        const currentPermissions = field.value || [];
-                                                        if (checked) {
+                                         <FormField
+                                            key={item.id}
+                                            control={form.control}
+                                            name="permissions"
+                                            render={({ field }) => {
+                                                return (
+                                                <FormItem
+                                                    key={item.id}
+                                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                                >
+                                                    <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value?.includes(item.id)}
+                                                        onCheckedChange={(checked) => {
+                                                          const currentPermissions = field.value || [];
+                                                          if (checked) {
                                                             field.onChange([...currentPermissions, item.id]);
-                                                        } else {
-                                                            field.onChange(
-                                                                currentPermissions.filter(
-                                                                    (value) => value !== item.id
-                                                                )
-                                                            );
-                                                        }
-                                                    }}
-                                                />
-                                            </FormControl>
-                                            <FormLabel className="font-normal">{item.label}</FormLabel>
-                                        </FormItem>
+                                                          } else {
+                                                            field.onChange(currentPermissions.filter((value) => value !== item.id));
+                                                          }
+                                                        }}
+                                                    />
+                                                    </FormControl>
+                                                    <FormLabel className="font-normal">
+                                                    {item.label}
+                                                    </FormLabel>
+                                                </FormItem>
+                                                )
+                                            }}
+                                        />
                                     ))}
                                     </div>
                                     <FormMessage />
