@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -281,7 +280,9 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                             <FormItem><FormLabel>Contraseña</FormLabel>
                                 <div className="relative">
                                     <FormControl><Input type={showPassword ? "text" : "password"} {...field} /></FormControl>
-                                    <Button type="button" variant="ghost" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(p => !p)}><{showPassword ? EyeOff : Eye} /></Button>
+                                    <Button type="button" variant="ghost" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(p => !p)}>
+                                        {showPassword ? <EyeOff /> : <Eye />}
+                                    </Button>
                                 </div><FormMessage />
                             </FormItem>
                         )} />
@@ -319,13 +320,11 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                                                 <Checkbox
                                                     checked={field.value?.includes(item.id)}
                                                     onCheckedChange={(checked) => {
-                                                    return checked
-                                                        ? field.onChange([...(field.value || []), item.id])
-                                                        : field.onChange(
-                                                            field.value?.filter(
-                                                                (value) => value !== item.id
-                                                            )
-                                                            )
+                                                      if (checked) {
+                                                        field.onChange([...(field.value || []), item.id]);
+                                                      } else {
+                                                        field.onChange(field.value?.filter((value) => value !== item.id));
+                                                      }
                                                     }}
                                                 />
                                                 </FormControl>
