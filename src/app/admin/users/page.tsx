@@ -308,7 +308,7 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                             <FormField
                                 control={form.control}
                                 name="permissions"
-                                render={({ field }) => (
+                                render={() => (
                                 <FormItem>
                                     <div className="mb-4">
                                         <FormLabel className="text-base">Permisos de Módulo</FormLabel>
@@ -318,28 +318,40 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         {modules.map((item) => (
-                                            <FormItem
+                                           <FormField
                                                 key={item.id}
-                                                className="flex flex-row items-start space-x-3 space-y-0"
-                                            >
-                                                <FormControl>
-                                                    <Checkbox
+                                                control={form.control}
+                                                name="permissions"
+                                                render={({ field }) => {
+                                                return (
+                                                    <FormItem
+                                                    key={item.id}
+                                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                                    >
+                                                    <FormControl>
+                                                        <Checkbox
                                                         checked={field.value?.includes(item.id)}
                                                         onCheckedChange={(checked) => {
                                                             return checked
-                                                            ? field.onChange([...(field.value || []), item.id])
+                                                            ? field.onChange([
+                                                                ...(field.value || []),
+                                                                item.id,
+                                                                ])
                                                             : field.onChange(
                                                                 (field.value || []).filter(
                                                                     (value) => value !== item.id
                                                                 )
                                                                 );
                                                         }}
-                                                    />
-                                                </FormControl>
-                                                <FormLabel className="font-normal">
-                                                    {item.label}
-                                                </FormLabel>
-                                            </FormItem>
+                                                        />
+                                                    </FormControl>
+                                                    <FormLabel className="font-normal">
+                                                        {item.label}
+                                                    </FormLabel>
+                                                    </FormItem>
+                                                );
+                                                }}
+                                            />
                                         ))}
                                     </div>
                                     <FormMessage />
@@ -361,5 +373,3 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
         </Dialog>
     )
 }
-
-    
