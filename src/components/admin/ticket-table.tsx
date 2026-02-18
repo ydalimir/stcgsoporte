@@ -10,7 +10,8 @@ import {
   updateDoc,
   Timestamp,
   orderBy,
-  deleteDoc
+  deleteDoc,
+  where,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import {
@@ -96,6 +97,10 @@ export type Ticket = {
   quantity?: number
 }
 
+type UserProfile = {
+  role: 'admin' | 'employee';
+};
+
 const downloadServiceOrderPDF = (ticket: Ticket) => {
     const doc = new jsPDF();
     const ticketId = ticket.ticketNumber ? `ORD-${String(ticket.ticketNumber).padStart(3, '0')}` : ticket.id;
@@ -177,6 +182,8 @@ const downloadServiceOrderPDF = (ticket: Ticket) => {
 export function TicketTable() {
   const { user, isLoading: authIsLoading } = useAuth();
   const [tickets, setTickets] = React.useState<Ticket[]>([])
+  const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = React.useState(true);
   const [isLoading, setIsLoading] = React.useState(true)
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "createdAt", desc: true },
@@ -191,19 +198,36 @@ export function TicketTable() {
 
 
   React.useEffect(() => {
-    if (authIsLoading) {
-      setIsLoading(true);
-      return;
-    }
+    if (authIsLoading) return;
     if (!user) {
+      setIsProfileLoading(false);
       setIsLoading(false);
-      setTickets([]); // Clear tickets if user is logged out
+      setTickets([]);
       return;
     }
+    const profileUnsub = onSnapshot(doc(db, "users", user.uid), (doc) => {
+        if (doc.exists()) {
+            setUserProfile(doc.data() as UserProfile);
+        }
+        setIsProfileLoading(false);
+    });
+    return () => profileUnsub();
+  }, [user, authIsLoading]);
+
+
+  React.useEffect(() => {
+    if (!user || !userProfile) {
+        if (!isProfileLoading) setIsLoading(false);
+        return;
+    };
   
     setIsLoading(true);
-    const q = query(collection(db, "tickets"), orderBy("createdAt", "desc"));
-  
+    const is_admin = userProfile.role === 'admin';
+    const baseTicketsQuery = collection(db, "tickets");
+    const q = is_admin
+        ? query(baseTicketsQuery, orderBy("createdAt", "desc"))
+        : query(baseTicketsQuery, where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+
     const unsubscribe = onSnapshot(
       q,
       (querySnapshot) => {
@@ -229,7 +253,7 @@ export function TicketTable() {
     );
   
     return () => unsubscribe();
-  }, [user, authIsLoading, toast]);
+  }, [user, userProfile, isProfileLoading, toast]);
   
 
   const updateTicketStatus = async (ticketId: string, status: string) => {
@@ -458,7 +482,7 @@ export function TicketTable() {
     },
   })
 
-  if (isLoading && authIsLoading) {
+  if (isLoading || authIsLoading || isProfileLoading) {
     return (
       <div className="flex items-center justify-center py-10">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

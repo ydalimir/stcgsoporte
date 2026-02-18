@@ -70,7 +70,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, runTransaction } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, runTransaction, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { errorEmitter } from "@/lib/error-emitter";
@@ -101,8 +101,13 @@ const projectSchema = z.object({
 
 export type Project = z.infer<typeof projectSchema> & {
     id: string;
-    lastUpdated: any; // Using any for Firestore Timestamp flexibility
+    userId: string;
+    lastUpdated: any;
     createdAt: any;
+};
+
+type UserProfile = {
+  role: 'admin' | 'employee';
 };
 
 const downloadQuotePDF = (quote: Quote) => {
@@ -352,6 +357,8 @@ export function ProjectManager() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -371,12 +378,36 @@ export function ProjectManager() {
     if (authIsLoading) return;
     if (!user) {
       setIsLoading(false);
+      setIsProfileLoading(false);
       setProjects([]);
       return;
     }
     
+    const profileUnsub = onSnapshot(doc(db, "users", user.uid), (doc) => {
+        if (doc.exists()) {
+            setUserProfile(doc.data() as UserProfile);
+        }
+        setIsProfileLoading(false);
+    });
+
+    return () => profileUnsub();
+  }, [user, authIsLoading]);
+
+
+  useEffect(() => {
+    if (!user || !userProfile) {
+        if (!isProfileLoading) setIsLoading(false);
+        return;
+    };
+    
     setIsLoading(true);
-    const projectsQuery = collection(db, "projects");
+    
+    const is_admin = userProfile.role === 'admin';
+    const baseProjectsQuery = collection(db, "projects");
+    const projectsQuery = is_admin
+        ? query(baseProjectsQuery)
+        : query(baseProjectsQuery, where("userId", "==", user.uid));
+
     const unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
         setProjects(data.sort((a,b) => b.createdAt?.toMillis() - a.createdAt?.toMillis()));
@@ -409,17 +440,18 @@ export function ProjectManager() {
         unsubscribeQuotes();
         unsubscribePOs();
     };
-  }, [user, authIsLoading, toast]);
+  }, [user, userProfile, isProfileLoading, toast]);
 
-  const handleSaveProject = useCallback(async (data: Omit<Project, 'id' | 'lastUpdated' | 'createdAt'>) => {
+  const handleSaveProject = useCallback(async (data: Omit<Project, 'id' | 'lastUpdated' | 'createdAt' | 'userId'>) => {
+    if (!user) return;
     try {
-        const projectData = { ...data, lastUpdated: serverTimestamp() };
         if (selectedProject?.id) {
             const projectDoc = doc(db, "projects", selectedProject.id);
-            await updateDoc(projectDoc, projectData);
+            await updateDoc(projectDoc, { ...data, lastUpdated: serverTimestamp() });
             toast({ title: "Proyecto Actualizado", description: "El proyecto ha sido actualizado." });
         } else {
-            await addDoc(collection(db, "projects"), { ...projectData, createdAt: serverTimestamp() });
+            const projectData = { ...data, lastUpdated: serverTimestamp(), createdAt: serverTimestamp(), userId: user.uid };
+            await addDoc(collection(db, "projects"), projectData);
             toast({ title: "Proyecto Creado", description: "Un nuevo proyecto ha sido creado." });
         }
         setIsFormOpen(false);
@@ -428,7 +460,7 @@ export function ProjectManager() {
         console.error("Error saving project:", error);
         toast({ title: "Error al guardar", variant: "destructive" });
     }
-  }, [selectedProject, toast]);
+  }, [selectedProject, toast, user]);
 
   const handleDeleteProject = useCallback(async (id: string) => {
       try {
@@ -463,7 +495,7 @@ export function ProjectManager() {
   }, [toast]);
 
   const handleSaveAndLinkQuote = useCallback(async (quoteData: any) => {
-    if (!linkingProject) return;
+    if (!linkingProject || !user) return;
     try {
         const newQuoteId = await runTransaction(db, async (transaction) => {
             const counterRef = doc(db, "counters", "quotes");
@@ -474,7 +506,7 @@ export function ProjectManager() {
             }
             transaction.set(counterRef, { lastNumber: newQuoteNumber }, { merge: true });
             const newQuoteRef = doc(collection(db, "quotes"));
-            transaction.set(newQuoteRef, { ...quoteData, quoteNumber: newQuoteNumber });
+            transaction.set(newQuoteRef, { ...quoteData, quoteNumber: newQuoteNumber, userId: user.uid });
             return newQuoteRef.id;
         });
 
@@ -490,7 +522,7 @@ export function ProjectManager() {
         setIsQuoteFormOpen(false);
         setLinkingProject(null);
     }
-  }, [linkingProject, toast]);
+  }, [linkingProject, toast, user]);
 
     const handleUpdateQuote = useCallback(async (quoteData: any) => {
         if (!editingQuote) return;
@@ -529,7 +561,7 @@ export function ProjectManager() {
   }, [toast]);
 
   const handleSaveAndLinkPO = useCallback(async (poData: any) => {
-    if (!linkingProjectForPO) return;
+    if (!linkingProjectForPO || !user) return;
     try {
         const newPOId = await runTransaction(db, async (transaction) => {
             const counterRef = doc(db, "counters", "purchaseOrders");
@@ -540,7 +572,7 @@ export function ProjectManager() {
             }
             transaction.set(counterRef, { lastNumber: newPoNumber }, { merge: true });
             const newPORef = doc(collection(db, "purchase_orders"));
-            transaction.set(newPORef, { ...poData, purchaseOrderNumber: newPoNumber });
+            transaction.set(newPORef, { ...poData, purchaseOrderNumber: newPoNumber, userId: user.uid });
             return newPORef.id;
         });
 
@@ -556,7 +588,7 @@ export function ProjectManager() {
         setIsPOFormOpen(false);
         setLinkingProjectForPO(null);
     }
-  }, [linkingProjectForPO, toast]);
+  }, [linkingProjectForPO, toast, user]);
 
   const handleUpdatePO = useCallback(async (poData: any) => {
       if (!editingPO) return;
@@ -832,7 +864,7 @@ export function ProjectManager() {
   , [editingPO, linkingProjectForPO]);
 
   
-  if (isLoading && authIsLoading) {
+  if (isLoading || authIsLoading || isProfileLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
 
@@ -887,7 +919,7 @@ export function ProjectManager() {
 interface ProjectFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (data: Omit<Project, 'id' | 'lastUpdated' | 'createdAt'>) => void;
+  onSave: (data: Omit<Project, 'id' | 'lastUpdated' | 'createdAt' | 'userId'>) => void;
   project: Project | null;
   quotes: Quote[];
   purchaseOrders: PurchaseOrder[];
@@ -938,7 +970,8 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
 
     const handleSubmit = async (data: z.infer<typeof projectSchema>) => {
         setIsSubmitting(true);
-        await onSave(data);
+        const { id, ...saveData } = data;
+        await onSave(saveData as any);
         setIsSubmitting(false);
     }
 

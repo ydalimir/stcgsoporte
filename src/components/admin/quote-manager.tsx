@@ -49,7 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import { QuoteForm } from "@/components/forms/quote-form";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, runTransaction, getDoc, writeBatch } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, runTransaction, getDoc, writeBatch, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Badge } from "../ui/badge";
 import { useAuth } from "@/hooks/use-auth";
@@ -86,6 +86,11 @@ export type Quote = {
   tipoServicio?: string;
   tipoTrabajo?: string;
   equipoLugar?: string;
+  userId: string;
+};
+
+type UserProfile = {
+  role: 'admin' | 'employee';
 };
 
 const createOrUpdateTicketFromQuote = async (quote: Quote) => {
@@ -109,7 +114,7 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
       status: "Recibido",
       createdAt: serverTimestamp(),
       price: quote.total,
-      userId: 'admin_generated', 
+      userId: quote.userId,
       quoteId: quote.id,
     };
   
@@ -265,6 +270,8 @@ const downloadPDF = (quote: Quote) => {
 export function QuoteManager() {
   const { user, isLoading: authIsLoading } = useAuth();
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState("");
   const { toast } = useToast();
@@ -272,18 +279,33 @@ export function QuoteManager() {
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
 
   useEffect(() => {
-    if (authIsLoading) {
-      setIsLoading(true);
-      return;
-    }
+    if (authIsLoading) return;
     if (!user) {
+      setIsProfileLoading(false);
       setIsLoading(false);
       setQuotes([]);
       return;
     }
+    const profileUnsub = onSnapshot(doc(db, "users", user.uid), (doc) => {
+        if (doc.exists()) {
+            setUserProfile(doc.data() as UserProfile);
+        }
+        setIsProfileLoading(false);
+    });
+    return () => profileUnsub();
+  }, [user, authIsLoading]);
+
+  useEffect(() => {
+    if (!user || !userProfile) {
+        if (!isProfileLoading) setIsLoading(false);
+        return;
+    };
 
     setIsLoading(true);
-    const q = collection(db, "quotes");
+    const is_admin = userProfile.role === 'admin';
+    const baseQuotesQuery = collection(db, "quotes");
+    const q = is_admin ? query(baseQuotesQuery) : query(baseQuotesQuery, where("userId", "==", user.uid));
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const quotesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
         setQuotes(quotesData.sort((a, b) => (b.quoteNumber || 0) - (a.quoteNumber || 0)));
@@ -297,9 +319,10 @@ export function QuoteManager() {
         setIsLoading(false);
     });
     return () => unsubscribe();
-  }, [user, authIsLoading, toast]);
+  }, [user, userProfile, isProfileLoading, toast]);
 
-  const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'quoteNumber'>) => {
+  const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'quoteNumber' | 'userId'>) => {
+    if (!user) return;
     try {
         if (selectedQuote) { // UPDATE
             const wasAccepted = selectedQuote.status === 'Aceptada';
@@ -323,7 +346,7 @@ export function QuoteManager() {
                 }
                 transaction.set(counterRef, { lastNumber: newQuoteNumber }, { merge: true });
                 const newQuoteRef = doc(collection(db, "quotes"));
-                transaction.set(newQuoteRef, { ...quoteData, quoteNumber: newQuoteNumber });
+                transaction.set(newQuoteRef, { ...quoteData, quoteNumber: newQuoteNumber, userId: user.uid });
             });
             toast({ title: "Cotización Creada", description: `Una nueva cotización ha sido creada.` });
         }
@@ -333,7 +356,7 @@ export function QuoteManager() {
         console.error("Error saving quote:", error);
         toast({ title: "Error al guardar", description: "No se pudo guardar la cotización.", variant: "destructive"});
     }
-  }, [selectedQuote, toast]);
+  }, [selectedQuote, toast, user]);
   
   const handleDelete = useCallback(async (id: string) => {
     try {
@@ -471,7 +494,7 @@ export function QuoteManager() {
     onGlobalFilterChange: setFilter,
   });
 
-  if (isLoading && authIsLoading) {
+  if (isLoading || authIsLoading || isProfileLoading) {
     return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
 
@@ -546,7 +569,7 @@ export function QuoteManager() {
       <QuoteForm 
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
-        onSave={handleSave}
+        onSave={handleSave as any}
         quote={selectedQuote}
       />
     </div>

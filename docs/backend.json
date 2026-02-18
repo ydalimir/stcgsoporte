@@ -33,9 +33,10 @@
         "lastUpdated": { "type": "string", "format": "date-time", "description": "Timestamp of the last update." },
         "createdAt": { "type": "string", "format": "date-time" },
         "quoteId": { "type": "string", "description": "The ID of the linked quote." },
-        "purchaseOrderId": { "type": "string", "description": "The ID of the linked purchase order." }
+        "purchaseOrderId": { "type": "string", "description": "The ID of the linked purchase order." },
+        "userId": { "type": "string", "description": "The ID of the user who owns this document." }
       },
-      "required": ["client", "description", "status", "programmedDate", "priority"]
+      "required": ["client", "description", "status", "programmedDate", "priority", "userId"]
     },
     "Client": {
         "title": "Client",
@@ -85,9 +86,10 @@
         "subtotal": { "type": "number" },
         "iva": { "type": "number" },
         "total": { "type": "number" },
-        "status": { "type": "string", "enum": ["Borrador", "Enviada", "Recibida Parcialmente", "Recibida"] }
+        "status": { "type": "string", "enum": ["Borrador", "Enviada", "Recibida Parcialmente", "Recibida"] },
+        "userId": { "type": "string", "description": "The ID of the user who owns this document." }
       },
-      "required": ["purchaseOrderNumber", "date", "supplierName", "items", "total", "status"]
+      "required": ["purchaseOrderNumber", "date", "supplierName", "items", "total", "status", "userId"]
     },
     "Ticket": {
         "title": "Service Ticket",
@@ -101,9 +103,10 @@
             "description": { "type": "string" },
             "status": { "type": "string" },
             "urgency": { "type": "string" },
-            "createdAt": { "type": "string", "format": "date-time" }
+            "createdAt": { "type": "string", "format": "date-time" },
+            "userId": { "type": "string", "description": "The ID of the user who owns this document." }
         },
-        "required": ["clientName", "serviceType", "description", "status"]
+        "required": ["clientName", "serviceType", "description", "status", "userId"]
     },
     "Quote": {
       "title": "Quote",
@@ -130,9 +133,10 @@
         "linkedTicketId": { "type": "string" },
         "tipoServicio": { "type": "string" },
         "tipoTrabajo": { "type": "string" },
-        "equipoLugar": { "type": "string" }
+        "equipoLugar": { "type": "string" },
+        "userId": { "type": "string", "description": "The ID of the user who owns this document." }
       },
-      "required": ["clientName", "clientPhone", "clientAddress", "date", "status", "items"]
+      "required": ["clientName", "clientPhone", "clientAddress", "date", "status", "items", "userId"]
     },
     "Service": {
       "title": "Service",

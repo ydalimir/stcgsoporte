@@ -49,7 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PurchaseOrderForm } from "@/components/forms/purchase-order-form";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, runTransaction } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, runTransaction, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Badge } from "../ui/badge";
 import { useAuth } from "@/hooks/use-auth";
@@ -83,6 +83,11 @@ export type PurchaseOrder = {
   subtotal: number;
   iva: number;
   total: number;
+  userId: string;
+};
+
+type UserProfile = {
+  role: 'admin' | 'employee';
 };
 
 const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
@@ -210,6 +215,8 @@ export function PurchaseOrderManager() {
   const { user, isLoading: authIsLoading } = useAuth();
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState("");
   const { toast } = useToast();
@@ -217,18 +224,34 @@ export function PurchaseOrderManager() {
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
 
   useEffect(() => {
-    if (authIsLoading) {
-      setIsLoading(true);
-      return;
-    }
+    if (authIsLoading) return;
     if (!user) {
+      setIsProfileLoading(false);
       setIsLoading(false);
       setPurchaseOrders([]);
       return;
     }
+    const profileUnsub = onSnapshot(doc(db, "users", user.uid), (doc) => {
+        if (doc.exists()) {
+            setUserProfile(doc.data() as UserProfile);
+        }
+        setIsProfileLoading(false);
+    });
+    return () => profileUnsub();
+  }, [user, authIsLoading]);
+
+
+  useEffect(() => {
+    if (!user || !userProfile) {
+        if (!isProfileLoading) setIsLoading(false);
+        return;
+    };
 
     setIsLoading(true);
-    const q = collection(db, "purchase_orders");
+    const is_admin = userProfile.role === 'admin';
+    const basePoQuery = collection(db, "purchase_orders");
+    const q = is_admin ? query(basePoQuery) : query(basePoQuery, where("userId", "==", user.uid));
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const poData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PurchaseOrder));
         setPurchaseOrders(poData.sort((a, b) => (b.purchaseOrderNumber || 0) - (a.purchaseOrderNumber || 0)));
@@ -255,9 +278,10 @@ export function PurchaseOrderManager() {
       unsubscribe();
       unsubscribeQuotes();
     };
-  }, [user, authIsLoading, toast]);
+  }, [user, userProfile, isProfileLoading, toast]);
 
   const handleSave = useCallback(async (poData: any) => {
+    if (!user) return;
     try {
         if (selectedPO) { // UPDATE
             const poRef = doc(db, "purchase_orders", selectedPO.id);
@@ -273,7 +297,7 @@ export function PurchaseOrderManager() {
                 }
                 transaction.set(counterRef, { lastNumber: newPoNumber }, { merge: true });
                 const newPoRef = doc(collection(db, "purchase_orders"));
-                transaction.set(newPoRef, { ...poData, purchaseOrderNumber: newPoNumber });
+                transaction.set(newPoRef, { ...poData, purchaseOrderNumber: newPoNumber, userId: user.uid });
             });
             toast({ title: "Orden de Compra Creada", description: `Una nueva orden ha sido creada.` });
         }
@@ -283,7 +307,7 @@ export function PurchaseOrderManager() {
         console.error("Error saving purchase order:", error);
         toast({ title: "Error al guardar", description: "No se pudo guardar la orden.", variant: "destructive"});
     }
-  }, [selectedPO, toast]);
+  }, [selectedPO, toast, user]);
   
   const handleDelete = useCallback(async (id: string) => {
     try {
@@ -409,7 +433,7 @@ export function PurchaseOrderManager() {
     onGlobalFilterChange: setFilter,
   });
 
-  if (isLoading && authIsLoading) {
+  if (isLoading || authIsLoading || isProfileLoading) {
     return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
 

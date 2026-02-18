@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, where, orderBy, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Briefcase, FileText, ShoppingCart, List, Loader2 } from "lucide-react";
@@ -17,6 +17,10 @@ type StatCardProps = {
   value: string | number;
   icon: React.ReactNode;
   description?: string;
+};
+
+type UserProfile = {
+    role: 'admin' | 'employee';
 };
 
 const StatCard = ({ title, value, icon, description }: StatCardProps) => (
@@ -41,7 +45,8 @@ export default function AdminDashboardPage() {
     purchaseOrders: 0,
     projects: 0,
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
 
   useEffect(() => {
     if (authIsLoading) return;
@@ -50,20 +55,54 @@ export default function AdminDashboardPage() {
         return;
     }
 
-    setIsLoading(true);
-    
-    const unsubs: (()=>void)[] = [];
+    const profileUnsub = onSnapshot(doc(db, "users", user.uid), (doc) => {
+        if (doc.exists()) {
+            setUserProfile(doc.data() as UserProfile);
+        }
+        setIsProfileLoading(false);
+    });
+
+    return () => profileUnsub();
+  }, [user, authIsLoading, router]);
+
+  useEffect(() => {
+    if (!user || !userProfile) return;
+
     let loadedCount = 0;
     const totalToLoad = 3;
-
     const onDataLoaded = () => {
         loadedCount++;
         if(loadedCount === totalToLoad) {
-            setIsLoading(false);
+           // A short delay to allow all stats to update visually
+           setTimeout(() => {
+            // Placeholder for any final loading state changes
+           }, 100);
         }
     }
+
+    const is_admin = userProfile.role === 'admin';
     
-    const quotesQuery = query(collection(db, "quotes"));
+    const baseQueries = {
+        quotes: collection(db, "quotes"),
+        projects: collection(db, "projects"),
+        purchase_orders: collection(db, "purchase_orders"),
+    };
+
+    const quotesQuery = is_admin 
+        ? query(baseQueries.quotes)
+        : query(baseQueries.quotes, where("userId", "==", user.uid));
+        
+    const projectsQuery = is_admin
+        ? query(baseQueries.projects)
+        : query(baseQueries.projects, where("userId", "==", user.uid));
+        
+    const purchaseOrdersQuery = is_admin
+        ? query(baseQueries.purchase_orders)
+        : query(baseQueries.purchase_orders, where("userId", "==", user.uid));
+
+
+    const unsubs: (()=>void)[] = [];
+    
     unsubs.push(onSnapshot(quotesQuery, (snapshot) => {
       const quotes = snapshot.docs.map(doc => doc.data());
       const pendingQuotes = quotes.filter(q => q.status === 'Enviada' || q.status === 'Borrador').length;
@@ -77,7 +116,6 @@ export default function AdminDashboardPage() {
         onDataLoaded();
     }));
 
-    const projectsQuery = query(collection(db, "projects"));
     unsubs.push(onSnapshot(projectsQuery, (snapshot) => {
         setStats(prev => ({ ...prev, projects: snapshot.docs.length }));
         onDataLoaded();
@@ -89,7 +127,6 @@ export default function AdminDashboardPage() {
         onDataLoaded();
     }));
     
-    const purchaseOrdersQuery = query(collection(db, "purchase_orders"));
     unsubs.push(onSnapshot(purchaseOrdersQuery, (snapshot) => {
         setStats(prev => ({ ...prev, purchaseOrders: snapshot.docs.length }));
         onDataLoaded();
@@ -104,9 +141,9 @@ export default function AdminDashboardPage() {
     return () => {
         unsubs.forEach(unsub => unsub());
     };
-  }, [user, authIsLoading, router]);
+  }, [user, userProfile]);
 
-   if (authIsLoading || isLoading) {
+   if (authIsLoading || isProfileLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-theme(spacing.16))]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
