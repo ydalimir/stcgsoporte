@@ -34,6 +34,8 @@ import { Client } from "../admin/client-manager";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from "../ui/command";
 import { cn } from "@/lib/utils";
+import { errorEmitter } from "@/lib/error-emitter";
+import { FirestorePermissionError } from "@/lib/errors";
 
 const ticketSchema = z.object({
   serviceType: z.enum(["correctivo", "preventivo", "instalacion"], {
@@ -124,7 +126,7 @@ export function TicketForm({ onTicketCreated, isAdminMode = false }: TicketFormP
         const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
         setClients(clientsData);
     }, (error) => {
-        console.error("Could not load clients: ", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'clients', operation: 'list' }));
     });
 
     return () => {

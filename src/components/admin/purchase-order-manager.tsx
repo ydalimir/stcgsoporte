@@ -270,7 +270,10 @@ export function PurchaseOrderManager() {
         const quotesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
         setQuotes(quotesData);
     }, (error) => {
-        console.error("Could not load quotes", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'quotes',
+            operation: 'list',
+        }));
     });
 
 

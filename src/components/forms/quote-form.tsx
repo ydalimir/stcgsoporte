@@ -148,7 +148,10 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
         const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
         setClients(clientsData);
       }, (error) => {
-        console.error("Could not load clients: ", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'clients',
+            operation: 'list',
+        }));
       });
 
       return () => {

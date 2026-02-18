@@ -423,7 +423,10 @@ export function ProjectManager() {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
         setQuotes(data);
     }, (error) => {
-        console.error("Could not load quotes for project linking.");
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'quotes',
+            operation: 'list',
+        }));
     });
     
     const poQuery = collection(db, "purchase_orders");
@@ -431,7 +434,10 @@ export function ProjectManager() {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PurchaseOrder));
         setPurchaseOrders(data);
     }, (error) => {
-        console.error("Could not load purchase orders for project linking.");
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'purchase_orders',
+            operation: 'list',
+        }));
     });
 
 

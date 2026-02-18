@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { doc, onSnapshot } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
+import { errorEmitter } from "@/lib/error-emitter";
+import { FirestorePermissionError } from "@/lib/errors";
 
 type UserProfile = {
     role: 'admin' | 'employee';
@@ -62,7 +64,10 @@ export default function AdminLayout({
             }
             setIsProfileLoading(false);
         }, (error) => {
-            console.error("Error fetching user profile:", error);
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'get',
+            }));
             setIsProfileLoading(false);
         });
 

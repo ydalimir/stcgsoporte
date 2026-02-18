@@ -36,6 +36,8 @@ import { Separator } from "../ui/separator";
 import { Supplier } from "../admin/supplier-manager";
 import { SparePart } from "../admin/spare-parts-manager";
 import type { Quote } from "@/components/admin/quote-manager";
+import { errorEmitter } from "@/lib/error-emitter";
+import { FirestorePermissionError } from "@/lib/errors";
 
 
 const poItemSchema = z.object({
@@ -112,16 +114,22 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder 
     const qSuppliers = collection(db, "suppliers");
     const unsubSuppliers = onSnapshot(qSuppliers, (snapshot) => {
         setSuppliers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Supplier)));
+    }, (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'suppliers', operation: 'list' }));
     });
     
     const qParts = collection(db, "spare_parts");
     const unsubParts = onSnapshot(qParts, (snapshot) => {
         setSpareParts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SparePart)));
+    }, (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'spare_parts', operation: 'list' }));
     });
 
     const qQuotes = collection(db, "quotes");
     const unsubQuotes = onSnapshot(qQuotes, (snapshot) => {
         setQuotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote)));
+    }, (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'quotes', operation: 'list' }));
     });
 
     return () => {
