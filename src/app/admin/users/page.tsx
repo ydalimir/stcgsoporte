@@ -56,6 +56,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
+import { Label } from "@/components/ui/label";
 
 // IMPORTANT: We need a secondary Firebase app instance to create users
 // because the primary `auth` instance might be signed in as the admin,
@@ -125,44 +126,68 @@ export default function UsersPage() {
     }, [adminUser, toast]);
 
     const handleSaveUser = useCallback(async (data: z.infer<typeof userSchema>) => {
-        try {
-            if (data.id) { // UPDATE
-                const userDoc = doc(db, "users", data.id);
-                const { password, id, ...updateData } = data;
-                
-                const finalPermissions = data.role === 'admin' ? {} : (data.permissions || []).reduce((acc, p) => ({ ...acc, [p]: true }), {});
-
-                await updateDoc(userDoc, { ...updateData, permissions: finalPermissions });
-                toast({ title: "Usuario Actualizado", description: `El perfil de ${data.displayName} ha sido actualizado.` });
-            } else { // CREATE
-                if (!data.password) {
-                    toast({ title: "Error", description: "La contraseña es requerida para nuevos usuarios.", variant: "destructive" });
-                    return;
-                }
+        if (data.id) { // UPDATE
+            const userDocRef = doc(db, "users", data.id);
+            const { password, id, ...updateData } = data;
+            
+            const finalPermissions = data.role === 'admin' ? {} : (data.permissions || []).reduce((acc, p) => ({ ...acc, [p]: true }), {});
+    
+            const payload = { ...updateData, permissions: finalPermissions };
+    
+            updateDoc(userDocRef, payload)
+                .then(() => {
+                    toast({ title: "Usuario Actualizado", description: `El perfil de ${data.displayName} ha sido actualizado.` });
+                    setIsFormOpen(false);
+                    setSelectedUser(null);
+                })
+                .catch(async (serverError) => {
+                    errorEmitter.emit('permission-error', new FirestorePermissionError({
+                        path: userDocRef.path,
+                        operation: 'update',
+                        requestResourceData: payload,
+                    }));
+                });
+        } else { // CREATE
+            if (!data.password) {
+                toast({ title: "Error", description: "La contraseña es requerida para nuevos usuarios.", variant: "destructive" });
+                return;
+            }
+            try {
                 const userCredential = await createUserWithEmailAndPassword(userCreationAuth, data.email, data.password);
                 const newUser = userCredential.user;
                 
                 const finalPermissions = data.role === 'admin' ? {} : (data.permissions || []).reduce((acc, p) => ({ ...acc, [p]: true }), {});
-
-                await setDoc(doc(db, "users", newUser.uid), {
+    
+                const userData = {
                     uid: newUser.uid,
                     displayName: data.displayName,
                     email: data.email,
                     role: data.role,
                     permissions: finalPermissions,
                     createdAt: serverTimestamp(),
-                });
-                
-                await userCreationAuth.signOut();
-
-                toast({ title: "Usuario Creado", description: `La cuenta para ${data.email} ha sido creada.` });
+                };
+    
+                const userDocRef = doc(db, "users", newUser.uid);
+                setDoc(userDocRef, userData)
+                    .then(async () => {
+                        await userCreationAuth.signOut();
+                        toast({ title: "Usuario Creado", description: `La cuenta para ${data.email} ha sido creada.` });
+                        setIsFormOpen(false);
+                        setSelectedUser(null);
+                    })
+                    .catch(async (serverError) => {
+                        errorEmitter.emit('permission-error', new FirestorePermissionError({
+                            path: userDocRef.path,
+                            operation: 'create',
+                            requestResourceData: userData,
+                        }));
+                    });
+    
+            } catch (error: any) {
+                console.error("Auth Error creating user:", error);
+                const description = error.code === 'auth/email-already-in-use' ? 'El correo electrónico ya está en uso.' : 'No se pudo crear el usuario.';
+                toast({ title: "Error de autenticación", description, variant: "destructive" });
             }
-            setIsFormOpen(false);
-            setSelectedUser(null);
-        } catch (error: any) {
-            console.error("Error saving user:", error);
-            const description = error.code === 'auth/email-already-in-use' ? 'El correo electrónico ya está en uso.' : 'No se pudo guardar el usuario.';
-            toast({ title: "Error al guardar", description, variant: "destructive" });
         }
     }, [toast]);
     
@@ -283,17 +308,28 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-1">
                         <FormField control={form.control} name="displayName" render={({ field }) => (
-                            <FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="Ej: Juan Pérez" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem>
+                                <FormLabel>Nombre Completo</FormLabel>
+                                <FormControl><Input placeholder="Ej: Juan Pérez" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
                         )} />
                         <FormField control={form.control} name="email" render={({ field }) => (
-                            <FormItem><FormLabel>Correo Electrónico</FormLabel><FormControl><Input type="email" placeholder="correo@ejemplo.com" {...field} disabled={!!user} /></FormControl><FormMessage /></FormItem>
+                            <FormItem>
+                                <FormLabel>Correo Electrónico</FormLabel>
+                                <FormControl><Input type="email" placeholder="correo@ejemplo.com" {...field} disabled={!!user} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
                         )} />
+                        
                         {!user && (
                             <FormField control={form.control} name="password" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Contraseña</FormLabel>
                                     <div className="relative">
-                                        <FormControl><Input type={showPassword ? "text" : "password"} {...field} /></FormControl>
+                                        <FormControl>
+                                            <Input type={showPassword ? "text" : "password"} {...field} />
+                                        </FormControl>
                                         <Button type="button" variant="ghost" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(p => !p)}>
                                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                         </Button>
@@ -302,56 +338,71 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                                 </FormItem>
                             )} />
                         )}
-                        <FormField control={form.control} name="role" render={({ field }) => (
-                            <FormItem className="space-y-3"><FormLabel>Rol</FormLabel>
-                                <FormControl>
-                                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4">
-                                        <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="employee" /></FormControl><FormLabel className="font-normal">Empleado</FormLabel></FormItem>
-                                        <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="admin" /></FormControl><FormLabel className="font-normal">Administrador</FormLabel></FormItem>
-                                    </RadioGroup>
-                                </FormControl><FormMessage />
-                            </FormItem>
-                        )} />
+                        
+                        <FormField
+                            control={form.control}
+                            name="role"
+                            render={({ field }) => (
+                                <FormItem className="space-y-3">
+                                    <FormLabel>Rol</FormLabel>
+                                    <FormControl>
+                                        <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4">
+                                            <FormItem className="flex items-center space-x-2">
+                                                <FormControl>
+                                                    <RadioGroupItem value="employee" id="role-employee" />
+                                                </FormControl>
+                                                <Label htmlFor="role-employee" className="font-normal">Empleado</Label>
+                                            </FormItem>
+                                            <FormItem className="flex items-center space-x-2">
+                                                <FormControl>
+                                                    <RadioGroupItem value="admin" id="role-admin" />
+                                                </FormControl>
+                                                <Label htmlFor="role-admin" className="font-normal">Administrador</Label>
+                                            </FormItem>
+                                        </RadioGroup>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
                         {role === 'employee' && (
-                             <FormField
+                            <FormField
                                 control={form.control}
                                 name="permissions"
                                 render={({ field }) => (
-                                    <FormItem>
-                                        <div className="mb-4">
-                                            <FormLabel className="text-base">Permisos de Módulo</FormLabel>
-                                            <FormDescription>
-                                                Selecciona los módulos a los que este empleado tendrá acceso (solo lectura).
-                                            </FormDescription>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            {modules.map((item) => (
-                                                <FormItem
-                                                    key={item.id}
-                                                    className="flex flex-row items-start space-x-3 space-y-0"
-                                                >
-                                                    <FormControl>
-                                                        <Checkbox
-                                                            checked={field.value?.includes(item.id)}
-                                                            onCheckedChange={(checked) => {
-                                                                const currentValue = field.value || [];
-                                                                if (checked) {
-                                                                    field.onChange([...currentValue, item.id]);
-                                                                } else {
-                                                                    field.onChange(currentValue.filter((value) => value !== item.id));
-                                                                }
-                                                            }}
-                                                        />
-                                                    </FormControl>
-                                                    <FormLabel className="font-normal">
-                                                        {item.label}
-                                                    </FormLabel>
-                                                </FormItem>
-                                            ))}
-                                        </div>
-                                        <FormMessage />
-                                    </FormItem>
+                                <FormItem>
+                                    <div className="mb-4">
+                                        <FormLabel className="text-base">Permisos de Módulo</FormLabel>
+                                        <FormDescription>
+                                            Selecciona los módulos a los que este empleado tendrá acceso (solo lectura).
+                                        </FormDescription>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {modules.map((item) => (
+                                            <FormItem
+                                                key={item.id}
+                                                className="flex flex-row items-start space-x-3 space-y-0"
+                                            >
+                                                <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value?.includes(item.id)}
+                                                        onCheckedChange={(checked) => {
+                                                            const newValue = checked
+                                                                ? [...(field.value || []), item.id]
+                                                                : (field.value || []).filter((value) => value !== item.id);
+                                                            field.onChange(newValue);
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <FormLabel className="font-normal">
+                                                    {item.label}
+                                                </FormLabel>
+                                            </FormItem>
+                                        ))}
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
                                 )}
                             />
                         )}
