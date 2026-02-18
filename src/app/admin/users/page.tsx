@@ -90,7 +90,14 @@ const userSchema = z.object({
   permissions: z.array(z.string()).optional(),
 });
 
-type UserProfile = z.infer<typeof userSchema> & { uid: string, createdAt: any };
+type UserProfile = {
+    uid: string;
+    displayName: string;
+    email: string;
+    role: "admin" | "employee";
+    permissions: { [key: string]: boolean };
+    createdAt: any;
+};
 
 export default function UsersPage() {
     const { user: adminUser, isLoading: authIsLoading } = useAuth();
@@ -119,14 +126,13 @@ export default function UsersPage() {
 
     const handleSaveUser = useCallback(async (data: z.infer<typeof userSchema>) => {
         try {
-            if (selectedUser?.uid) { // UPDATE
-                const userDoc = doc(db, "users", selectedUser.uid);
-                const { password, ...updateData } = data;
+            if (data.id) { // UPDATE
+                const userDoc = doc(db, "users", data.id);
+                const { password, id, ...updateData } = data;
                 
-                const finalPermissions = data.role === 'admin' ? [] : (data.permissions || []);
-                const permissionsObject = finalPermissions.reduce((acc, p) => ({ ...acc, [p]: true }), {});
+                const finalPermissions = data.role === 'admin' ? {} : (data.permissions || []).reduce((acc, p) => ({ ...acc, [p]: true }), {});
 
-                await updateDoc(userDoc, { ...updateData, permissions: permissionsObject });
+                await updateDoc(userDoc, { ...updateData, permissions: finalPermissions });
                 toast({ title: "Usuario Actualizado", description: `El perfil de ${data.displayName} ha sido actualizado.` });
             } else { // CREATE
                 if (!data.password) {
@@ -136,15 +142,14 @@ export default function UsersPage() {
                 const userCredential = await createUserWithEmailAndPassword(userCreationAuth, data.email, data.password);
                 const newUser = userCredential.user;
                 
-                const finalPermissions = data.role === 'admin' ? [] : (data.permissions || []);
-                const permissionsObject = finalPermissions.reduce((acc, p) => ({ ...acc, [p]: true }), {});
+                const finalPermissions = data.role === 'admin' ? {} : (data.permissions || []).reduce((acc, p) => ({ ...acc, [p]: true }), {});
 
                 await setDoc(doc(db, "users", newUser.uid), {
                     uid: newUser.uid,
                     displayName: data.displayName,
                     email: data.email,
                     role: data.role,
-                    permissions: permissionsObject,
+                    permissions: finalPermissions,
                     createdAt: serverTimestamp(),
                 });
                 
@@ -159,7 +164,7 @@ export default function UsersPage() {
             const description = error.code === 'auth/email-already-in-use' ? 'El correo electrónico ya está en uso.' : 'No se pudo guardar el usuario.';
             toast({ title: "Error al guardar", description, variant: "destructive" });
         }
-    }, [selectedUser, toast]);
+    }, [toast]);
     
     const columns: ColumnDef<UserProfile>[] = useMemo(() => [
         { accessorKey: "displayName", header: "Nombre" },
@@ -246,15 +251,16 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
     useEffect(() => {
         if (isOpen) {
           if (user) {
-            const userPermissions = user.permissions
-              ? Array.isArray(user.permissions)
-                ? user.permissions
-                : Object.keys(user.permissions).filter(key => user.permissions[key as keyof typeof user.permissions])
+            const userPermissionsArray = user.permissions
+              ? Object.keys(user.permissions).filter(key => user.permissions[key as keyof typeof user.permissions])
               : [];
             form.reset({
-                ...user,
-                permissions: userPermissions,
-                password: '' // Don't show existing password
+                id: user.uid,
+                displayName: user.displayName,
+                email: user.email,
+                role: user.role,
+                permissions: userPermissionsArray,
+                password: '',
             });
           } else {
             form.reset({ displayName: "", email: "", password: "", role: "employee", permissions: [] });
@@ -295,7 +301,7 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                         <FormField control={form.control} name="role" render={({ field }) => (
                             <FormItem className="space-y-3"><FormLabel>Rol</FormLabel>
                                 <FormControl>
-                                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
+                                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4">
                                         <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="employee" /></FormControl><FormLabel className="font-normal">Empleado</FormLabel></FormItem>
                                         <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="admin" /></FormControl><FormLabel className="font-normal">Administrador</FormLabel></FormItem>
                                     </RadioGroup>
@@ -304,49 +310,49 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                         )} />
 
                         {role === 'employee' && (
-                            <FormField
-                                control={form.control}
-                                name="permissions"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <div className="mb-4">
-                                            <FormLabel className="text-base">Permisos de Módulo</FormLabel>
-                                            <FormDescription>
-                                                Selecciona los módulos a los que este empleado tendrá acceso (solo lectura).
-                                            </FormDescription>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            {modules.map((item) => (
-                                                <FormItem
-                                                    key={item.id}
-                                                    className="flex flex-row items-start space-x-3 space-y-0"
-                                                >
-                                                    <FormControl>
-                                                        <Checkbox
-                                                            checked={field.value?.includes(item.id)}
-                                                            onCheckedChange={(checked) => {
-                                                                const currentPermissions = field.value || [];
-                                                                if (checked) {
-                                                                    field.onChange([...currentPermissions, item.id]);
-                                                                } else {
-                                                                    field.onChange(
-                                                                        currentPermissions.filter(
-                                                                            (value) => value !== item.id
-                                                                        )
-                                                                    );
-                                                                }
-                                                            }}
-                                                        />
-                                                    </FormControl>
-                                                    <FormLabel className="font-normal">
-                                                        {item.label}
-                                                    </FormLabel>
-                                                </FormItem>
-                                            ))}
-                                        </div>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
+                           <FormField
+                            control={form.control}
+                            name="permissions"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="mb-4">
+                                        <FormLabel className="text-base">Permisos de Módulo</FormLabel>
+                                        <FormDescription>
+                                        Selecciona los módulos a los que este empleado tendrá acceso (solo lectura).
+                                        </FormDescription>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {modules.map((item) => (
+                                            <FormItem
+                                                key={item.id}
+                                                className="flex flex-row items-start space-x-3 space-y-0"
+                                            >
+                                                <FormControl>
+                                                    <Checkbox
+                                                    checked={field.value?.includes(item.id)}
+                                                    onCheckedChange={(checked) => {
+                                                        const currentPermissions = field.value || [];
+                                                        if (checked) {
+                                                            field.onChange([...currentPermissions, item.id]);
+                                                        } else {
+                                                            field.onChange(
+                                                                currentPermissions.filter(
+                                                                    (value) => value !== item.id
+                                                                )
+                                                            );
+                                                        }
+                                                    }}
+                                                    />
+                                                </FormControl>
+                                                <FormLabel className="font-normal">
+                                                    {item.label}
+                                                </FormLabel>
+                                            </FormItem>
+                                        ))}
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
                             />
                         )}
 
