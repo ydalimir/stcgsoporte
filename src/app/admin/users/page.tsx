@@ -310,7 +310,7 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                         )} />
 
                         {role === 'employee' && (
-                            <FormField
+                             <FormField
                                 control={form.control}
                                 name="permissions"
                                 render={({ field }) => (
@@ -328,24 +328,21 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                                                     className="flex flex-row items-start space-x-3 space-y-0"
                                                 >
                                                     <FormControl>
-                                                        <Checkbox
-                                                            checked={field.value?.includes(item.id)}
-                                                            onCheckedChange={(checked) => {
-                                                                const currentValue = field.value || [];
-                                                                if (checked) {
-                                                                    field.onChange([...currentValue, item.id]);
-                                                                } else {
-                                                                    field.onChange(
-                                                                        currentValue.filter(
-                                                                            (value) => value !== item.id
-                                                                        )
-                                                                    );
-                                                                }
-                                                            }}
-                                                        />
+                                                    <Checkbox
+                                                        checked={field.value?.includes(item.id)}
+                                                        onCheckedChange={(checked) => {
+                                                        return checked
+                                                            ? field.onChange([...(field.value || []), item.id])
+                                                            : field.onChange(
+                                                                (field.value || []).filter(
+                                                                (value) => value !== item.id
+                                                                )
+                                                            )
+                                                        }}
+                                                    />
                                                     </FormControl>
                                                     <FormLabel className="font-normal">
-                                                        {item.label}
+                                                    {item.label}
                                                     </FormLabel>
                                                 </FormItem>
                                             ))}
