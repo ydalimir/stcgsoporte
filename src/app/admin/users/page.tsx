@@ -310,48 +310,48 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                         )} />
 
                         {role === 'employee' && (
-                           <FormField
+                            <FormField
                                 control={form.control}
                                 name="permissions"
                                 render={({ field }) => (
-                                <FormItem>
-                                    <div className="mb-4">
-                                        <FormLabel className="text-base">Permisos de Módulo</FormLabel>
-                                        <FormDescription>
-                                            Selecciona los módulos a los que este empleado tendrá acceso (solo lectura).
-                                        </FormDescription>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {modules.map((item) => (
-                                            <FormItem
-                                                key={item.id}
-                                                className="flex flex-row items-start space-x-3 space-y-0"
-                                            >
-                                                <FormControl>
-                                                    <Checkbox
-                                                        checked={field.value?.includes(item.id)}
-                                                        onCheckedChange={(checked) => {
-                                                            const currentValue = field.value || [];
-                                                            if (checked) {
-                                                                field.onChange([...currentValue, item.id]);
-                                                            } else {
-                                                                field.onChange(
-                                                                    currentValue.filter(
-                                                                        (value) => value !== item.id
-                                                                    )
-                                                                );
-                                                            }
-                                                        }}
-                                                    />
-                                                </FormControl>
-                                                <FormLabel className="font-normal">
-                                                    {item.label}
-                                                </FormLabel>
-                                            </FormItem>
-                                        ))}
-                                    </div>
-                                    <FormMessage />
-                                </FormItem>
+                                    <FormItem>
+                                        <div className="mb-4">
+                                            <FormLabel className="text-base">Permisos de Módulo</FormLabel>
+                                            <FormDescription>
+                                                Selecciona los módulos a los que este empleado tendrá acceso (solo lectura).
+                                            </FormDescription>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {modules.map((item) => (
+                                                <FormItem
+                                                    key={item.id}
+                                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                                >
+                                                    <FormControl>
+                                                        <Checkbox
+                                                            checked={field.value?.includes(item.id)}
+                                                            onCheckedChange={(checked) => {
+                                                                const currentValue = field.value || [];
+                                                                if (checked) {
+                                                                    field.onChange([...currentValue, item.id]);
+                                                                } else {
+                                                                    field.onChange(
+                                                                        currentValue.filter(
+                                                                            (value) => value !== item.id
+                                                                        )
+                                                                    );
+                                                                }
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormLabel className="font-normal">
+                                                        {item.label}
+                                                    </FormLabel>
+                                                </FormItem>
+                                            ))}
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
                                 )}
                             />
                         )}
