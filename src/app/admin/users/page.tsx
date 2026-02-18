@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -250,7 +249,7 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
             const userPermissions = user.permissions
               ? Array.isArray(user.permissions)
                 ? user.permissions
-                : Object.keys(user.permissions).filter(k => (user.permissions as any)[k])
+                : Object.keys(user.permissions).filter(key => user.permissions[key as keyof typeof user.permissions])
               : [];
             form.reset({
                 ...user,
@@ -268,7 +267,7 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
         await onSave(data);
         setIsSubmitting(false);
     };
-    
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl">
@@ -308,54 +307,45 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                             <FormField
                                 control={form.control}
                                 name="permissions"
-                                render={() => (
-                                <FormItem>
-                                    <div className="mb-4">
-                                        <FormLabel className="text-base">Permisos de Módulo</FormLabel>
-                                        <FormDescription>
-                                            Selecciona los módulos a los que este empleado tendrá acceso (solo lectura).
-                                        </FormDescription>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {modules.map((item) => (
-                                           <FormField
-                                                key={item.id}
-                                                control={form.control}
-                                                name="permissions"
-                                                render={({ field }) => {
-                                                return (
-                                                    <FormItem
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="mb-4">
+                                            <FormLabel className="text-base">Permisos de Módulo</FormLabel>
+                                            <FormDescription>
+                                                Selecciona los módulos a los que este empleado tendrá acceso (solo lectura).
+                                            </FormDescription>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {modules.map((item) => (
+                                                <FormItem
                                                     key={item.id}
                                                     className="flex flex-row items-start space-x-3 space-y-0"
-                                                    >
+                                                >
                                                     <FormControl>
                                                         <Checkbox
-                                                        checked={field.value?.includes(item.id)}
-                                                        onCheckedChange={(checked) => {
-                                                            return checked
-                                                            ? field.onChange([
-                                                                ...(field.value || []),
-                                                                item.id,
-                                                                ])
-                                                            : field.onChange(
-                                                                (field.value || []).filter(
-                                                                    (value) => value !== item.id
-                                                                )
-                                                                );
-                                                        }}
+                                                            checked={field.value?.includes(item.id)}
+                                                            onCheckedChange={(checked) => {
+                                                                const currentPermissions = field.value || [];
+                                                                if (checked) {
+                                                                    field.onChange([...currentPermissions, item.id]);
+                                                                } else {
+                                                                    field.onChange(
+                                                                        currentPermissions.filter(
+                                                                            (value) => value !== item.id
+                                                                        )
+                                                                    );
+                                                                }
+                                                            }}
                                                         />
                                                     </FormControl>
                                                     <FormLabel className="font-normal">
                                                         {item.label}
                                                     </FormLabel>
-                                                    </FormItem>
-                                                );
-                                                }}
-                                            />
-                                        ))}
-                                    </div>
-                                    <FormMessage />
-                                </FormItem>
+                                                </FormItem>
+                                            ))}
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
                                 )}
                             />
                         )}
