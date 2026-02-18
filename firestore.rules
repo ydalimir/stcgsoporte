@@ -84,11 +84,11 @@ service cloud.firestore {
     }
     
     match /suppliers/{docId} {
-      allow read: if canRead('suppliers');
+      allow read: if true;
       allow write: if isAdmin();
     }
      match /suppliers {
-      allow list: if canRead('suppliers');
+      allow list: if true;
     }
 
     match /counters/{counterId} {
