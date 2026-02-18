@@ -311,14 +311,14 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
 
                         {role === 'employee' && (
                            <FormField
-                            control={form.control}
-                            name="permissions"
-                            render={({ field }) => (
+                                control={form.control}
+                                name="permissions"
+                                render={({ field }) => (
                                 <FormItem>
                                     <div className="mb-4">
                                         <FormLabel className="text-base">Permisos de Módulo</FormLabel>
                                         <FormDescription>
-                                        Selecciona los módulos a los que este empleado tendrá acceso (solo lectura).
+                                            Selecciona los módulos a los que este empleado tendrá acceso (solo lectura).
                                         </FormDescription>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -329,19 +329,19 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                                             >
                                                 <FormControl>
                                                     <Checkbox
-                                                    checked={field.value?.includes(item.id)}
-                                                    onCheckedChange={(checked) => {
-                                                        const currentPermissions = field.value || [];
-                                                        if (checked) {
-                                                            field.onChange([...currentPermissions, item.id]);
-                                                        } else {
-                                                            field.onChange(
-                                                                currentPermissions.filter(
-                                                                    (value) => value !== item.id
-                                                                )
-                                                            );
-                                                        }
-                                                    }}
+                                                        checked={field.value?.includes(item.id)}
+                                                        onCheckedChange={(checked) => {
+                                                            const currentValue = field.value || [];
+                                                            if (checked) {
+                                                                field.onChange([...currentValue, item.id]);
+                                                            } else {
+                                                                field.onChange(
+                                                                    currentValue.filter(
+                                                                        (value) => value !== item.id
+                                                                    )
+                                                                );
+                                                            }
+                                                        }}
                                                     />
                                                 </FormControl>
                                                 <FormLabel className="font-normal">
@@ -352,7 +352,7 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                                     </div>
                                     <FormMessage />
                                 </FormItem>
-                            )}
+                                )}
                             />
                         )}
 
