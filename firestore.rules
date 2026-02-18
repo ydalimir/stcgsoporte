@@ -57,29 +57,30 @@ service cloud.firestore {
       allow update, delete: if isAdmin() || resource.data.userId == request.auth.uid;
     }
 
-    // Unchanged Global Collections
+    // Publicly readable collections
     match /services/{docId} {
-      allow read: if canRead('services');
+      allow read: if true;
       allow write: if isAdmin();
     }
      match /services {
-      allow list: if canRead('services');
+      allow list: if true;
     }
 
+    match /spare_parts/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /spare_parts {
+      allow list: if true;
+    }
+
+    // Restricted collections
     match /clients/{docId} {
       allow read: if canRead('clients');
       allow write: if isAdmin();
     }
     match /clients {
         allow list: if canRead('clients');
-    }
-
-    match /spare_parts/{docId} {
-      allow read: if canRead('spare_parts');
-      allow write: if isAdmin();
-    }
-    match /spare_parts {
-      allow list: if canRead('spare_parts');
     }
     
     match /suppliers/{docId} {
