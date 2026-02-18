@@ -288,16 +288,20 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                         <FormField control={form.control} name="email" render={({ field }) => (
                             <FormItem><FormLabel>Correo Electrónico</FormLabel><FormControl><Input type="email" placeholder="correo@ejemplo.com" {...field} disabled={!!user} /></FormControl><FormMessage /></FormItem>
                         )} />
-                        {!user && <FormField control={form.control} name="password" render={({ field }) => (
-                            <FormItem><FormLabel>Contraseña</FormLabel>
-                                <div className="relative">
-                                    <FormControl><Input type={showPassword ? "text" : "password"} {...field} /></FormControl>
-                                    <Button type="button" variant="ghost" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(p => !p)}>
-                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                    </Button>
-                                </div><FormMessage />
-                            </FormItem>
-                        )} />
+                        {!user && (
+                            <FormField control={form.control} name="password" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Contraseña</FormLabel>
+                                    <div className="relative">
+                                        <FormControl><Input type={showPassword ? "text" : "password"} {...field} /></FormControl>
+                                        <Button type="button" variant="ghost" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(p => !p)}>
+                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </Button>
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        )}
                         <FormField control={form.control} name="role" render={({ field }) => (
                             <FormItem className="space-y-3"><FormLabel>Rol</FormLabel>
                                 <FormControl>
