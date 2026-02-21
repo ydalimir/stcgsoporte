@@ -25,7 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Loader2, PlusCircle, MoreHorizontal, Edit, Trash2, Check, ChevronsUpDown, Download } from "lucide-react";
+import { Loader2, PlusCircle, MoreHorizontal, Edit, Trash2, Check, ChevronsUpDown, Download, FileSpreadsheet } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -85,6 +85,7 @@ import autoTable from "jspdf-autotable";
 import type { PurchaseOrder } from "./purchase-order-manager";
 import { PurchaseOrderForm } from "../forms/purchase-order-form";
 import type { Client } from "./client-manager";
+import * as XLSX from "xlsx";
 
 
 const projectSchema = z.object({
@@ -230,6 +231,67 @@ const downloadQuotePDF = (quote: Quote) => {
     doc.save(`${quoteId}.pdf`);
 }
 
+const downloadQuoteExcel = (quote: Quote) => {
+    const quoteId = `C01-${String(quote.quoteNumber).padStart(4, '0')}`;
+    
+    // Main quote data
+    const quoteData = [
+      ["Cotización:", quoteId],
+      ["Cliente:", quote.clientName],
+      ["Teléfono:", quote.clientPhone],
+      ["Email:", quote.clientEmail || ''],
+      ["Dirección:", quote.clientAddress],
+      ["RFC:", quote.rfc || ''],
+      ["Fecha:", quote.date ? new Date(quote.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
+      ["Vencimiento:", quote.expirationDate ? new Date(quote.expirationDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
+      ["Estado:", quote.status],
+      ["Tipo Servicio:", quote.tipoServicio || ''],
+      ["Tipo Trabajo:", quote.tipoTrabajo || ''],
+      ["Equipo/Lugar:", quote.equipoLugar || ''],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(quoteData);
+    
+    // Items table
+    const itemsHeader = ["Descripción", "Unidad", "Cantidad", "Precio Unitario", "Importe"];
+    const itemsData = quote.items.map(item => [
+      item.description,
+      item.unidad || 'PZA',
+      item.quantity,
+      item.price,
+      (item.quantity || 0) * (item.price || 0)
+    ]);
+
+    XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1}); // Spacer
+    XLSX.utils.sheet_add_aoa(ws, [itemsHeader], {origin: -1});
+    XLSX.utils.sheet_add_json(ws, itemsData, {origin: -1, skipHeader: true});
+
+    // Totals
+    const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+    const ivaPercentage = quote.iva ?? 16;
+    const ivaAmount = subtotal * (ivaPercentage / 100);
+    const total = quote.total ?? subtotal + ivaAmount;
+
+    const totalsData = [
+        [], // Spacer
+        ["", "", "", "Subtotal", subtotal],
+        ["", "", "", `IVA (${ivaPercentage}%)`, ivaAmount],
+        ["", "", "", "Total", total],
+    ];
+
+    XLSX.utils.sheet_add_aoa(ws, totalsData, {origin: -1});
+
+    // Notes
+     XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1});
+     XLSX.utils.sheet_add_aoa(ws, [["Observaciones:", quote.observations || '']], {origin: -1});
+     XLSX.utils.sheet_add_aoa(ws, [["Políticas:", quote.policies || '']], {origin: -1});
+     XLSX.utils.sheet_add_aoa(ws, [["Condiciones de Pago:", quote.paymentTerms || '']], {origin: -1});
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Cotizacion");
+    XLSX.writeFile(wb, `${quoteId}.xlsx`);
+};
+
 const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     const doc = new jsPDF();
     const poId = `OC01-${String(po.purchaseOrderNumber).padStart(4, '0')}`;
@@ -350,6 +412,67 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     
     doc.save(`${poId}.pdf`);
 }
+
+const downloadPurchaseOrderExcel = (po: PurchaseOrder) => {
+    const poId = `OC01-${String(po.purchaseOrderNumber).padStart(4, '0')}`;
+    
+    const poData = [
+      ["Orden de Compra:", poId],
+      ["Proveedor:", po.supplierName],
+      ["Fecha:", po.date ? new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
+      ["Fecha de Entrega:", po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
+      ["Estado:", po.status],
+      ["Método de Envío:", po.shippingMethod || ''],
+      ["Método de Pago:", po.paymentMethod || ''],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(poData);
+
+    XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1}); 
+
+    const addresses = [
+        ["FACTURAR A:", "ENVIAR A:"],
+        [po.billToDetails, po.supplierDetails]
+    ];
+    XLSX.utils.sheet_add_aoa(ws, addresses, {origin: -1});
+
+    XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1}); 
+    
+    const itemsHeader = ["Descripción", "Unidad", "Cantidad", "Precio Unitario", "Total"];
+    const itemsData = po.items.map(item => [
+      item.description,
+      item.unit || 'PZA',
+      item.quantity,
+      item.price,
+      (item.quantity || 0) * (item.price || 0)
+    ]);
+
+    XLSX.utils.sheet_add_aoa(ws, [itemsHeader], {origin: -1});
+    XLSX.utils.sheet_add_json(ws, itemsData, {origin: -1, skipHeader: true});
+
+    const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+    const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
+    const subTotalAfterDiscount = subtotal - discountAmount;
+    const ivaAmount = subTotalAfterDiscount * (po.iva / 100);
+    const total = subTotalAfterDiscount + ivaAmount;
+
+    const totalsData = [
+        [],
+        ["", "", "", "Subtotal", subtotal],
+        ["", "", "", `Descuento (${po.discountPercentage || 0}%)`, -discountAmount],
+        ["", "", "", `IVA (${po.iva}%)`, ivaAmount],
+        ["", "", "", "Total", total],
+    ];
+
+    XLSX.utils.sheet_add_aoa(ws, totalsData, {origin: -1});
+
+     XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1});
+     XLSX.utils.sheet_add_aoa(ws, [["Observaciones:", po.observations || '']], {origin: -1});
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Orden de Compra");
+    XLSX.writeFile(wb, `${poId}.xlsx`);
+};
 
 
 export function ProjectManager() {
@@ -701,6 +824,9 @@ export function ProjectManager() {
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadQuotePDF(currentQuote)}>
                             <Download className="h-4 w-4" />
                         </Button>
+                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadQuoteExcel(currentQuote)}>
+                            <FileSpreadsheet className="h-4 w-4" />
+                        </Button>
                     </div>
                 )}
               </div>
@@ -805,6 +931,9 @@ export function ProjectManager() {
                         </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadPurchaseOrderPDF(currentPO, quotes)}>
                             <Download className="h-4 w-4" />
+                        </Button>
+                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadPurchaseOrderExcel(currentPO)}>
+                            <FileSpreadsheet className="h-4 w-4" />
                         </Button>
                     </div>
                 )}
