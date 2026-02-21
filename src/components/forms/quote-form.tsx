@@ -84,6 +84,13 @@ const today = new Date();
 const expiration = new Date();
 expiration.setDate(today.getDate() + 15);
 
+const defaultPolicies = `1- EQUIPO NUEVO: La garantía para equipos de refrigeración suministrados por nosotros cubre defectos de fabricación por un período de 1 año a partir de la fecha de instalación. Para componentes específicos como compresores, la garantía puede extenderse hasta 5 años para uso residencial y 3 años para uso comercial o público. Es obligatorio realizar un mínimo de 2 mantenimientos preventivos anuales para mantener la validez de esta garantía. Aplican restricciones según los términos y condiciones del fabricante. Para otros equipos suministrados por nosotros, la garantía será la que brinde el fabricante, y los alcances de la misma estarán sujetos a lo determinado por dicho fabricante.
+2- INSTALACIÓN DE EQUIPOS: Ofrecemos una garantía de 90 días por la mano de obra en la instalación de equipos, siempre que haya sido realizada por nuestros técnicos especializados. Esta garantía cubre cualquier defecto o falla derivada directamente de la instalación. Sin embargo, no se cubren daños resultantes del uso indebido, modificaciones no autorizadas, o condiciones ambientales adversas no reportadas previamente.
+3- MANTENIMIENTO PREVENTIVO Y/O CORRECTIVO: Nuestros servicios de mantenimiento preventivo y/o correctivo están respaldados por una garantía de 60 días sobre la mano de obra efectuada. Esta garantía se limita a los trabajos específicos realizados y no cubre componentes que no hayan sido objeto de mantenimiento o revisión. Adicionalmente, no se garantiza contra fallos originados por un uso inadecuado, negligencia o falta de mantenimiento regular.
+4- REFACCIONES Y PIEZAS DE REEMPLAZO: La garantía sobre refacciones y piezas de reemplazo será la que determine el fabricante correspondiente. Las piezas electrónicas, como tarjetas de control y circuitos, no cuentan con garantía, a menos que se especifique explícitamente. Es responsabilidad del cliente asegurarse de que el equipo esté correctamente instalado y mantenido para evitar daños que invaliden la garantía.
+5- SISTEMAS ELÉCTRICOS Y ELECTRÓNICOS: Ofrecemos 60 días de garantía limitada sobre instalaciones eléctricas y electrónicas, bajo la condición de que el sistema cuente con una correcta tierra física y cumpla con todas las normativas de seguridad aplicables. Cualquier alteración o instalación incorrecta que no haya sido realizada por nuestros especialistas anulará esta garantía.
+6- INSTALACIONES GENERALES Y SISTEMAS DEFECTUOSOS: Proporcionamos una garantía de 60 días para cualquier trabajo de instalación o reparación realizado por nuestro equipo, siempre y cuando los defectos sean atribuibles a una ejecución incorrecta. Esta garantía no cubre daños posteriores ocasionados por factores externos, negligencia del usuario o intervenciones de terceros.
+7- CONDICIONES GENERALES: Las garantías mencionadas no aplican en situaciones de mal uso, desgaste natural, accidentes, daños por condiciones ambientales extremas, o intervenciones no autorizadas. Todas las garantías están sujetas a los términos y condiciones establecidos en el contrato de servicio, así como a la normativa vigente en la materia. Es responsabilidad del cliente seguir las recomendaciones de mantenimiento proporcionadas por nosotros para garantizar la durabilidad y correcto funcionamiento de los equipos e instalaciones.`;
 
 const defaultPaymentTerms = `Formas de Pago: Transferencia Bancaria / Depósitos
 Banco: Banco Mercantil del Norte, BANORTE
@@ -106,7 +113,7 @@ const defaultValues: QuoteFormValues = {
   expirationDate: formatDate(expiration),
   rfc: "",
   observations: "",
-  policies: "",
+  policies: defaultPolicies,
   paymentTerms: defaultPaymentTerms,
   iva: 16,
 };
@@ -189,7 +196,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
           expirationDate: quote.expirationDate ? new Date(quote.expirationDate).toISOString().split('T')[0] : formatDate(expiration),
           rfc: quote.rfc || "",
           observations: quote.observations || "",
-          policies: quote.policies || "",
+          policies: quote.policies || defaultPolicies,
           paymentTerms: quote.paymentTerms || defaultPaymentTerms,
           iva: quote.iva ?? 16,
         });
