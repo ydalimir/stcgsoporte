@@ -33,7 +33,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2 } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2, FileSpreadsheet } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PurchaseOrderForm } from "@/components/forms/purchase-order-form";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, runTransaction, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Badge } from "../ui/badge";
@@ -210,6 +211,67 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     
     doc.save(`${poId}.pdf`);
 }
+
+const downloadExcel = (po: PurchaseOrder) => {
+    const poId = `OC01-${String(po.purchaseOrderNumber).padStart(4, '0')}`;
+    
+    const poData = [
+      ["Orden de Compra:", poId],
+      ["Proveedor:", po.supplierName],
+      ["Fecha:", po.date ? new Date(po.date).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
+      ["Fecha de Entrega:", po.deliveryDate ? new Date(po.deliveryDate).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
+      ["Estado:", po.status],
+      ["Método de Envío:", po.shippingMethod || ''],
+      ["Método de Pago:", po.paymentMethod || ''],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(poData);
+
+    XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1}); 
+
+    const addresses = [
+        ["FACTURAR A:", "ENVIAR A:"],
+        [po.billToDetails, po.supplierDetails]
+    ];
+    XLSX.utils.sheet_add_aoa(ws, addresses, {origin: -1});
+
+    XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1}); 
+    
+    const itemsHeader = ["Descripción", "Unidad", "Cantidad", "Precio Unitario", "Total"];
+    const itemsData = po.items.map(item => [
+      item.description,
+      item.unit || 'PZA',
+      item.quantity,
+      item.price,
+      (item.quantity || 0) * (item.price || 0)
+    ]);
+
+    XLSX.utils.sheet_add_aoa(ws, [itemsHeader], {origin: -1});
+    XLSX.utils.sheet_add_json(ws, itemsData, {origin: -1, skipHeader: true});
+
+    const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+    const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
+    const subTotalAfterDiscount = subtotal - discountAmount;
+    const ivaAmount = subTotalAfterDiscount * (po.iva / 100);
+    const total = subTotalAfterDiscount + ivaAmount;
+
+    const totalsData = [
+        [],
+        ["", "", "", "Subtotal", subtotal],
+        ["", "", "", `Descuento (${po.discountPercentage || 0}%)`, -discountAmount],
+        ["", "", "", `IVA (${po.iva}%)`, ivaAmount],
+        ["", "", "", "Total", total],
+    ];
+
+    XLSX.utils.sheet_add_aoa(ws, totalsData, {origin: -1});
+
+     XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1});
+     XLSX.utils.sheet_add_aoa(ws, [["Observaciones:", po.observations || '']], {origin: -1});
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Orden de Compra");
+    XLSX.writeFile(wb, `${poId}.xlsx`);
+};
 
 export function PurchaseOrderManager() {
   const { user, isLoading: authIsLoading } = useAuth();
@@ -378,6 +440,9 @@ export function PurchaseOrderManager() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => downloadPDF(po, quotes)}>
                   <Download className="mr-2 h-4 w-4" /> Descargar PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => downloadExcel(po)}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" /> Descargar Excel
                 </DropdownMenuItem>
                 <DropdownMenuSub>
                     <DropdownMenuSubTrigger>Cambiar Estado</DropdownMenuSubTrigger>
