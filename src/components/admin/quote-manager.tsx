@@ -33,7 +33,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2 } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2, FileSpreadsheet } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,6 +55,7 @@ import { Badge } from "../ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { errorEmitter } from "@/lib/error-emitter";
 import { FirestorePermissionError } from "@/lib/errors";
+import * as XLSX from "xlsx";
 
 
 export type QuoteItem = {
@@ -267,6 +268,67 @@ const downloadPDF = (quote: Quote) => {
     doc.save(`${quoteId}.pdf`);
 }
 
+const downloadExcel = (quote: Quote) => {
+    const quoteId = `C01-${String(quote.quoteNumber).padStart(4, '0')}`;
+    
+    // Main quote data
+    const quoteData = [
+      ["Cotización:", quoteId],
+      ["Cliente:", quote.clientName],
+      ["Teléfono:", quote.clientPhone],
+      ["Email:", quote.clientEmail || ''],
+      ["Dirección:", quote.clientAddress],
+      ["RFC:", quote.rfc || ''],
+      ["Fecha:", quote.date ? new Date(quote.date).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
+      ["Vencimiento:", quote.expirationDate ? new Date(quote.expirationDate).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
+      ["Estado:", quote.status],
+      ["Tipo Servicio:", quote.tipoServicio || ''],
+      ["Tipo Trabajo:", quote.tipoTrabajo || ''],
+      ["Equipo/Lugar:", quote.equipoLugar || ''],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(quoteData);
+    
+    // Items table
+    const itemsHeader = ["Descripción", "Unidad", "Cantidad", "Precio Unitario", "Importe"];
+    const itemsData = quote.items.map(item => [
+      item.description,
+      item.unidad || 'PZA',
+      item.quantity,
+      item.price,
+      (item.quantity || 0) * (item.price || 0)
+    ]);
+
+    XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1}); // Spacer
+    XLSX.utils.sheet_add_aoa(ws, [itemsHeader], {origin: -1});
+    XLSX.utils.sheet_add_json(ws, itemsData, {origin: -1, skipHeader: true});
+
+    // Totals
+    const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+    const ivaPercentage = quote.iva ?? 16;
+    const ivaAmount = subtotal * (ivaPercentage / 100);
+    const total = quote.total ?? subtotal + ivaAmount;
+
+    const totalsData = [
+        [], // Spacer
+        ["", "", "", "Subtotal", subtotal],
+        ["", "", "", `IVA (${ivaPercentage}%)`, ivaAmount],
+        ["", "", "", "Total", total],
+    ];
+
+    XLSX.utils.sheet_add_aoa(ws, totalsData, {origin: -1});
+
+    // Notes
+     XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1});
+     XLSX.utils.sheet_add_aoa(ws, [["Observaciones:", quote.observations || '']], {origin: -1});
+     XLSX.utils.sheet_add_aoa(ws, [["Políticas:", quote.policies || '']], {origin: -1});
+     XLSX.utils.sheet_add_aoa(ws, [["Condiciones de Pago:", quote.paymentTerms || '']], {origin: -1});
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Cotizacion");
+    XLSX.writeFile(wb, `${quoteId}.xlsx`);
+};
+
 export function QuoteManager() {
   const { user, isLoading: authIsLoading } = useAuth();
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -431,6 +493,9 @@ export function QuoteManager() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => downloadPDF(quote)}>
                   <Download className="mr-2 h-4 w-4" /> Descargar PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => downloadExcel(quote)}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" /> Descargar Excel
                 </DropdownMenuItem>
                 <DropdownMenuSub>
                     <DropdownMenuSubTrigger>Cambiar Estado</DropdownMenuSubTrigger>
