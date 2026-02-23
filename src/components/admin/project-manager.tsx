@@ -317,8 +317,8 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         startY: yPos,
         body: [[
             { content: `COTIZACIÓN:\n${quoteDisplay}`},
-            { content: `ENVIAR VÍA:\n${po.shippingMethod || 'N/A'}`},
-            { content: `PAGO:\n${po.paymentMethod || 'N/A'}`},
+            { content: `TIPO DE PAGO:\n${po.tipoPago || 'N/A'}`},
+            { content: `DÍAS DE CRÉDITO:\n${po.diasCredito || '0'}`},
             { content: `FECHA APROX ENTREGA:\n${deliveryDate}`},
         ]],
         theme: 'grid',
@@ -400,8 +400,8 @@ const downloadPurchaseOrderExcel = (po: PurchaseOrder) => {
       ["Fecha:", po.date ? new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
       ["Fecha de Entrega:", po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
       ["Estado:", po.status],
-      ["Método de Envío:", po.shippingMethod || ''],
-      ["Método de Pago:", po.paymentMethod || ''],
+      ["Tipo de Pago:", po.tipoPago || ''],
+      ["Días de Crédito:", po.diasCredito || '0'],
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(poData);

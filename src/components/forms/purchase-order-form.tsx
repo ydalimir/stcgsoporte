@@ -57,8 +57,8 @@ const poFormSchema = z.object({
   status: z.enum(["Borrador", "Enviada", "Recibida Parcialmente", "Recibida"]),
   items: z.array(poItemSchema).min(1, "Debe agregar al menos un ítem."),
   quoteId: z.string().optional(),
-  shippingMethod: z.string().optional(),
-  paymentMethod: z.string().optional(),
+  tipoPago: z.string().optional(),
+  diasCredito: z.string().optional(),
   observations: z.string().optional(),
   discountPercentage: z.coerce.number().min(0).max(100).optional(),
   iva: z.coerce.number().min(0, "El IVA no puede ser negativo.").default(16),
@@ -97,8 +97,8 @@ const defaultValues: POFormValues = {
   iva: 16,
   deliveryDate: "",
   quoteId: "",
-  shippingMethod: "",
-  paymentMethod: "CRÉDITO",
+  tipoPago: "",
+  diasCredito: "",
   observations: "",
   discountPercentage: 0,
 };
@@ -198,6 +198,11 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
     form.setValue("supplierName", supplier.name);
     const details = `${supplier.name}\nRFC: ${supplier.rfc || ''}\n${supplier.address || ''}\nTel: ${supplier.phone || ''}\nCorreo: ${supplier.email || ''}`;
     form.setValue("supplierDetails", details);
+    
+    const isCredit = supplier.givesCredit;
+    form.setValue("tipoPago", isCredit ? "Crédito" : "Contado");
+    form.setValue("diasCredito", isCredit ? (supplier.creditTime || '0') : "0");
+
     setIsSupplierComboboxOpen(false);
   };
 
@@ -275,8 +280,8 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
                             <FormMessage />
                         </FormItem>
                     )} />
-                    <FormField name="shippingMethod" control={form.control} render={({ field }) => (<FormItem><FormLabel>Enviar Vía</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                    <FormField name="paymentMethod" control={form.control} render={({ field }) => (<FormItem><FormLabel>Pago</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                    <FormField name="tipoPago" control={form.control} render={({ field }) => (<FormItem><FormLabel>Tipo de Pago</FormLabel><FormControl><Input {...field} readOnly /></FormControl></FormItem>)} />
+                    <FormField name="diasCredito" control={form.control} render={({ field }) => (<FormItem><FormLabel>Días de Crédito</FormLabel><FormControl><Input {...field} readOnly /></FormControl></FormItem>)} />
                     <FormField name="deliveryDate" control={form.control} render={({ field }) => (<FormItem><FormLabel>Fecha Aprox. Entrega</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)} />
               </div>
 
