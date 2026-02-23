@@ -92,7 +92,11 @@ service cloud.firestore {
     }
 
     match /counters/{counterId} {
-        allow read, write: if isAdmin();
+        allow read: if isAdmin();
+        allow write: if isAdmin() 
+                       || (counterId == 'quotes' && hasPermission('quotes'))
+                       || (counterId == 'purchaseOrders' && hasPermission('purchase_orders'))
+                       || (counterId == 'tickets' && request.auth != null);
     }
   }
 }
