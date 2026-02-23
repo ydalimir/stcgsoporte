@@ -73,7 +73,8 @@
             "phone": { "type": "string" },
             "email": { "type": "string", "format": "email" },
             "address": { "type": "string" },
-            "rfc": { "type": "string" }
+            "rfc": { "type": "string" },
+            "creditTime": { "type": "string", "description": "Payment credit time in days (e.g., '30', '60', 'Contado')." }
         },
         "required": ["name"]
     },
