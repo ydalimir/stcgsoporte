@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Home, Briefcase, FileText, Users, ShoppingCart, Truck, User, LogOut, Menu, Wrench, Package, Calendar, Ticket } from "lucide-react";
+import { Home, Briefcase, FileText, Users, ShoppingCart, Truck, User, LogOut, Menu, Wrench, Package, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -87,7 +87,6 @@ export default function AdminLayout({
     const salesLinks = [
         { href: "/admin/quotes", label: "Cotizaciones", icon: FileText, id: "quotes" },
         { href: "/admin/clients", label: "Clientes", icon: Users, id: "clients" },
-        { href: "/admin/tickets", label: "Tickets de Servicio", icon: Ticket, id: "tickets"},
     ].filter(link => hasAccess(link.id));
     
     const purchasesLinks = [

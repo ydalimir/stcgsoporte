@@ -77,7 +77,6 @@ const modules = [
     { id: 'clients', label: 'Clientes' },
     { id: 'purchase_orders', label: 'Órdenes de Compra' },
     { id: 'suppliers', label: 'Proveedores' },
-    { id: 'tickets', label: 'Tickets de Servicio' },
     { id: 'services', label: 'Servicios' },
     { id: 'spare_parts', label: 'Refacciones' },
     { id: 'calendar', label: 'Calendario' },
