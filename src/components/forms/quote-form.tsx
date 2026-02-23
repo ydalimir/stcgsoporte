@@ -462,7 +462,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote, userRole }: Quo
                   <FormField name="policies" control={form.control} render={({ field }) => (
                     <FormItem>
                         <FormLabel>Garantías</FormLabel>
-                        <FormControl><Textarea placeholder="Describa las garantías del servicio o producto..." className="min-h-[100px]" {...field} disabled={!isAdmin} /></FormControl>
+                        <FormControl><Textarea placeholder="Describa las garantías del servicio o producto..." className="min-h-[100px]" {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                   )} />
