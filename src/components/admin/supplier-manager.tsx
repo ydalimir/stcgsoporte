@@ -256,16 +256,16 @@ function SupplierFormDialog({ isOpen, onOpenChange, onSave, supplier }: Supplier
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-2">
                         <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nombre o Razón Social</FormLabel><FormControl><Input placeholder="Nombre de la empresa proveedora" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={form.control} name="contactPerson" render={({ field }) => ( <FormItem><FormLabel>Persona de Contacto (Opcional)</FormLabel><FormControl><Input placeholder="Nombre del contacto principal" {...field} /></FormControl><FormMessage /></FormItem> )} />
                             <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input placeholder="Número de contacto" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                            <FormField control={form.control} name="creditTime" render={({ field }) => ( <FormItem><FormLabel>Días de Crédito (Opcional)</FormLabel><FormControl><Input placeholder="Ej: 30" {...field} /></FormControl><FormMessage /></FormItem> )} />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Correo Electrónico (Opcional)</FormLabel><FormControl><Input type="email" placeholder="correo@ejemplo.com" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                             <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Correo Electrónico (Opcional)</FormLabel><FormControl><Input type="email" placeholder="correo@ejemplo.com" {...field} /></FormControl><FormMessage /></FormItem> )} />
                             <FormField control={form.control} name="rfc" render={({ field }) => ( <FormItem><FormLabel>RFC (Opcional)</FormLabel><FormControl><Input placeholder="Registro Federal de Contribuyentes" {...field} /></FormControl><FormMessage /></FormItem> )} />
                         </div>
                         <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Dirección (Opcional)</FormLabel><FormControl><Input placeholder="Dirección completa del proveedor" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                         <FormField control={form.control} name="creditTime" render={({ field }) => ( <FormItem><FormLabel>Días de Crédito (Opcional)</FormLabel><FormControl><Input placeholder="Ej: 30, 60, Contado" {...field} /></FormControl><FormMessage /></FormItem> )} />
                         
                          <DialogFooter className="sticky bottom-0 bg-background pt-4">
                             <DialogClose asChild><Button type="button" variant="ghost">Cancelar</Button></DialogClose>
