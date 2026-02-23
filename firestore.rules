@@ -76,11 +76,11 @@ service cloud.firestore {
 
     // Restricted collections
     match /clients/{docId} {
-      allow read: if canRead('clients');
+      allow read: if canRead('clients') || hasPermission('quotes');
       allow write: if isAdmin();
     }
     match /clients {
-        allow list: if canRead('clients');
+        allow list: if canRead('clients') || hasPermission('quotes');
     }
     
     match /suppliers/{docId} {
