@@ -199,9 +199,10 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
     const details = `${supplier.name}\nRFC: ${supplier.rfc || ''}\n${supplier.address || ''}\nTel: ${supplier.phone || ''}\nCorreo: ${supplier.email || ''}`;
     form.setValue("supplierDetails", details);
     
-    const isCredit = supplier.givesCredit;
+    const isCredit = supplier.creditTime?.toLowerCase() !== 'contado' && !!supplier.creditTime;
+    
     form.setValue("tipoPago", isCredit ? "Crédito" : "Contado");
-    form.setValue("diasCredito", isCredit ? (supplier.creditTime || '0') : "0");
+    form.setValue("diasCredito", isCredit ? (supplier.creditTime || '') : "0");
 
     setIsSupplierComboboxOpen(false);
   };
