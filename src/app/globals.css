@@ -32,8 +32,6 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 215 49% 31%;
 
-    --radius: 0.5rem;
-
     --chart-1: 215 49% 31%;
     --chart-2: 215 28% 48%;
     --chart-3: 160 60% 45%;
@@ -79,4 +77,26 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.project-nuevo::after,
+.project-en-progreso::after,
+.project-en-pausa::after {
+  content: '';
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+}
+.project-nuevo::after {
+  background-color: hsl(var(--primary));
+}
+.project-en-progreso::after {
+  background-color: hsl(45 93% 47%); /* yellow */
+}
+.project-en-pausa::after {
+  background-color: hsl(var(--destructive));
 }

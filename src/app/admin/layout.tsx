@@ -96,7 +96,8 @@ export default function AdminLayout({
     
     const operationsLinks = [
         { href: "/admin/tickets", label: "Tickets de Servicio", icon: Ticket, id: "tickets"},
-    ].filter(link => hasAccess(link.id));
+        { href: "/admin/calendar", label: "Calendario", icon: Calendar, id: "calendar"},
+    ].filter(link => hasAccess(link.id) || link.id === 'calendar');
 
     const warehouseLinks = [
         { href: "/admin/services", label: "Servicios", icon: Wrench, id: "services" },
@@ -168,6 +169,7 @@ export default function AdminLayout({
                 {mainLinks.map((link) => <NavLink key={link.href} link={link} />)}
                 <NavGroup title="Ventas" links={salesLinks} />
                 <NavGroup title="Compras" links={purchasesLinks} />
+                <NavGroup title="Operaciones" links={operationsLinks} />
                 <NavGroup title="Almacenes" links={warehouseLinks} />
                 </nav>
             </div>

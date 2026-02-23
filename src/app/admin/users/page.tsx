@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -79,6 +80,7 @@ const modules = [
     { id: 'tickets', label: 'Tickets de Servicio' },
     { id: 'services', label: 'Servicios' },
     { id: 'spare_parts', label: 'Refacciones' },
+    { id: 'calendar', label: 'Calendario' },
 ] as const;
 
 const userSchema = z.object({
