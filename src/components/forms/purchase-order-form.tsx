@@ -71,6 +71,7 @@ interface PurchaseOrderFormProps {
   onOpenChange: (isOpen: boolean) => void;
   onSave: (po: any) => void;
   purchaseOrder: Partial<PurchaseOrder> | null;
+  userRole?: 'admin' | 'employee';
 }
 
 const formatDate = (date: Date) => {
@@ -102,13 +103,14 @@ const defaultValues: POFormValues = {
   discountPercentage: 0,
 };
 
-export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder }: PurchaseOrderFormProps) {
+export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder, userRole }: PurchaseOrderFormProps) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSupplierComboboxOpen, setIsSupplierComboboxOpen] = useState(false);
   const [isItemComboboxOpen, setIsItemComboboxOpen] = useState(false);
+  const isAdmin = userRole === 'admin';
 
   useEffect(() => {
     const qSuppliers = collection(db, "suppliers");
@@ -251,7 +253,7 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder 
                     <FormItem><FormLabel>Enviar a</FormLabel><FormControl><Textarea className="min-h-[120px] text-sm" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="billToDetails" render={({ field }) => (
-                    <FormItem><FormLabel>Facturar a</FormLabel><FormControl><Textarea className="min-h-[120px] text-sm" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Facturar a</FormLabel><FormControl><Textarea className="min-h-[120px] text-sm" {...field} disabled={!isAdmin} /></FormControl><FormMessage /></FormItem>
                 )} />
               </div>
               
@@ -350,3 +352,5 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder 
     </Dialog>
   );
 }
+
+    

@@ -1035,6 +1035,7 @@ export function ProjectManager() {
         }}
         onSave={editingPO ? handleUpdatePO : handleSaveAndLinkPO}
         purchaseOrder={poForForm as PurchaseOrder}
+        userRole={role}
       />
     </div>
   );
@@ -1225,5 +1226,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
         </Dialog>
     )
 }
+
+    
 
     

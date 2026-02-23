@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -587,7 +588,10 @@ export function PurchaseOrderManager() {
         onOpenChange={setIsFormOpen}
         onSave={handleSave}
         purchaseOrder={selectedPO}
+        userRole={userProfile?.role}
       />
     </div>
   );
 }
+
+    
