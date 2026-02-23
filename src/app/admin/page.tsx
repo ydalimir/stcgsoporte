@@ -10,6 +10,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { errorEmitter } from "@/lib/error-emitter";
 import { FirestorePermissionError } from "@/lib/errors";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 
 type StatCardProps = {
@@ -21,6 +25,19 @@ type StatCardProps = {
 
 type UserProfile = {
     role: 'admin' | 'employee';
+};
+
+type Project = {
+    id: string;
+    client: string;
+    description: string;
+    responsible: string;
+    status: "Nuevo" | "En Progreso" | "En Pausa" | "Completado";
+    programmedDate: string;
+    priority: "Baja" | "Media" | "Alta";
+    userId: string;
+    lastUpdated: any;
+    createdAt: any;
 };
 
 const StatCard = ({ title, value, icon, description }: StatCardProps) => (
@@ -47,6 +64,10 @@ export default function AdminDashboardPage() {
   });
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [inProgressProjects, setInProgressProjects] = useState<Project[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PROJECTS_PER_PAGE = 10;
 
   useEffect(() => {
     if (authIsLoading) return;
@@ -66,6 +87,38 @@ export default function AdminDashboardPage() {
   }, [user, authIsLoading, router]);
 
   useEffect(() => {
+    if (!user || !userProfile) {
+        if (!isProfileLoading) setProjectsLoading(false);
+        return;
+    }
+
+    setProjectsLoading(true);
+    const is_admin = userProfile.role === 'admin';
+    
+    const baseQuery = query(collection(db, "projects"), where("status", "==", "En Progreso"), orderBy("programmedDate", "asc"));
+    
+    const projectsQuery = is_admin 
+        ? baseQuery
+        : query(baseQuery, where("userId", "==", user.uid));
+
+    const unsubscribe = onSnapshot(projectsQuery, (snapshot) => {
+        const projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+        setInProgressProjects(projectsData);
+        setProjectsLoading(false);
+    }, (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'projects',
+            operation: 'list',
+        }));
+        console.error("Error fetching in-progress projects: ", error);
+        setProjectsLoading(false);
+    });
+
+    return () => unsubscribe();
+}, [user, userProfile, isProfileLoading]);
+
+
+  useEffect(() => {
     if (!user || !userProfile) return;
 
     let loadedCount = 0;
@@ -73,9 +126,7 @@ export default function AdminDashboardPage() {
     const onDataLoaded = () => {
         loadedCount++;
         if(loadedCount === totalToLoad) {
-           // A short delay to allow all stats to update visually
            setTimeout(() => {
-            // Placeholder for any final loading state changes
            }, 100);
         }
     }
@@ -143,6 +194,12 @@ export default function AdminDashboardPage() {
     };
   }, [user, userProfile]);
 
+  const paginatedProjects = inProgressProjects.slice(
+    (currentPage - 1) * PROJECTS_PER_PAGE,
+    currentPage * PROJECTS_PER_PAGE
+  );
+  const totalPages = Math.ceil(inProgressProjects.length / PROJECTS_PER_PAGE);
+
    if (authIsLoading || isProfileLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-theme(spacing.16))]">
@@ -186,9 +243,68 @@ export default function AdminDashboardPage() {
                 <CardTitle>Proyectos en Proceso</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                    <p className="text-muted-foreground">En desarrollo</p>
-                </div>
+                {projectsLoading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
+                ) : paginatedProjects.length > 0 ? (
+                    <>
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Cliente</TableHead>
+                                        <TableHead>Descripción</TableHead>
+                                        <TableHead>Responsable</TableHead>
+                                        <TableHead>Prioridad</TableHead>
+                                        <TableHead>Fecha Prog.</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {paginatedProjects.map((project) => (
+                                        <TableRow key={project.id}>
+                                            <TableCell>{project.client}</TableCell>
+                                            <TableCell className="max-w-xs truncate">{project.description}</TableCell>
+                                            <TableCell>{project.responsible}</TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline" className={cn('capitalize', {
+                                                    'text-red-600 border-red-600': project.priority === 'Alta',
+                                                    'text-yellow-600 border-yellow-600': project.priority === 'Media',
+                                                    'text-green-600 border-green-600': project.priority === 'Baja',
+                                                })}>{project.priority}</Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                {project.programmedDate ? new Date(project.programmedDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A'}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                        <div className="flex items-center justify-end space-x-2 py-4">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                            >
+                                Anterior
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                            >
+                                Siguiente
+                            </Button>
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
+                        <p className="text-muted-foreground">No hay proyectos en proceso actualmente.</p>
+                    </div>
+                )}
             </CardContent>
         </Card>
       </div>
