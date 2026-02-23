@@ -16,7 +16,7 @@ service cloud.firestore {
       let permissions = getUserData(request.auth.uid).permissions;
       return request.auth != null 
              && permissions != null
-             && module in permissions;
+             && permissions[module] == true;
     }
     
     match /users/{userId} {

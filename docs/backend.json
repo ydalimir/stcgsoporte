@@ -10,9 +10,18 @@
         "displayName": { "type": "string" },
         "role": { "type": "string", "enum": ["admin", "employee"] },
         "permissions": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "List of modules the user has access to, e.g. ['projects', 'clients']"
+            "type": "object",
+            "properties": {
+                "projects": { "type": "boolean" },
+                "clients": { "type": "boolean" },
+                "quotes": { "type": "boolean" },
+                "purchase_orders": { "type": "boolean" },
+                "suppliers": { "type": "boolean" },
+                "tickets": { "type": "boolean" },
+                "services": { "type": "boolean" },
+                "spare_parts": { "type": "boolean" }
+            },
+            "description": "Map of modules the user has access to, e.g. {'projects': true, 'clients': true}"
         },
         "createdAt": { "type": "string", "format": "date-time" }
       },
