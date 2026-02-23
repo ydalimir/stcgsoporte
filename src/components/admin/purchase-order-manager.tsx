@@ -607,6 +607,8 @@ export function PurchaseOrderManager() {
         onSave={handleSave}
         purchaseOrder={selectedPO}
         userRole={userProfile?.role}
+        user={user}
+        purchaseOrders={purchaseOrders}
       />
     </div>
   );

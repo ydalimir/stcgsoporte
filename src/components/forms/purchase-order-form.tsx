@@ -38,6 +38,7 @@ import { SparePart } from "../admin/spare-parts-manager";
 import type { Quote } from "@/components/admin/quote-manager";
 import { errorEmitter } from "@/lib/error-emitter";
 import { FirestorePermissionError } from "@/lib/errors";
+import type { User } from "firebase/auth";
 
 
 const poItemSchema = z.object({
@@ -72,6 +73,8 @@ interface PurchaseOrderFormProps {
   onSave: (po: any) => void;
   purchaseOrder: Partial<PurchaseOrder> | null;
   userRole?: 'admin' | 'employee';
+  user?: User | null;
+  purchaseOrders: PurchaseOrder[];
 }
 
 const formatDate = (date: Date) => {
@@ -103,7 +106,7 @@ const defaultValues: POFormValues = {
   discountPercentage: 0,
 };
 
-export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder, userRole }: PurchaseOrderFormProps) {
+export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder, userRole, user, purchaseOrders }: PurchaseOrderFormProps) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -220,6 +223,26 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
     setIsSupplierComboboxOpen(false);
   };
 
+  const filteredQuotes = useMemo(() => {
+    const linkedQuoteIds = new Set(
+        (purchaseOrders || [])
+            .filter(po => po.quoteId && po.id !== purchaseOrder?.id)
+            .map(po => po.quoteId)
+    );
+
+    return quotes.filter(quote => {
+        if (linkedQuoteIds.has(quote.id)) {
+            return false;
+        }
+
+        if (userRole === 'admin') {
+            return true;
+        }
+
+        return quote.userId === user?.uid;
+    });
+  }, [quotes, purchaseOrders, purchaseOrder, user, userRole]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl p-0">
@@ -284,7 +307,7 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
                                 <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar cotización..." /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     <SelectItem value="none">Ninguna</SelectItem>
-                                    {quotes.map(q => (
+                                    {filteredQuotes.map(q => (
                                         <SelectItem key={q.id} value={q.id}>
                                             {q.quoteNumber} ({q.clientName})
                                         </SelectItem>
