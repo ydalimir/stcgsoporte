@@ -86,10 +86,19 @@ const userSchema = z.object({
   id: z.string().optional(),
   displayName: z.string().min(2, "El nombre es requerido."),
   email: z.string().email("Correo electrónico inválido."),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres.").optional(),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres.").optional().or(z.literal('')),
   role: z.enum(["admin", "employee"], { required_error: "Debe seleccionar un rol." }),
   permissions: z.array(z.string()).optional(),
+}).refine((data) => {
+    if (!data.id && (!data.password || data.password.length < 6)) {
+        return false;
+    }
+    return true;
+}, {
+    message: "La contraseña es requerida y debe tener al menos 6 caracteres.",
+    path: ["password"],
 });
+
 
 type UserProfile = {
     uid: string;
@@ -397,7 +406,7 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                                     <div className="mb-4">
                                         <FormLabel className="text-base">Permisos de Módulo</FormLabel>
                                         <FormDescription>
-                                            Selecciona los módulos a los que este empleado tendrá acceso (solo lectura).
+                                            Selecciona los módulos a los que este empleado tendrá acceso.
                                         </FormDescription>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -454,3 +463,5 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
         </Dialog>
     )
 }
+
+    
