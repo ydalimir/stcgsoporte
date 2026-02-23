@@ -94,8 +94,8 @@ service cloud.firestore {
     match /counters/{counterId} {
         allow read: if isAdmin();
         allow write: if isAdmin() 
-                       || (counterId == 'quotes' && request.auth != null)
-                       || (counterId == 'purchaseOrders' && request.auth != null)
+                       || (counterId == 'quotes' && (hasPermission('quotes') || isAdmin()))
+                       || (counterId == 'purchaseOrders' && (hasPermission('purchase_orders') || isAdmin()))
                        || (counterId == 'tickets' && request.auth != null);
     }
   }
