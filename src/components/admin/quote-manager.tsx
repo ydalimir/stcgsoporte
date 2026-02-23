@@ -353,7 +353,6 @@ export function QuoteManager() {
             path: 'quotes',
             operation: 'list',
         }));
-        toast({ title: "Error al cargar", description: "No se pudieron cargar las cotizaciones.", variant: "destructive"});
         setIsLoading(false);
     });
     return () => unsubscribe();
@@ -375,6 +374,7 @@ export function QuoteManager() {
                 toast({ title: "Cotización Actualizada", description: `La cotización para ${quoteData.clientName} ha sido actualizada.` });
             }
         } else { // CREATE
+            const newQuoteData = { ...quoteData, userId: user.uid };
             await runTransaction(db, async (transaction) => {
                 const counterRef = doc(db, "counters", "quotes");
                 const counterDoc = await transaction.get(counterRef);
@@ -384,41 +384,55 @@ export function QuoteManager() {
                 }
                 transaction.set(counterRef, { lastNumber: newQuoteNumber }, { merge: true });
                 const newQuoteRef = doc(collection(db, "quotes"));
-                transaction.set(newQuoteRef, { ...quoteData, quoteNumber: newQuoteNumber, userId: user.uid });
+                transaction.set(newQuoteRef, { ...newQuoteData, quoteNumber: newQuoteNumber });
             });
             toast({ title: "Cotización Creada", description: `Una nueva cotización ha sido creada.` });
         }
         setIsFormOpen(false);
         setSelectedQuote(null);
     } catch (error) {
-        console.error("Error saving quote:", error);
-        toast({ title: "Error al guardar", description: "No se pudo guardar la cotización.", variant: "destructive"});
+        const operation = selectedQuote ? 'update' : 'create';
+        const path = selectedQuote ? `quotes/${selectedQuote.id}` : 'counters/quotes'; // Best guess for creation failure
+        const data = selectedQuote ? quoteData : { ...quoteData, userId: user.uid };
+
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: path,
+            operation: operation === 'create' ? 'write' : 'update', // 'write' for transaction
+            requestResourceData: data,
+        }));
     }
-  }, [selectedQuote, toast, user]);
+  }, [selectedQuote, user, toast, setIsFormOpen, setSelectedQuote]);
   
   const handleDelete = useCallback(async (id: string) => {
+    const docRef = doc(db, "quotes", id);
     try {
-        await deleteDoc(doc(db, "quotes", id));
+        await deleteDoc(docRef);
         toast({ title: "Cotización Eliminada", description: `La cotización ha sido eliminada.` });
     } catch (error) {
-        console.error("Error deleting quote:", error);
-        toast({ title: "Error al eliminar", description: "No se pudo eliminar la cotización.", variant: "destructive" });
+       errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'delete'
+        }));
     }
   }, [toast]);
 
   const handleStatusChange = useCallback(async (quote: Quote, newStatus: Quote['status']) => {
+    const quoteRef = doc(db, "quotes", quote.id);
+    const payload = { status: newStatus };
     try {
         if (newStatus === "Aceptada") {
             await createOrUpdateTicketFromQuote(quote);
             toast({ title: "¡Cotización Aceptada!", description: `Se ha generado/actualizado el ticket de servicio.` });
         } else {
-            const quoteRef = doc(db, "quotes", quote.id);
-            await updateDoc(quoteRef, { status: newStatus });
+            await updateDoc(quoteRef, payload);
             toast({ title: "Estado Actualizado", description: `La cotización para ${quote.clientName} ahora está ${newStatus}.` });
         }
     } catch (error) {
-        console.error("Error updating status:", error);
-        toast({ title: "Error al actualizar", description: "No se pudo cambiar el estado.", variant: "destructive"});
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: quoteRef.path,
+            operation: 'update',
+            requestResourceData: payload,
+        }));
     }
   }, [toast]);
 
