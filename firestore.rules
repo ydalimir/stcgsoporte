@@ -31,28 +31,28 @@ service cloud.firestore {
     
     match /projects/{projectId} {
       allow create: if (hasPermission('projects') || isAdmin()) && request.resource.data.userId == request.auth.uid;
-      allow list: if canRead('projects');
+      allow list: if request.auth != null;
       allow get: if isAdmin() || get(/databases/$(database)/documents/projects/$(projectId)).data.userId == request.auth.uid;
       allow update, delete: if isAdmin() || resource.data.userId == request.auth.uid;
     }
 
     match /tickets/{ticketId} {
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow list: if canRead('tickets');
+      allow list: if request.auth != null;
       allow get: if isAdmin() || get(/databases/$(database)/documents/tickets/$(ticketId)).data.userId == request.auth.uid;
       allow update, delete: if isAdmin() || resource.data.userId == request.auth.uid;
     }
 
     match /quotes/{quoteId} {
       allow create: if (hasPermission('quotes') || isAdmin()) && request.resource.data.userId == request.auth.uid;
-      allow list: if canRead('quotes');
+      allow list: if request.auth != null;
       allow get: if isAdmin() || get(/databases/$(database)/documents/quotes/$(quoteId)).data.userId == request.auth.uid;
       allow update, delete: if isAdmin() || resource.data.userId == request.auth.uid;
     }
     
     match /purchase_orders/{orderId} {
       allow create: if (hasPermission('purchase_orders') || isAdmin()) && request.resource.data.userId == request.auth.uid;
-      allow list: if canRead('purchase_orders');
+      allow list: if request.auth != null;
       allow get: if isAdmin() || get(/databases/$(database)/documents/purchase_orders/$(orderId)).data.userId == request.auth.uid;
       allow update, delete: if isAdmin() || resource.data.userId == request.auth.uid;
     }
