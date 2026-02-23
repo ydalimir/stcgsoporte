@@ -52,6 +52,7 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { errorEmitter } from "@/lib/error-emitter";
 import { FirestorePermissionError } from "@/lib/errors";
+import { Switch } from "@/components/ui/switch";
 
 const supplierSchema = z.object({
   id: z.string().optional(),
@@ -61,8 +62,18 @@ const supplierSchema = z.object({
   email: z.string().email({ message: "Correo electrónico inválido." }).optional().or(z.literal('')),
   address: z.string().optional(),
   rfc: z.string().optional(),
+  givesCredit: z.boolean().default(false),
   creditTime: z.string().optional(),
+}).refine(data => {
+    if (data.givesCredit && (!data.creditTime || data.creditTime.trim() === '')) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Los días de crédito son requeridos si se ofrece crédito.",
+    path: ["creditTime"],
 });
+
 
 export type Supplier = z.infer<typeof supplierSchema> & { id: string, createdAt: any };
 
@@ -147,7 +158,7 @@ export function SupplierManager() {
       { accessorKey: "phone", header: "Teléfono" },
       { accessorKey: "email", header: "Correo Electrónico" },
       { accessorKey: "rfc", header: "RFC" },
-      { accessorKey: "creditTime", header: "Días de Crédito" },
+      { accessorKey: "creditTime", header: "Condiciones" },
       { id: "actions",
         cell: ({ row }) => {
             const supplier = row.original;
@@ -227,22 +238,33 @@ function SupplierFormDialog({ isOpen, onOpenChange, onSave, supplier }: Supplier
     const [isSubmitting, setIsSubmitting] = useState(false);
     const form = useForm<z.infer<typeof supplierSchema>>({
         resolver: zodResolver(supplierSchema),
-        defaultValues: { name: "", contactPerson: "", phone: "", email: "", address: "", rfc: "", creditTime: "" }
+        defaultValues: { name: "", contactPerson: "", phone: "", email: "", address: "", rfc: "", creditTime: "", givesCredit: false }
     });
+
+    const givesCredit = form.watch("givesCredit");
 
     useEffect(() => {
         if (isOpen) {
           if (supplier) {
-            form.reset(supplier);
+            const hasCredit = supplier.creditTime?.toLowerCase() !== 'contado' && !!supplier.creditTime;
+            form.reset({
+                ...supplier,
+                givesCredit: hasCredit,
+                creditTime: hasCredit ? supplier.creditTime : "",
+            });
           } else {
-            form.reset({ name: "", contactPerson: "", phone: "", email: "", address: "", rfc: "", creditTime: "" });
+            form.reset({ name: "", contactPerson: "", phone: "", email: "", address: "", rfc: "", creditTime: "", givesCredit: false });
           }
         }
       }, [supplier, isOpen, form]);
 
     const handleSubmit = async (data: z.infer<typeof supplierSchema>) => {
         setIsSubmitting(true);
-        await onSave(data);
+        const { givesCredit, ...saveData } = data;
+        if (!givesCredit) {
+            saveData.creditTime = 'Contado';
+        }
+        await onSave(saveData as any);
         setIsSubmitting(false);
     }
 
@@ -265,8 +287,40 @@ function SupplierFormDialog({ isOpen, onOpenChange, onSave, supplier }: Supplier
                             <FormField control={form.control} name="rfc" render={({ field }) => ( <FormItem><FormLabel>RFC (Opcional)</FormLabel><FormControl><Input placeholder="Registro Federal de Contribuyentes" {...field} /></FormControl><FormMessage /></FormItem> )} />
                         </div>
                         <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Dirección (Opcional)</FormLabel><FormControl><Input placeholder="Dirección completa del proveedor" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                         <FormField control={form.control} name="creditTime" render={({ field }) => ( <FormItem><FormLabel>Días de Crédito (Opcional)</FormLabel><FormControl><Input placeholder="Ej: 30, 60, Contado" {...field} /></FormControl><FormMessage /></FormItem> )} />
                         
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 items-center">
+                             <FormField
+                                control={form.control}
+                                name="givesCredit"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                                        <FormLabel className="m-0">¿Ofrece Crédito?</FormLabel>
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            {givesCredit && (
+                                <FormField
+                                    control={form.control}
+                                    name="creditTime"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Días de Crédito</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Ej: 30" {...field} value={field.value || ''} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
+                        </div>
+
                          <DialogFooter className="sticky bottom-0 bg-background pt-4">
                             <DialogClose asChild><Button type="button" variant="ghost">Cancelar</Button></DialogClose>
                             <Button type="submit" disabled={isSubmitting}>
@@ -280,3 +334,6 @@ function SupplierFormDialog({ isOpen, onOpenChange, onSave, supplier }: Supplier
         </Dialog>
     )
 }
+
+
+    
