@@ -108,7 +108,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     yPos += 8;
 
     doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(100, 100, 100);
-    const poDate = po.date ? new Date(po.date).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
+    const poDate = po.date ? new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
     doc.text(`FECHA: ${poDate}`, 200, yPos, { align: 'right' });
     yPos += 4;
     doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, 200, yPos, { align: 'right' });
@@ -135,7 +135,15 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     // --- Details Table ---
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
     const quoteDisplay = linkedQuote ? linkedQuote.quoteNumber : 'N/A';
-    const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A'
+    const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A'
+    
+    const creditDays = parseInt(po.diasCredito || '0', 10);
+    let paymentDueDate = 'N/A';
+    if (po.date && !isNaN(creditDays) && creditDays > 0) {
+        const baseDate = new Date(po.date.replace(/-/g, '\/'));
+        baseDate.setDate(baseDate.getDate() + creditDays);
+        paymentDueDate = baseDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
+    }
 
     autoTable(doc, {
         startY: yPos,
@@ -143,6 +151,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
             { content: `COTIZACIÓN:\n${quoteDisplay}`},
             { content: `TIPO DE PAGO:\n${po.tipoPago || 'N/A'}`},
             { content: `DÍAS DE CRÉDITO:\n${po.diasCredito || '0'}`},
+            { content: `FECHA VENCIMIENTO:\n${paymentDueDate}`},
             { content: `FECHA APROX ENTREGA:\n${deliveryDate}`},
         ]],
         theme: 'grid',
@@ -218,11 +227,20 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
 const downloadExcel = (po: PurchaseOrder) => {
     const poId = po.purchaseOrderNumber;
     
+    const creditDays = parseInt(po.diasCredito || '0', 10);
+    let paymentDueDate = 'N/A';
+    if (po.date && !isNaN(creditDays) && creditDays > 0) {
+        const baseDate = new Date(po.date.replace(/-/g, '\/'));
+        baseDate.setDate(baseDate.getDate() + creditDays);
+        paymentDueDate = baseDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
+    }
+
     const poData = [
       ["Orden de Compra:", poId],
       ["Proveedor:", po.supplierName],
-      ["Fecha:", po.date ? new Date(po.date).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
-      ["Fecha de Entrega:", po.deliveryDate ? new Date(po.deliveryDate).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
+      ["Fecha:", po.date ? new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
+      ["Fecha de Entrega:", po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
+      ["Fecha Vencimiento:", paymentDueDate],
       ["Estado:", po.status],
       ["Tipo de Pago:", po.tipoPago || ''],
       ["Días de Crédito:", po.diasCredito || '0'],
@@ -367,7 +385,7 @@ export function PurchaseOrderManager() {
                 const userData = userDoc.data();
                 const newPoCounter = (userData.purchaseOrderCounter || 0) + 1;
                 const userCode = userData.userCode || "00";
-            
+        
                 const newPoNumber = `OC${userCode}-${String(newPoCounter).padStart(4, '0')}`;
                 
                 transaction.update(userDocRef, { purchaseOrderCounter: newPoCounter });
@@ -422,7 +440,7 @@ export function PurchaseOrderManager() {
         cell: ({ row }) => {
             const date = row.original.date;
             if (!date) return 'N/A';
-            const localDate = new Date(date);
+            const localDate = new Date(date.replace(/-/g, '\/'));
             return localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
         } 
       },

@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Loader2, PlusCircle, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import type { PurchaseOrder } from "@/components/admin/purchase-order-manager";
@@ -151,6 +151,19 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
     name: "items"
   });
 
+  const issueDate = form.watch('date');
+  const creditDays = form.watch('diasCredito');
+
+  const paymentDueDate = useMemo(() => {
+    const days = parseInt(creditDays || '0', 10);
+    if (!issueDate || isNaN(days) || days <= 0) {
+        return "N/A";
+    }
+    const baseDate = new Date(issueDate.replace(/-/g, '\/'));
+    baseDate.setDate(baseDate.getDate() + days);
+    return baseDate.toLocaleDateString('es-MX', { timeZone: 'UTC' });
+  }, [issueDate, creditDays]);
+
   useEffect(() => {
     if (isOpen) {
       if (purchaseOrder) {
@@ -202,7 +215,7 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
     const isCredit = supplier.creditTime?.toLowerCase() !== 'contado' && !!supplier.creditTime;
     
     form.setValue("tipoPago", isCredit ? "Crédito" : "Contado");
-    form.setValue("diasCredito", isCredit ? (supplier.creditTime || '') : "0");
+    form.setValue("diasCredito", isCredit ? (supplier.creditTime || '0') : "0");
 
     setIsSupplierComboboxOpen(false);
   };
@@ -263,7 +276,7 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
                 )} />
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border p-4 rounded-lg">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 border p-4 rounded-lg">
                     <FormField control={form.control} name="quoteId" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Cotización Vinculada</FormLabel>
@@ -281,8 +294,12 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
                             <FormMessage />
                         </FormItem>
                     )} />
-                    <FormField name="tipoPago" control={form.control} render={({ field }) => (<FormItem><FormLabel>Tipo de Pago</FormLabel><FormControl><Input {...field} readOnly /></FormControl></FormItem>)} />
-                    <FormField name="diasCredito" control={form.control} render={({ field }) => (<FormItem><FormLabel>Días de Crédito</FormLabel><FormControl><Input {...field} readOnly /></FormControl></FormItem>)} />
+                    <FormField name="tipoPago" control={form.control} render={({ field }) => (<FormItem><FormLabel>Tipo de Pago</FormLabel><FormControl><Input {...field} readOnly disabled /></FormControl></FormItem>)} />
+                    <FormField name="diasCredito" control={form.control} render={({ field }) => (<FormItem><FormLabel>Días de Crédito</FormLabel><FormControl><Input {...field} readOnly disabled /></FormControl></FormItem>)} />
+                    <FormItem>
+                        <FormLabel>Fecha Venc. Pago</FormLabel>
+                        <FormControl><Input value={paymentDueDate} readOnly disabled /></FormControl>
+                    </FormItem>
                     <FormField name="deliveryDate" control={form.control} render={({ field }) => (<FormItem><FormLabel>Fecha Aprox. Entrega</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)} />
               </div>
 
