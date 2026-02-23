@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where, orderBy, doc, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, where, orderBy, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Briefcase, FileText, ShoppingCart, List, Loader2 } from "lucide-react";
@@ -62,137 +61,96 @@ export default function AdminDashboardPage() {
     purchaseOrders: 0,
     projects: 0,
   });
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [inProgressProjects, setInProgressProjects] = useState<Project[]>([]);
-  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const PROJECTS_PER_PAGE = 10;
 
   useEffect(() => {
-    if (authIsLoading) return;
+    if (authIsLoading) {
+      return; // Wait for auth to be initialized
+    }
     if (!user) {
-        router.push('/');
-        return;
+      router.push('/');
+      return; // Redirect if not logged in
     }
 
-    const profileUnsub = onSnapshot(doc(db, "users", user.uid), (doc) => {
-        if (doc.exists()) {
-            setUserProfile(doc.data() as UserProfile);
-        }
-        setIsProfileLoading(false);
+    // Set up a master cleanup array
+    const unsubs: (() => void)[] = [];
+
+    // First, get the user profile
+    const profileUnsub = onSnapshot(doc(db, "users", user.uid), (profileDoc) => {
+      if (!profileDoc.exists()) {
+        setIsLoading(false);
+        console.error("User profile document not found!");
+        return;
+      }
+      
+      const userProfile = profileDoc.data() as UserProfile;
+      const is_admin = userProfile.role === 'admin';
+      
+      // Now that we have the profile, set up all other data listeners
+      
+      // 1. Listener for the in-progress projects table
+      const baseProjectsQuery = query(collection(db, "projects"), where("status", "==", "En Progreso"), orderBy("programmedDate", "asc"));
+      const projectsQuery = is_admin 
+          ? baseProjectsQuery
+          : query(baseProjectsQuery, where("userId", "==", user.uid));
+
+      unsubs.push(onSnapshot(projectsQuery, (snapshot) => {
+          const projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+          setInProgressProjects(projectsData);
+          setIsLoading(false); // Main loading is done when projects are loaded
+      }, (error) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'projects', operation: 'list' }));
+          setIsLoading(false);
+      }));
+
+      // 2. Listeners for the stats cards
+      const quotesStatsQuery = is_admin 
+        ? query(collection(db, "quotes"))
+        : query(collection(db, "quotes"), where("userId", "==", user.uid));
+        
+      const projectsStatsQuery = is_admin
+        ? query(collection(db, "projects"))
+        : query(collection(db, "projects"), where("userId", "==", user.uid));
+        
+      const purchaseOrdersStatsQuery = is_admin
+        ? query(collection(db, "purchase_orders"))
+        : query(collection(db, "purchase_orders"), where("userId", "==", user.uid));
+
+      unsubs.push(onSnapshot(quotesStatsQuery, (snapshot) => {
+        const quotes = snapshot.docs.map(doc => doc.data());
+        const pendingQuotes = quotes.filter(q => q.status === 'Enviada' || q.status === 'Borrador').length;
+        setStats(prev => ({ ...prev, quotes: quotes.length, pendingQuotes }));
+      }, (error) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({ path: "quotes", operation: 'list' }));
+      }));
+
+      unsubs.push(onSnapshot(projectsStatsQuery, (snapshot) => {
+          setStats(prev => ({ ...prev, projects: snapshot.docs.length }));
+      }, (error) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({ path: "projects", operation: 'list' }));
+      }));
+      
+      unsubs.push(onSnapshot(purchaseOrdersStatsQuery, (snapshot) => {
+          setStats(prev => ({ ...prev, purchaseOrders: snapshot.docs.length }));
+      }, (error) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({ path: "purchase_orders", operation: 'list' }));
+      }));
+
+    }, (error) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `users/${user.uid}`, operation: 'get' }));
+      setIsLoading(false);
     });
 
-    return () => profileUnsub();
-  }, [user, authIsLoading, router]);
+    unsubs.push(profileUnsub); // Add profile unsub to the list
 
-  useEffect(() => {
-    if (!user || !userProfile) {
-        if (!isProfileLoading) setProjectsLoading(false);
-        return;
-    }
-
-    setProjectsLoading(true);
-    const is_admin = userProfile.role === 'admin';
-    
-    const baseQuery = query(collection(db, "projects"), where("status", "==", "En Progreso"), orderBy("programmedDate", "asc"));
-    
-    const projectsQuery = is_admin 
-        ? baseQuery
-        : query(baseQuery, where("userId", "==", user.uid));
-
-    const unsubscribe = onSnapshot(projectsQuery, (snapshot) => {
-        const projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
-        setInProgressProjects(projectsData);
-        setProjectsLoading(false);
-    }, (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'projects',
-            operation: 'list',
-        }));
-        console.error("Error fetching in-progress projects: ", error);
-        setProjectsLoading(false);
-    });
-
-    return () => unsubscribe();
-}, [user, userProfile, isProfileLoading]);
-
-
-  useEffect(() => {
-    if (!user || !userProfile) return;
-
-    let loadedCount = 0;
-    const totalToLoad = 3;
-    const onDataLoaded = () => {
-        loadedCount++;
-        if(loadedCount === totalToLoad) {
-           setTimeout(() => {
-           }, 100);
-        }
-    }
-
-    const is_admin = userProfile.role === 'admin';
-    
-    const baseQueries = {
-        quotes: collection(db, "quotes"),
-        projects: collection(db, "projects"),
-        purchase_orders: collection(db, "purchase_orders"),
-    };
-
-    const quotesQuery = is_admin 
-        ? query(baseQueries.quotes)
-        : query(baseQueries.quotes, where("userId", "==", user.uid));
-        
-    const projectsQuery = is_admin
-        ? query(baseQueries.projects)
-        : query(baseQueries.projects, where("userId", "==", user.uid));
-        
-    const purchaseOrdersQuery = is_admin
-        ? query(baseQueries.purchase_orders)
-        : query(baseQueries.purchase_orders, where("userId", "==", user.uid));
-
-
-    const unsubs: (()=>void)[] = [];
-    
-    unsubs.push(onSnapshot(quotesQuery, (snapshot) => {
-      const quotes = snapshot.docs.map(doc => doc.data());
-      const pendingQuotes = quotes.filter(q => q.status === 'Enviada' || q.status === 'Borrador').length;
-      setStats(prev => ({ ...prev, quotes: quotes.length, pendingQuotes }));
-      onDataLoaded();
-    }, (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: "quotes",
-            operation: 'list',
-        }));
-        onDataLoaded();
-    }));
-
-    unsubs.push(onSnapshot(projectsQuery, (snapshot) => {
-        setStats(prev => ({ ...prev, projects: snapshot.docs.length }));
-        onDataLoaded();
-    }, (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: "projects",
-            operation: 'list',
-        }));
-        onDataLoaded();
-    }));
-    
-    unsubs.push(onSnapshot(purchaseOrdersQuery, (snapshot) => {
-        setStats(prev => ({ ...prev, purchaseOrders: snapshot.docs.length }));
-        onDataLoaded();
-    }, (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: "purchase_orders",
-            operation: 'list',
-        }));
-        onDataLoaded();
-    }));
-
+    // Return a single cleanup function
     return () => {
-        unsubs.forEach(unsub => unsub());
+      unsubs.forEach(unsub => unsub());
     };
-  }, [user, userProfile]);
+  }, [user, authIsLoading, router]);
 
   const paginatedProjects = inProgressProjects.slice(
     (currentPage - 1) * PROJECTS_PER_PAGE,
@@ -200,7 +158,7 @@ export default function AdminDashboardPage() {
   );
   const totalPages = Math.ceil(inProgressProjects.length / PROJECTS_PER_PAGE);
 
-   if (authIsLoading || isProfileLoading) {
+   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-theme(spacing.16))]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -243,7 +201,7 @@ export default function AdminDashboardPage() {
                 <CardTitle>Proyectos en Proceso</CardTitle>
             </CardHeader>
             <CardContent>
-                {projectsLoading ? (
+                {isLoading ? (
                     <div className="flex justify-center items-center h-64">
                         <Loader2 className="h-8 w-8 animate-spin" />
                     </div>
