@@ -75,11 +75,13 @@ export default function AdminDashboardPage() {
       return; // Redirect if not logged in
     }
 
-    // Set up a master cleanup array
-    const unsubs: (() => void)[] = [];
+    let dataListenersUnsubs: (() => void)[] = [];
 
-    // First, get the user profile
     const profileUnsub = onSnapshot(doc(db, "users", user.uid), (profileDoc) => {
+      // Clean up previous data listeners before creating new ones
+      dataListenersUnsubs.forEach(unsub => unsub());
+      dataListenersUnsubs = [];
+
       if (!profileDoc.exists()) {
         setIsLoading(false);
         console.error("User profile document not found!");
@@ -89,24 +91,21 @@ export default function AdminDashboardPage() {
       const userProfile = profileDoc.data() as UserProfile;
       const is_admin = userProfile.role === 'admin';
       
-      // Now that we have the profile, set up all other data listeners
-      
-      // 1. Listener for the in-progress projects table
       const baseProjectsQuery = query(collection(db, "projects"), where("status", "==", "En Progreso"), orderBy("programmedDate", "asc"));
       const projectsQuery = is_admin 
           ? baseProjectsQuery
           : query(baseProjectsQuery, where("userId", "==", user.uid));
 
-      unsubs.push(onSnapshot(projectsQuery, (snapshot) => {
+      dataListenersUnsubs.push(onSnapshot(projectsQuery, (snapshot) => {
           const projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
           setInProgressProjects(projectsData);
-          setIsLoading(false); // Main loading is done when projects are loaded
+          setIsLoading(false);
       }, (error) => {
+          console.error("Firestore error fetching projects. This might be due to a missing composite index.", error);
           errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'projects', operation: 'list' }));
           setIsLoading(false);
       }));
 
-      // 2. Listeners for the stats cards
       const quotesStatsQuery = is_admin 
         ? query(collection(db, "quotes"))
         : query(collection(db, "quotes"), where("userId", "==", user.uid));
@@ -119,23 +118,23 @@ export default function AdminDashboardPage() {
         ? query(collection(db, "purchase_orders"))
         : query(collection(db, "purchase_orders"), where("userId", "==", user.uid));
 
-      unsubs.push(onSnapshot(quotesStatsQuery, (snapshot) => {
+      dataListenersUnsubs.push(onSnapshot(quotesStatsQuery, (snapshot) => {
         const quotes = snapshot.docs.map(doc => doc.data());
         const pendingQuotes = quotes.filter(q => q.status === 'Enviada' || q.status === 'Borrador').length;
         setStats(prev => ({ ...prev, quotes: quotes.length, pendingQuotes }));
-      }, (error) => {
+      }, () => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({ path: "quotes", operation: 'list' }));
       }));
 
-      unsubs.push(onSnapshot(projectsStatsQuery, (snapshot) => {
-          setStats(prev => ({ ...prev, projects: snapshot.docs.length }));
-      }, (error) => {
+      dataListenersUnsubs.push(onSnapshot(projectsStatsQuery, (snapshot) => {
+          setStats(prev => ({ ...prev, projects: snapshot.size }));
+      }, () => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({ path: "projects", operation: 'list' }));
       }));
       
-      unsubs.push(onSnapshot(purchaseOrdersStatsQuery, (snapshot) => {
-          setStats(prev => ({ ...prev, purchaseOrders: snapshot.docs.length }));
-      }, (error) => {
+      dataListenersUnsubs.push(onSnapshot(purchaseOrdersStatsQuery, (snapshot) => {
+          setStats(prev => ({ ...prev, purchaseOrders: snapshot.size }));
+      }, () => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({ path: "purchase_orders", operation: 'list' }));
       }));
 
@@ -144,11 +143,9 @@ export default function AdminDashboardPage() {
       setIsLoading(false);
     });
 
-    unsubs.push(profileUnsub); // Add profile unsub to the list
-
-    // Return a single cleanup function
     return () => {
-      unsubs.forEach(unsub => unsub());
+      profileUnsub();
+      dataListenersUnsubs.forEach(unsub => unsub());
     };
   }, [user, authIsLoading, router]);
 
