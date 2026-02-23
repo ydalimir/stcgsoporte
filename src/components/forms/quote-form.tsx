@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -72,6 +73,7 @@ interface QuoteFormProps {
   onOpenChange: (isOpen: boolean) => void;
   onSave: (quote: Omit<Quote, 'id' | 'quoteNumber' | 'subtotal' | 'total'> & { subtotal: number, total: number }) => void;
   quote: Partial<Quote> | null;
+  userRole?: 'admin' | 'employee';
 }
 
 const formatDate = (date: Date) => {
@@ -118,13 +120,14 @@ const defaultValues: QuoteFormValues = {
   iva: 16,
 };
 
-export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProps) {
+export function QuoteForm({ isOpen, onOpenChange, onSave, quote, userRole }: QuoteFormProps) {
   const [services, setServices] = useState<Service[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComboboxOpen, setIsComboboxOpen] = useState(false);
   const [isClientComboboxOpen, setIsClientComboboxOpen] = useState(false);
+  const isAdmin = userRole === 'admin';
 
 
   useEffect(() => {
@@ -459,14 +462,14 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote }: QuoteFormProp
                   <FormField name="policies" control={form.control} render={({ field }) => (
                     <FormItem>
                         <FormLabel>Garantías</FormLabel>
-                        <FormControl><Textarea placeholder="Describa las garantías del servicio o producto..." className="min-h-[100px]" {...field} /></FormControl>
+                        <FormControl><Textarea placeholder="Describa las garantías del servicio o producto..." className="min-h-[100px]" {...field} disabled={!isAdmin} /></FormControl>
                         <FormMessage />
                     </FormItem>
                   )} />
                   <FormField name="paymentTerms" control={form.control} render={({ field }) => (
                     <FormItem>
                         <FormLabel>Condiciones de Pago</FormLabel>
-                        <FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl>
+                        <FormControl><Textarea className="min-h-[100px]" {...field} disabled={!isAdmin} /></FormControl>
                         <FormMessage />
                     </FormItem>
                   )} />

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -534,6 +535,8 @@ export function QuoteManager() {
     onGlobalFilterChange: setFilter,
   });
 
+  const role = userProfile?.role;
+
   if (isLoading || authIsLoading || isProfileLoading) {
     return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
@@ -611,6 +614,7 @@ export function QuoteManager() {
         onOpenChange={setIsFormOpen}
         onSave={handleSave as any}
         quote={selectedQuote}
+        userRole={role}
       />
     </div>
   );

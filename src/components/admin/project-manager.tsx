@@ -973,6 +973,7 @@ export function ProjectManager() {
     editingPO || (linkingProjectForPO ? {} : null)
   , [editingPO, linkingProjectForPO]);
 
+  const role = userProfile?.role;
   
   if (isLoading || authIsLoading || isProfileLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -1009,6 +1010,7 @@ export function ProjectManager() {
         }}
         onSave={editingQuote ? handleUpdateQuote : handleSaveAndLinkQuote as any}
         quote={quoteForForm}
+        userRole={role}
       />
       <PurchaseOrderForm
         isOpen={isPOFormOpen}
