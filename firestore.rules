@@ -93,7 +93,11 @@ service cloud.firestore {
 
     match /counters/{counterId} {
         allow read: if isAdmin();
-        allow write: if isAdmin() || (request.auth != null && (counterId == 'quotes' || counterId == 'purchaseOrders' || counterId == 'tickets'));
+        allow write: if isAdmin()
+                     || (counterId == 'quotes' && (hasPermission('quotes') || isAdmin()))
+                     || (counterId == 'purchaseOrders' && (hasPermission('purchase_orders') || isAdmin()))
+                     // Any authenticated user can create a ticket, so they can update the counter.
+                     || (counterId == 'tickets' && request.auth != null);
     }
   }
 }
