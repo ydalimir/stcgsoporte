@@ -87,6 +87,7 @@ export default function AdminLayout({
     const salesLinks = [
         { href: "/admin/quotes", label: "Cotizaciones", icon: FileText, id: "quotes" },
         { href: "/admin/clients", label: "Clientes", icon: Users, id: "clients" },
+        { href: "/admin/tickets", label: "Tickets de Servicio", icon: Ticket, id: "tickets"},
     ].filter(link => hasAccess(link.id));
     
     const purchasesLinks = [
@@ -94,24 +95,20 @@ export default function AdminLayout({
         { href: "/admin/suppliers", label: "Proveedores", icon: Truck, id: "suppliers" },
     ].filter(link => hasAccess(link.id));
     
-    const operationsLinks = [
-        { href: "/admin/tickets", label: "Tickets de Servicio", icon: Ticket, id: "tickets"},
-        { href: "/admin/calendar", label: "Calendario", icon: Calendar, id: "calendar"},
-    ].filter(link => hasAccess(link.id) || link.id === 'calendar');
-
     const warehouseLinks = [
         { href: "/admin/services", label: "Servicios", icon: Wrench, id: "services" },
         { href: "/admin/spare-parts", label: "Refacciones", icon: Package, id: "spare_parts" },
     ].filter(link => hasAccess(link.id));
 
     const adminControlLink = { href: "/admin/users", label: "Control de Usuarios", icon: User, id: "users" };
+    const calendarLink = { href: "/admin/calendar", label: "Calendario", icon: Calendar, id: "calendar"};
     
     const allNavLinks = [
         ...mainLinks,
         ...salesLinks,
         ...purchasesLinks,
-        ...operationsLinks,
         ...warehouseLinks,
+        calendarLink,
         ...(hasAccess(adminControlLink.id) ? [adminControlLink] : [])
     ];
 
@@ -169,16 +166,16 @@ export default function AdminLayout({
                 {mainLinks.map((link) => <NavLink key={link.href} link={link} />)}
                 <NavGroup title="Ventas" links={salesLinks} />
                 <NavGroup title="Compras" links={purchasesLinks} />
-                <NavGroup title="Operaciones" links={operationsLinks} />
                 <NavGroup title="Almacenes" links={warehouseLinks} />
                 </nav>
             </div>
                 <div className="mt-auto p-4">
-                    {hasAccess(adminControlLink.id) && (
-                        <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+                    <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+                        <NavLink link={calendarLink} />
+                        {hasAccess(adminControlLink.id) && (
                             <NavLink link={adminControlLink} />
-                        </nav>
-                    )}
+                        )}
+                    </nav>
                 </div>
             </div>
         </div>
