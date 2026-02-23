@@ -54,9 +54,8 @@ import { FirestorePermissionError } from "@/lib/errors";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, type User as FirebaseUser } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
-import { Label } from "@/components/ui/label";
 
 // IMPORTANT: We need a secondary Firebase app instance to create users
 // because the primary `auth` instance might be signed in as the admin,
@@ -134,62 +133,61 @@ export default function UsersPage() {
     
             const payload = { ...updateData, permissions: finalPermissions };
     
-            updateDoc(userDocRef, payload)
-                .then(() => {
-                    toast({ title: "Usuario Actualizado", description: `El perfil de ${data.displayName} ha sido actualizado.` });
-                    setIsFormOpen(false);
-                    setSelectedUser(null);
-                })
-                .catch(async (serverError) => {
-                    errorEmitter.emit('permission-error', new FirestorePermissionError({
-                        path: userDocRef.path,
-                        operation: 'update',
-                        requestResourceData: payload,
-                    }));
-                });
+            try {
+                await updateDoc(userDocRef, payload);
+                toast({ title: "Usuario Actualizado", description: `El perfil de ${data.displayName} ha sido actualizado.` });
+                setIsFormOpen(false);
+                setSelectedUser(null);
+            } catch (serverError) {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: userDocRef.path,
+                    operation: 'update',
+                    requestResourceData: payload,
+                }));
+            }
         } else { // CREATE
             if (!data.password) {
                 toast({ title: "Error", description: "La contraseña es requerida para nuevos usuarios.", variant: "destructive" });
                 return;
             }
+
+            let userCredential;
             try {
-                const userCredential = await createUserWithEmailAndPassword(userCreationAuth, data.email, data.password);
-                const newUser = userCredential.user;
-                
-                const finalPermissions = data.role === 'admin' ? {} : (data.permissions || []).reduce((acc, p) => ({ ...acc, [p]: true }), {});
-    
-                const userData = {
-                    uid: newUser.uid,
-                    displayName: data.displayName,
-                    email: data.email,
-                    role: data.role,
-                    permissions: finalPermissions,
-                    createdAt: serverTimestamp(),
-                };
-    
-                const userDocRef = doc(db, "users", newUser.uid);
-                setDoc(userDocRef, userData)
-                    .then(async () => {
-                        await userCreationAuth.signOut();
-                        toast({ title: "Usuario Creado", description: `La cuenta para ${data.email} ha sido creada.` });
-                        setIsFormOpen(false);
-                        setSelectedUser(null);
-                    })
-                    .catch(async (serverError) => {
-                        errorEmitter.emit('permission-error', new FirestorePermissionError({
-                            path: userDocRef.path,
-                            operation: 'create',
-                            requestResourceData: userData,
-                        }));
-                    });
-    
+                userCredential = await createUserWithEmailAndPassword(userCreationAuth, data.email, data.password);
             } catch (error: any) {
                 console.error("Auth Error creating user:", error);
                 const description = error.code === 'auth/email-already-in-use' ? 'El correo electrónico ya está en uso.' : 'No se pudo crear el usuario.';
                 toast({ title: "Error de autenticación", description, variant: "destructive" });
+                return; 
+            }
+            
+            const newUser = userCredential.user;
+            const finalPermissions = data.role === 'admin' ? {} : (data.permissions || []).reduce((acc, p) => ({ ...acc, [p]: true }), {});
+            const userData = {
+                uid: newUser.uid,
+                displayName: data.displayName,
+                email: data.email,
+                role: data.role,
+                permissions: finalPermissions,
+                createdAt: serverTimestamp(),
+            };
+            const userDocRef = doc(db, "users", newUser.uid);
+
+            try {
+                await setDoc(userDocRef, userData);
+                await userCreationAuth.signOut();
+                toast({ title: "Usuario Creado", description: `La cuenta para ${data.email} ha sido creada.` });
+                setIsFormOpen(false);
+                setSelectedUser(null);
+            } catch (serverError) {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: userDocRef.path,
+                    operation: 'create',
+                    requestResourceData: userData,
+                }));
             }
         }
-    }, [toast]);
+    }, [toast, setIsFormOpen, setSelectedUser]);
     
     const columns: ColumnDef<UserProfile>[] = useMemo(() => [
         { accessorKey: "displayName", header: "Nombre" },
@@ -351,13 +349,13 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                                                 <FormControl>
                                                     <RadioGroupItem value="employee" id="role-employee" />
                                                 </FormControl>
-                                                <Label htmlFor="role-employee" className="font-normal">Empleado</Label>
+                                                <FormLabel htmlFor="role-employee" className="font-normal">Empleado</FormLabel>
                                             </FormItem>
                                             <FormItem className="flex items-center space-x-2">
                                                 <FormControl>
                                                     <RadioGroupItem value="admin" id="role-admin" />
                                                 </FormControl>
-                                                <Label htmlFor="role-admin" className="font-normal">Administrador</Label>
+                                                <FormLabel htmlFor="role-admin" className="font-normal">Administrador</FormLabel>
                                             </FormItem>
                                         </RadioGroup>
                                     </FormControl>
@@ -370,7 +368,7 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                             <FormField
                                 control={form.control}
                                 name="permissions"
-                                render={({ field }) => (
+                                render={() => (
                                 <FormItem>
                                     <div className="mb-4">
                                         <FormLabel className="text-base">Permisos de Módulo</FormLabel>
@@ -380,25 +378,37 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         {modules.map((item) => (
-                                            <FormItem
+                                            <FormField
                                                 key={item.id}
-                                                className="flex flex-row items-start space-x-3 space-y-0"
-                                            >
-                                                <FormControl>
-                                                    <Checkbox
-                                                        checked={field.value?.includes(item.id)}
-                                                        onCheckedChange={(checked) => {
-                                                            const newValue = checked
-                                                                ? [...(field.value || []), item.id]
-                                                                : (field.value || []).filter((value) => value !== item.id);
-                                                            field.onChange(newValue);
-                                                        }}
-                                                    />
-                                                </FormControl>
-                                                <FormLabel className="font-normal">
-                                                    {item.label}
-                                                </FormLabel>
-                                            </FormItem>
+                                                control={form.control}
+                                                name="permissions"
+                                                render={({ field }) => {
+                                                    return (
+                                                    <FormItem
+                                                        key={item.id}
+                                                        className="flex flex-row items-start space-x-3 space-y-0"
+                                                    >
+                                                        <FormControl>
+                                                        <Checkbox
+                                                            checked={field.value?.includes(item.id)}
+                                                            onCheckedChange={(checked) => {
+                                                            return checked
+                                                                ? field.onChange([...field.value || [], item.id])
+                                                                : field.onChange(
+                                                                    field.value?.filter(
+                                                                    (value) => value !== item.id
+                                                                    )
+                                                                )
+                                                            }}
+                                                        />
+                                                        </FormControl>
+                                                        <FormLabel className="font-normal">
+                                                        {item.label}
+                                                        </FormLabel>
+                                                    </FormItem>
+                                                    )
+                                                }}
+                                            />
                                         ))}
                                     </div>
                                     <FormMessage />
