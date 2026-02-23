@@ -86,6 +86,7 @@ import type { PurchaseOrder } from "./purchase-order-manager";
 import { PurchaseOrderForm } from "../forms/purchase-order-form";
 import type { Client } from "./client-manager";
 import * as XLSX from "xlsx";
+import { User } from "firebase/auth";
 
 
 const projectSchema = z.object({
@@ -752,7 +753,12 @@ export function ProjectManager() {
             const otherLinkedQuoteIds = new Set(
               projects.filter(p => p.id !== project.id).map(p => p.quoteId).filter(Boolean)
             );
-            const availableQuotes = quotes.filter(q => !otherLinkedQuoteIds.has(q.id));
+            
+            const availableQuotes = quotes.filter(q => {
+                if (otherLinkedQuoteIds.has(q.id)) return false; // Exclude quotes linked to OTHER projects
+                if (userProfile?.role === 'admin') return true; // Admin sees all unlinked quotes
+                return q.userId === user?.uid; // Employee sees only their own unlinked quotes
+            });
 
             const onSelectQuote = (quoteId: string | null) => {
               handleLinkQuote(project.id, quoteId);
@@ -860,7 +866,12 @@ export function ProjectManager() {
             const [open, setOpen] = useState(false);
             
             const otherLinkedPoIds = new Set(projects.filter(p => p.id !== project.id).map(p => p.purchaseOrderId).filter(Boolean));
-            const availablePOs = purchaseOrders.filter(po => !otherLinkedPoIds.has(po.id));
+            
+            const availablePOs = purchaseOrders.filter(po => {
+                if (otherLinkedPoIds.has(po.id)) return false; // Exclude POs linked to OTHER projects
+                if (userProfile?.role === 'admin') return true; // Admin sees all unlinked POs
+                return po.userId === user?.uid; // Employee sees only their own unlinked POs
+            });
 
             const onSelectPO = (poId: string | null) => {
               handleLinkPurchaseOrder(project.id, poId);
@@ -965,7 +976,7 @@ export function ProjectManager() {
             )
         }
       }
-  ], [handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, purchaseOrders, handleLinkPurchaseOrder, handleSaveAndLinkQuote, handleUpdateQuote, handleSaveAndLinkPO, handleUpdatePO, handleEditPO, handleEditQuote]);
+  ], [handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, purchaseOrders, handleLinkPurchaseOrder, handleSaveAndLinkQuote, handleUpdateQuote, handleSaveAndLinkPO, handleUpdatePO, handleEditPO, handleEditQuote, user, userProfile]);
   
   const table = useReactTable({ 
     data: projects, 
@@ -987,6 +998,9 @@ export function ProjectManager() {
 
   const role = userProfile?.role;
   
+  const linkedQuoteIds = useMemo(() => new Set(projects.map(p => p.quoteId).filter(Boolean)), [projects]);
+  const linkedPoIds = useMemo(() => new Set(projects.map(p => p.purchaseOrderId).filter(Boolean)), [projects]);
+
   if (isLoading || authIsLoading || isProfileLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
@@ -1010,7 +1024,18 @@ export function ProjectManager() {
             <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Siguiente</Button>
         </div>
 
-      <ProjectFormDialog isOpen={isFormOpen} onOpenChange={setIsFormOpen} onSave={handleSaveProject} project={selectedProject} quotes={quotes} purchaseOrders={purchaseOrders} />
+      <ProjectFormDialog 
+        isOpen={isFormOpen} 
+        onOpenChange={setIsFormOpen} 
+        onSave={handleSaveProject} 
+        project={selectedProject} 
+        quotes={quotes} 
+        purchaseOrders={purchaseOrders} 
+        user={user}
+        userProfile={userProfile}
+        linkedQuoteIds={linkedQuoteIds}
+        linkedPoIds={linkedPoIds}
+      />
       <QuoteForm 
         isOpen={isQuoteFormOpen}
         onOpenChange={(open) => {
@@ -1048,9 +1073,13 @@ interface ProjectFormDialogProps {
   project: Project | null;
   quotes: Quote[];
   purchaseOrders: PurchaseOrder[];
+  user: User | null;
+  userProfile: UserProfile | null;
+  linkedQuoteIds: Set<string>;
+  linkedPoIds: Set<string>;
 }
 
-function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purchaseOrders }: ProjectFormDialogProps) {
+function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purchaseOrders, user, userProfile, linkedQuoteIds, linkedPoIds }: ProjectFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [clients, setClients] = useState<Client[]>([]);
     const [isClientComboboxOpen, setIsClientComboboxOpen] = useState(false);
@@ -1188,7 +1217,13 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
                                     <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar cotización..." /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         <SelectItem value="none">Ninguna</SelectItem>
-                                        {quotes.map(q => (
+                                        {quotes.filter(q => {
+                                            const isLinked = linkedQuoteIds.has(q.id);
+                                            const isSelfLinked = project?.quoteId === q.id;
+                                            if (isLinked && !isSelfLinked) return false;
+                                            if (userProfile?.role === 'admin') return true;
+                                            return q.userId === user?.uid;
+                                        }).map(q => (
                                             <SelectItem key={q.id} value={q.id}>
                                                {q.quoteNumber} ({q.clientName})
                                             </SelectItem>
@@ -1203,7 +1238,13 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
                                     <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar orden..." /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         <SelectItem value="none">Ninguna</SelectItem>
-                                        {purchaseOrders.map(po => (
+                                        {purchaseOrders.filter(po => {
+                                            const isLinked = linkedPoIds.has(po.id);
+                                            const isSelfLinked = project?.purchaseOrderId === po.id;
+                                            if(isLinked && !isSelfLinked) return false;
+                                            if (userProfile?.role === 'admin') return true;
+                                            return po.userId === user?.uid;
+                                        }).map(po => (
                                             <SelectItem key={po.id} value={po.id}>
                                                {po.purchaseOrderNumber} ({po.supplierName})
                                             </SelectItem>
@@ -1226,7 +1267,3 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
         </Dialog>
     )
 }
-
-    
-
-    
