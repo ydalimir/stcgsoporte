@@ -6,6 +6,7 @@
       "type": "object",
       "properties": {
         "uid": { "type": "string", "description": "The user's unique ID." },
+        "userCode": { "type": "string", "description": "A two-digit sequential code for the user (e.g., '01')." },
         "email": { "type": "string", "format": "email" },
         "displayName": { "type": "string" },
         "role": { "type": "string", "enum": ["admin", "employee"] },
@@ -23,9 +24,11 @@
             },
             "description": "Map of modules the user has access to, e.g. {'projects': true, 'clients': true}"
         },
+        "quoteCounter": { "type": "number", "description": "The last used number for this user's quotes." },
+        "purchaseOrderCounter": { "type": "number", "description": "The last used number for this user's purchase orders." },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["uid", "email", "role"]
+      "required": ["uid", "email", "role", "userCode"]
     },
     "Project": {
       "title": "Project",
@@ -79,7 +82,7 @@
       "description": "Represents a purchase order sent to a supplier.",
       "type": "object",
       "properties": {
-        "purchaseOrderNumber": { "type": "number" },
+        "purchaseOrderNumber": { "type": "string", "description": "The user-facing sequential ID for the purchase order (e.g., OC01-0001)." },
         "date": { "type": "string", "format": "date" },
         "supplierId": { "type": "string", "description": "The ID of the linked supplier." },
         "supplierName": { "type": "string" },
@@ -122,7 +125,7 @@
       "description": "Represents a price quote for a client.",
       "type": "object",
       "properties": {
-        "quoteNumber": { "type": "number"},
+        "quoteNumber": { "type": "string", "description": "The user-facing sequential ID for the quote (e.g., C01-0001)."},
         "clientId": { "type": "string", "description": "The ID of the linked client." },
         "clientName": { "type": "string", "description": "The name of the client, can be manually entered or from linked client." },
         "clientPhone": { "type": "string" },
@@ -216,7 +219,7 @@
     },
     "/counters/{counterId}": {
         "schema": { "type": "object", "properties": { "lastNumber": { "type": "number" } } },
-        "description": "Global counters for tickets, quotes, etc."
+        "description": "Global counters for tickets, users, etc."
     }
   }
 }

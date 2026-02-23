@@ -68,7 +68,7 @@ export type QuoteItem = {
 
 export type Quote = {
   id: string;
-  quoteNumber: number;
+  quoteNumber: string;
   clientName: string;
   clientPhone: string;
   clientEmail?: string;
@@ -93,6 +93,8 @@ export type Quote = {
 
 type UserProfile = {
   role: 'admin' | 'employee';
+  userCode: string;
+  quoteCounter: number;
 };
 
 const createOrUpdateTicketFromQuote = async (quote: Quote) => {
@@ -101,7 +103,7 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
     }
     
     const itemsDescription = quote.items.map(item => `${item.quantity} x ${item.description}`).join(', ');
-    const finalDescription = `Servicio basado en la cotización #C01-${String(quote.quoteNumber).padStart(4, '0')}. --- ITEMS: ${itemsDescription}. --- OBSERVACIONES: ${quote.observations || 'Ninguna.'}`;
+    const finalDescription = `Servicio basado en la cotización #${quote.quoteNumber}. --- ITEMS: ${itemsDescription}. --- OBSERVACIONES: ${quote.observations || 'Ninguna.'}`;
 
     const ticketData = {
       clientName: quote.clientName,
@@ -110,7 +112,7 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
       clientEmail: quote.clientEmail || "N/A", 
       clientRfc: quote.rfc || "N/A",
       serviceType: "correctivo" as "correctivo" | "preventivo", 
-      equipmentType: `Servicio desde cotización #C01-${String(quote.quoteNumber).padStart(4, '0')}`,
+      equipmentType: `Servicio desde cotización #${quote.quoteNumber}`,
       description: finalDescription,
       urgency: "media" as "baja" | "media" | "alta",
       status: "Recibido",
@@ -151,7 +153,7 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
 
 const downloadPDF = (quote: Quote) => {
     const doc = new jsPDF();
-    const quoteId = `C01-${String(quote.quoteNumber).padStart(4, '0')}`;
+    const quoteId = quote.quoteNumber;
     const pageHeight = doc.internal.pageSize.height;
     let yPos = 20;
 
@@ -270,7 +272,7 @@ const downloadPDF = (quote: Quote) => {
 }
 
 const downloadExcel = (quote: Quote) => {
-    const quoteId = `C01-${String(quote.quoteNumber).padStart(4, '0')}`;
+    const quoteId = quote.quoteNumber;
     
     // Items table
     const itemsHeader = ["Descripción", "Unidad", "Cantidad", "Precio Unitario", "Importe"];
@@ -346,7 +348,7 @@ export function QuoteManager() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const quotesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
-        setQuotes(quotesData.sort((a, b) => (b.quoteNumber || 0) - (a.quoteNumber || 0)));
+        setQuotes(quotesData.sort((a, b) => (b.quoteNumber || "").localeCompare(a.quoteNumber || "")));
         setIsLoading(false);
     }, (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -374,17 +376,25 @@ export function QuoteManager() {
                 toast({ title: "Cotización Actualizada", description: `La cotización para ${quoteData.clientName} ha sido actualizada.` });
             }
         } else { // CREATE
-            const newQuoteData = { ...quoteData, userId: user.uid };
             await runTransaction(db, async (transaction) => {
-                const counterRef = doc(db, "counters", "quotes");
-                const counterDoc = await transaction.get(counterRef);
-                let newQuoteNumber = 1;
-                if (counterDoc.exists()) {
-                    newQuoteNumber = counterDoc.data().lastNumber + 1;
+                if (!user) throw new Error("User not authenticated");
+                const userDocRef = doc(db, "users", user.uid);
+                const userDoc = await transaction.get(userDocRef);
+            
+                if (!userDoc.exists()) {
+                    throw new Error("User profile does not exist.");
                 }
-                transaction.set(counterRef, { lastNumber: newQuoteNumber }, { merge: true });
+            
+                const userData = userDoc.data();
+                const newQuoteCounter = (userData.quoteCounter || 0) + 1;
+                const userCode = userData.userCode || "00";
+            
+                const newQuoteNumber = `C${userCode}-${String(newQuoteCounter).padStart(4, '0')}`;
+            
+                transaction.update(userDocRef, { quoteCounter: newQuoteCounter });
+            
                 const newQuoteRef = doc(collection(db, "quotes"));
-                transaction.set(newQuoteRef, { ...newQuoteData, quoteNumber: newQuoteNumber });
+                transaction.set(newQuoteRef, { ...quoteData, quoteNumber: newQuoteNumber, userId: user.uid });
             });
             toast({ title: "Cotización Creada", description: `Una nueva cotización ha sido creada.` });
         }
@@ -392,12 +402,12 @@ export function QuoteManager() {
         setSelectedQuote(null);
     } catch (error) {
         const operation = selectedQuote ? 'update' : 'create';
-        const path = selectedQuote ? `quotes/${selectedQuote.id}` : 'counters/quotes'; // Best guess for creation failure
+        const path = selectedQuote ? `quotes/${selectedQuote.id}` : 'users';
         const data = selectedQuote ? quoteData : { ...quoteData, userId: user.uid };
 
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: path,
-            operation: operation === 'create' ? 'write' : 'update', // 'write' for transaction
+            operation: operation === 'create' ? 'write' : 'update',
             requestResourceData: data,
         }));
     }
@@ -442,8 +452,7 @@ export function QuoteManager() {
         accessorKey: "quoteNumber", 
         header: "ID",
         cell: ({ row }) => {
-          const quoteNumber = row.original.quoteNumber;
-          return quoteNumber ? `C01-${String(quoteNumber).padStart(4, '0')}` : 'N/A';
+          return row.original.quoteNumber || 'N/A';
         }
       },
       { accessorKey: "clientName", header: "Cliente" },

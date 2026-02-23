@@ -67,7 +67,7 @@ export type PurchaseOrderItem = {
 
 export type PurchaseOrder = {
   id: string;
-  purchaseOrderNumber: number;
+  purchaseOrderNumber: string;
   date: string;
   deliveryDate?: string;
   supplierId?: string;
@@ -89,11 +89,13 @@ export type PurchaseOrder = {
 
 type UserProfile = {
   role: 'admin' | 'employee';
+  userCode: string;
+  purchaseOrderCounter: number;
 };
 
 const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     const doc = new jsPDF();
-    const poId = `OC01-${String(po.purchaseOrderNumber).padStart(4, '0')}`;
+    const poId = po.purchaseOrderNumber;
     let yPos = 20;
 
     // --- Header ---
@@ -131,7 +133,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     
     // --- Details Table ---
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
-    const quoteDisplay = linkedQuote ? `C01-${String(linkedQuote.quoteNumber).padStart(4, '0')}` : 'N/A';
+    const quoteDisplay = linkedQuote ? linkedQuote.quoteNumber : 'N/A';
     const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A'
 
     autoTable(doc, {
@@ -213,7 +215,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
 }
 
 const downloadExcel = (po: PurchaseOrder) => {
-    const poId = `OC01-${String(po.purchaseOrderNumber).padStart(4, '0')}`;
+    const poId = po.purchaseOrderNumber;
     
     const poData = [
       ["Orden de Compra:", poId],
@@ -316,7 +318,7 @@ export function PurchaseOrderManager() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const poData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PurchaseOrder));
-        setPurchaseOrders(poData.sort((a, b) => (b.purchaseOrderNumber || 0) - (a.purchaseOrderNumber || 0)));
+        setPurchaseOrders(poData.sort((a, b) => (b.purchaseOrderNumber || "").localeCompare(a.purchaseOrderNumber || "")));
         setIsLoading(false);
     }, (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -354,13 +356,21 @@ export function PurchaseOrderManager() {
             toast({ title: "Orden de Compra Actualizada", description: `La orden para ${poData.supplierName} ha sido actualizada.` });
         } else { // CREATE
             await runTransaction(db, async (transaction) => {
-                const counterRef = doc(db, "counters", "purchaseOrders");
-                const counterDoc = await transaction.get(counterRef);
-                let newPoNumber = 1;
-                if (counterDoc.exists()) {
-                    newPoNumber = counterDoc.data().lastNumber + 1;
+                if (!user) throw new Error("User not authenticated");
+                const userDocRef = doc(db, "users", user.uid);
+                const userDoc = await transaction.get(userDocRef);
+
+                if (!userDoc.exists()) {
+                    throw new Error("User profile does not exist.");
                 }
-                transaction.set(counterRef, { lastNumber: newPoNumber }, { merge: true });
+                const userData = userDoc.data();
+                const newPoCounter = (userData.purchaseOrderCounter || 0) + 1;
+                const userCode = userData.userCode || "00";
+            
+                const newPoNumber = `OC${userCode}-${String(newPoCounter).padStart(4, '0')}`;
+                
+                transaction.update(userDocRef, { purchaseOrderCounter: newPoCounter });
+            
                 const newPoRef = doc(collection(db, "purchase_orders"));
                 transaction.set(newPoRef, { ...poData, purchaseOrderNumber: newPoNumber, userId: user.uid });
             });
@@ -401,8 +411,7 @@ export function PurchaseOrderManager() {
         accessorKey: "purchaseOrderNumber", 
         header: "ID",
         cell: ({ row }) => {
-          const poNumber = row.original.purchaseOrderNumber;
-          return poNumber ? `OC01-${String(poNumber).padStart(4, '0')}` : 'N/A';
+          return row.original.purchaseOrderNumber || 'N/A';
         }
       },
       { accessorKey: "supplierName", header: "Proveedor" },

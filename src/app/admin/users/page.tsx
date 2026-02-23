@@ -46,7 +46,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { errorEmitter } from "@/lib/error-emitter";
@@ -97,6 +97,9 @@ type UserProfile = {
     role: "admin" | "employee";
     permissions: { [key: string]: boolean };
     createdAt: any;
+    userCode: string;
+    quoteCounter: number;
+    purchaseOrderCounter: number;
 };
 
 export default function UsersPage() {
@@ -163,27 +166,46 @@ export default function UsersPage() {
             
             const newUser = userCredential.user;
             const finalPermissions = data.role === 'admin' ? {} : (data.permissions || []).reduce((acc, p) => ({ ...acc, [p]: true }), {});
-            const userData = {
-                uid: newUser.uid,
-                displayName: data.displayName,
-                email: data.email,
-                role: data.role,
-                permissions: finalPermissions,
-                createdAt: serverTimestamp(),
-            };
+            
+            const userCounterRef = doc(db, "counters", "users");
             const userDocRef = doc(db, "users", newUser.uid);
 
             try {
-                await setDoc(userDocRef, userData);
+                await runTransaction(db, async (transaction) => {
+                    const counterDoc = await transaction.get(userCounterRef);
+                    let newUserCodeNumber = 1;
+                    if (counterDoc.exists() && counterDoc.data().lastNumber) {
+                        newUserCodeNumber = counterDoc.data().lastNumber + 1;
+                    }
+                    
+                    transaction.set(userCounterRef, { lastNumber: newUserCodeNumber }, { merge: true });
+            
+                    const userCode = String(newUserCodeNumber).padStart(2, '0');
+                    
+                    const userData = {
+                        uid: newUser.uid,
+                        displayName: data.displayName,
+                        email: data.email,
+                        role: data.role,
+                        permissions: finalPermissions,
+                        createdAt: serverTimestamp(),
+                        userCode: userCode,
+                        quoteCounter: 0,
+                        purchaseOrderCounter: 0
+                    };
+            
+                    transaction.set(userDocRef, userData);
+                });
+
                 await userCreationAuth.signOut();
                 toast({ title: "Usuario Creado", description: `La cuenta para ${data.email} ha sido creada.` });
                 setIsFormOpen(false);
                 setSelectedUser(null);
             } catch (serverError) {
-                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                 errorEmitter.emit('permission-error', new FirestorePermissionError({
                     path: userDocRef.path,
                     operation: 'create',
-                    requestResourceData: userData,
+                    requestResourceData: {},
                 }));
             }
         }
@@ -193,6 +215,7 @@ export default function UsersPage() {
         { accessorKey: "displayName", header: "Nombre" },
         { accessorKey: "email", header: "Correo" },
         { accessorKey: "role", header: "Rol" },
+        { accessorKey: "userCode", header: "Código" },
         { id: "actions",
           cell: ({ row }) => (
               <DropdownMenu>

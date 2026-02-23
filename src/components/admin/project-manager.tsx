@@ -109,11 +109,14 @@ export type Project = z.infer<typeof projectSchema> & {
 
 type UserProfile = {
   role: 'admin' | 'employee';
+  userCode: string;
+  quoteCounter: number;
+  purchaseOrderCounter: number;
 };
 
 const downloadQuotePDF = (quote: Quote) => {
     const doc = new jsPDF();
-    const quoteId = `C01-${String(quote.quoteNumber).padStart(4, '0')}`;
+    const quoteId = quote.quoteNumber;
     const pageHeight = doc.internal.pageSize.height;
     let yPos = 20;
 
@@ -232,7 +235,7 @@ const downloadQuotePDF = (quote: Quote) => {
 }
 
 const downloadQuoteExcel = (quote: Quote) => {
-    const quoteId = `C01-${String(quote.quoteNumber).padStart(4, '0')}`;
+    const quoteId = quote.quoteNumber;
     
     // Items table
     const itemsHeader = ["Descripción", "Unidad", "Cantidad", "Precio Unitario", "Importe"];
@@ -269,7 +272,7 @@ const downloadQuoteExcel = (quote: Quote) => {
 
 const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     const doc = new jsPDF();
-    const poId = `OC01-${String(po.purchaseOrderNumber).padStart(4, '0')}`;
+    const poId = po.purchaseOrderNumber;
     let yPos = 20;
 
     // --- Header ---
@@ -307,7 +310,7 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     
     // --- Details Table ---
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
-    const quoteDisplay = linkedQuote ? `C01-${String(linkedQuote.quoteNumber).padStart(4, '0')}` : 'N/A';
+    const quoteDisplay = linkedQuote ? linkedQuote.quoteNumber : 'N/A';
     const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A'
 
     autoTable(doc, {
@@ -389,7 +392,7 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
 }
 
 const downloadPurchaseOrderExcel = (po: PurchaseOrder) => {
-    const poId = `OC01-${String(po.purchaseOrderNumber).padStart(4, '0')}`;
+    const poId = po.purchaseOrderNumber;
     
     const poData = [
       ["Orden de Compra:", poId],
@@ -602,13 +605,17 @@ export function ProjectManager() {
     if (!linkingProject || !user) return;
     try {
         const newQuoteId = await runTransaction(db, async (transaction) => {
-            const counterRef = doc(db, "counters", "quotes");
-            const counterDoc = await transaction.get(counterRef);
-            let newQuoteNumber = 1;
-            if (counterDoc.exists()) {
-                newQuoteNumber = counterDoc.data().lastNumber + 1;
-            }
-            transaction.set(counterRef, { lastNumber: newQuoteNumber }, { merge: true });
+            const userDocRef = doc(db, "users", user.uid);
+            const userDoc = await transaction.get(userDocRef);
+            if (!userDoc.exists()) throw new Error("User profile not found");
+            
+            const userData = userDoc.data();
+            const newCounter = (userData.quoteCounter || 0) + 1;
+            const userCode = userData.userCode || '00';
+            const newQuoteNumber = `C${userCode}-${String(newCounter).padStart(4, '0')}`;
+
+            transaction.update(userDocRef, { quoteCounter: newCounter });
+
             const newQuoteRef = doc(collection(db, "quotes"));
             transaction.set(newQuoteRef, { ...quoteData, quoteNumber: newQuoteNumber, userId: user.uid });
             return newQuoteRef.id;
@@ -668,13 +675,18 @@ export function ProjectManager() {
     if (!linkingProjectForPO || !user) return;
     try {
         const newPOId = await runTransaction(db, async (transaction) => {
-            const counterRef = doc(db, "counters", "purchaseOrders");
-            const counterDoc = await transaction.get(counterRef);
-            let newPoNumber = 1;
-            if (counterDoc.exists()) {
-                newPoNumber = counterDoc.data().lastNumber + 1;
-            }
-            transaction.set(counterRef, { lastNumber: newPoNumber }, { merge: true });
+            const userDocRef = doc(db, "users", user.uid);
+            const userDoc = await transaction.get(userDocRef);
+            if (!userDoc.exists()) throw new Error("User profile not found");
+
+            const userData = userDoc.data();
+            const newPoCounter = (userData.purchaseOrderCounter || 0) + 1;
+            const userCode = userData.userCode || "00";
+        
+            const newPoNumber = `OC${userCode}-${String(newPoCounter).padStart(4, '0')}`;
+            
+            transaction.update(userDocRef, { purchaseOrderCounter: newPoCounter });
+
             const newPORef = doc(collection(db, "purchase_orders"));
             transaction.set(newPORef, { ...poData, purchaseOrderNumber: newPoNumber, userId: user.uid });
             return newPORef.id;
@@ -753,7 +765,7 @@ export function ProjectManager() {
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" aria-expanded={open} className="w-[150px] justify-between">
                       {currentQuote 
-                          ? `C01-${String(currentQuote.quoteNumber).padStart(4, '0')}`
+                          ? currentQuote.quoteNumber
                           : "Asignar..."
                       }
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -772,11 +784,11 @@ export function ProjectManager() {
                           {availableQuotes.map(q => (
                             <CommandItem 
                               key={q.id} 
-                              value={`C01-${String(q.quoteNumber).padStart(4, '0')} ${q.clientName}`}
+                              value={`${q.quoteNumber} ${q.clientName}`}
                               onSelect={() => onSelectQuote(q.id)}
                             >
                               <Check className={cn("mr-2 h-4 w-4", project.quoteId === q.id ? "opacity-100" : "opacity-0")}/>
-                              C01-{String(q.quoteNumber).padStart(4, '0')} ({q.clientName})
+                              {q.quoteNumber} ({q.clientName})
                             </CommandItem>
                           ))}
                         </CommandGroup>
@@ -861,7 +873,7 @@ export function ProjectManager() {
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" aria-expanded={open} className="w-[150px] justify-between">
                       {currentPO 
-                          ? `OC01-${String(currentPO.purchaseOrderNumber).padStart(4, '0')}`
+                          ? currentPO.purchaseOrderNumber
                           : "Asignar..."
                       }
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -880,11 +892,11 @@ export function ProjectManager() {
                           {availablePOs.map(po => (
                             <CommandItem 
                               key={po.id} 
-                              value={`OC01-${String(po.purchaseOrderNumber).padStart(4, '0')} ${po.supplierName}`}
+                              value={`${po.purchaseOrderNumber} ${po.supplierName}`}
                               onSelect={() => onSelectPO(po.id)}
                             >
                               <Check className={cn("mr-2 h-4 w-4", project.purchaseOrderId === po.id ? "opacity-100" : "opacity-0")}/>
-                              OC01-{String(po.purchaseOrderNumber).padStart(4, '0')} ({po.supplierName})
+                              {po.purchaseOrderNumber} ({po.supplierName})
                             </CommandItem>
                           ))}
                         </CommandGroup>
@@ -1177,7 +1189,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
                                         <SelectItem value="none">Ninguna</SelectItem>
                                         {quotes.map(q => (
                                             <SelectItem key={q.id} value={q.id}>
-                                               C01-{String(q.quoteNumber).padStart(4, '0')} ({q.clientName})
+                                               {q.quoteNumber} ({q.clientName})
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -1192,7 +1204,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
                                         <SelectItem value="none">Ninguna</SelectItem>
                                         {purchaseOrders.map(po => (
                                             <SelectItem key={po.id} value={po.id}>
-                                               OC01-{String(po.purchaseOrderNumber).padStart(4, '0')} ({po.supplierName})
+                                               {po.purchaseOrderNumber} ({po.supplierName})
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
