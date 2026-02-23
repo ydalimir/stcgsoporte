@@ -14,6 +14,8 @@ import { Download, ChevronDown } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { errorEmitter } from "@/lib/error-emitter";
+import { FirestorePermissionError } from "@/lib/errors";
 
 type TicketDetailsProps = {
   ticket: Ticket;
@@ -103,29 +105,37 @@ export function TicketDetails({ ticket }: TicketDetailsProps) {
 
     const updateStatus = async (newStatus: Ticket['status']) => {
         const ticketRef = doc(db, "tickets", ticket.id);
+        const payload = { status: newStatus };
         try {
-            await updateDoc(ticketRef, { status: newStatus });
+            await updateDoc(ticketRef, payload);
             toast({
                 title: "Estado Actualizado",
                 description: `El ticket ha sido marcado como ${newStatus}.`,
             });
         } catch (error) {
-            console.error("Error updating status:", error);
-            toast({ title: "Error", description: "No se pudo actualizar el estado.", variant: "destructive" });
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: ticketRef.path,
+                operation: 'update',
+                requestResourceData: payload,
+            }));
         }
     };
     
     const updateUrgency = async (newUrgency: Ticket['urgency']) => {
         const ticketRef = doc(db, "tickets", ticket.id);
+        const payload = { urgency: newUrgency };
         try {
-            await updateDoc(ticketRef, { urgency: newUrgency });
+            await updateDoc(ticketRef, payload);
             toast({
                 title: "Urgencia Actualizada",
                 description: `La urgencia del ticket se ha cambiado a ${newUrgency}.`,
             });
         } catch (error) {
-            console.error("Error updating urgency:", error);
-            toast({ title: "Error", description: "No se pudo actualizar la urgencia.", variant: "destructive" });
+             errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: ticketRef.path,
+                operation: 'update',
+                requestResourceData: payload,
+            }));
         }
     };
 

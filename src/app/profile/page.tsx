@@ -87,20 +87,13 @@ export default function ProfilePage() {
     if (!user) return;
     setIsSaving(true);
     const userDocRef = doc(db, "users", user.uid);
+    const payload = { displayName };
     try {
         // Update Firebase Auth profile
         await updateProfile(user, { displayName });
         
         // Update Firestore document
-        updateDoc(userDocRef, {
-            displayName,
-        }).catch(serverError => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: userDocRef.path,
-                operation: 'update',
-                requestResourceData: { displayName }
-            }));
-        });
+        await updateDoc(userDocRef, payload);
 
         setProfile(prev => prev ? { ...prev, displayName } : null);
 
@@ -109,12 +102,11 @@ export default function ProfilePage() {
             description: "Tus cambios han sido guardados exitosamente.",
         });
     } catch (error: any) {
-        console.error("Error updating profile:", error);
-        toast({
-            title: "Error al Guardar",
-            description: "No se pudieron guardar los cambios.",
-            variant: "destructive",
-        });
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'update',
+            requestResourceData: payload
+        }));
     } finally {
         setIsSaving(false);
     }

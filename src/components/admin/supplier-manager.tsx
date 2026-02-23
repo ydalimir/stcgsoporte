@@ -90,7 +90,6 @@ export function SupplierManager() {
         setIsLoading(false);
     }, (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'suppliers', operation: 'list' }));
-        toast({ title: "Error de Permisos", description: "No se pudieron cargar los proveedores.", variant: "destructive" });
         setIsLoading(false);
     });
 
@@ -98,32 +97,47 @@ export function SupplierManager() {
   }, [user, authIsLoading, toast]);
 
   const handleSaveSupplier = useCallback(async (data: Omit<Supplier, 'id' | 'createdAt'>) => {
-    try {
-        const supplierData = { ...data };
-        if (selectedSupplier?.id) {
-            const supplierDoc = doc(db, "suppliers", selectedSupplier.id);
-            await updateDoc(supplierDoc, supplierData);
+    if (selectedSupplier?.id) {
+        const supplierDoc = doc(db, "suppliers", selectedSupplier.id);
+        try {
+            await updateDoc(supplierDoc, data);
             toast({ title: "Proveedor Actualizado", description: "La información del proveedor ha sido actualizada." });
-        } else {
-            await addDoc(collection(db, "suppliers"), { ...supplierData, createdAt: serverTimestamp() });
-            toast({ title: "Proveedor Creado", description: "Un nuevo proveedor ha sido añadido." });
+        } catch(error) {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: supplierDoc.path,
+                operation: 'update',
+                requestResourceData: data,
+            }));
         }
-        setIsFormOpen(false);
-        setSelectedSupplier(null);
-    } catch(error) {
-        console.error("Error saving supplier:", error);
-        toast({ title: "Error al guardar", variant: "destructive" });
+    } else {
+        const supplierData = { ...data, createdAt: serverTimestamp() };
+        const suppliersCollection = collection(db, "suppliers");
+        try {
+            await addDoc(suppliersCollection, supplierData);
+            toast({ title: "Proveedor Creado", description: "Un nuevo proveedor ha sido añadido." });
+        } catch(error) {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: suppliersCollection.path,
+                operation: 'create',
+                requestResourceData: supplierData,
+            }));
+        }
     }
-  }, [selectedSupplier, toast]);
+    setIsFormOpen(false);
+    setSelectedSupplier(null);
+  }, [selectedSupplier, toast, setIsFormOpen, setSelectedSupplier]);
 
   const handleDeleteSupplier = useCallback(async (id: string) => {
-      try {
-        await deleteDoc(doc(db, "suppliers", id));
-        toast({ title: "Proveedor Eliminado", variant: "destructive" });
-      } catch(error) {
-         console.error("Error deleting supplier:", error);
-         toast({ title: "Error al eliminar", variant: "destructive" });
-      }
+    const supplierDoc = doc(db, "suppliers", id);
+    try {
+      await deleteDoc(supplierDoc);
+      toast({ title: "Proveedor Eliminado", variant: "destructive" });
+    } catch(error) {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: supplierDoc.path,
+            operation: 'delete',
+        }));
+    }
   }, [toast]);
   
   const columns: ColumnDef<Supplier>[] = useMemo(() => [

@@ -140,9 +140,15 @@ export function TicketForm({ onTicketCreated, isAdminMode = false }: TicketFormP
         return;
     }
     setIsSubmitting(true);
+    const finalPrice = data.price ? data.price * (data.quantity || 1) : undefined;
+    const ticketPayload = {
+      ...data,
+      price: finalPrice,
+      userId: isAdminMode ? 'admin_created' : user!.uid,
+      status: "Recibido",
+      createdAt: serverTimestamp(),
+    };
     try {
-      const finalPrice = data.price ? data.price * (data.quantity || 1) : undefined;
-      
       await runTransaction(db, async (transaction) => {
         const counterRef = doc(db, "counters", "tickets");
         const counterDoc = await transaction.get(counterRef);
@@ -153,14 +159,7 @@ export function TicketForm({ onTicketCreated, isAdminMode = false }: TicketFormP
         transaction.set(counterRef, { lastNumber: newTicketNumber }, { merge: true });
         
         const newTicketRef = doc(collection(db, "tickets"));
-        transaction.set(newTicketRef, {
-          ...data,
-          price: finalPrice,
-          userId: isAdminMode ? 'admin_created' : user!.uid,
-          status: "Recibido",
-          createdAt: serverTimestamp(),
-          ticketNumber: newTicketNumber,
-        });
+        transaction.set(newTicketRef, { ...ticketPayload, ticketNumber: newTicketNumber });
       });
 
       toast({
@@ -176,8 +175,11 @@ export function TicketForm({ onTicketCreated, isAdminMode = false }: TicketFormP
       }
 
     } catch (error) {
-      console.error("Error al crear el ticket: ", error);
-      toast({ title: "Error al Enviar", description: "No se pudo crear el ticket. Por favor, intente más tarde.", variant: "destructive" });
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: 'tickets',
+        operation: 'create',
+        requestResourceData: ticketPayload
+      }));
     } finally {
       setIsSubmitting(false);
     }

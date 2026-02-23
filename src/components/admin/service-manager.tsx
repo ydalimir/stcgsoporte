@@ -121,19 +121,26 @@ export function ServiceManager() {
         setIsFormOpen(false);
         setSelectedService(null);
     } catch(error) {
-        console.error("Error saving service:", error);
-        toast({ title: "Error al guardar", description: "No se pudo guardar el servicio.", variant: "destructive" });
+        const operation = selectedService?.id ? 'update' : 'create';
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: selectedService?.id ? `services/${selectedService.id}` : 'services',
+            operation: operation,
+            requestResourceData: data,
+        }));
     }
   };
 
   const handleDeleteService = async (id?: string) => {
       if(!id) return;
+      const serviceDoc = doc(db, "services", id);
       try {
-        await deleteDoc(doc(db, "services", id));
+        await deleteDoc(serviceDoc);
         toast({ title: "Servicio Eliminado", variant: "destructive" });
       } catch(error) {
-         console.error("Error deleting service:", error);
-         toast({ title: "Error al eliminar", description: "No se pudo eliminar el servicio.", variant: "destructive" });
+         errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: serviceDoc.path,
+            operation: 'delete',
+        }));
       }
   };
   

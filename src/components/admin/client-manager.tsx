@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -88,7 +89,6 @@ export function ClientManager() {
         setIsLoading(false);
     }, (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'clients', operation: 'list' }));
-        toast({ title: "Error de Permisos", description: "No se pudieron cargar los clientes.", variant: "destructive" });
         setIsLoading(false);
     });
 
@@ -96,32 +96,47 @@ export function ClientManager() {
   }, [user, authIsLoading, toast]);
 
   const handleSaveClient = useCallback(async (data: Omit<Client, 'id' | 'createdAt'>) => {
-    try {
-        const clientData = { ...data };
-        if (selectedClient?.id) {
-            const clientDoc = doc(db, "clients", selectedClient.id);
-            await updateDoc(clientDoc, clientData);
+    if (selectedClient?.id) {
+        const clientDoc = doc(db, "clients", selectedClient.id);
+        try {
+            await updateDoc(clientDoc, data);
             toast({ title: "Cliente Actualizado", description: "La información del cliente ha sido actualizada." });
-        } else {
-            await addDoc(collection(db, "clients"), { ...clientData, createdAt: serverTimestamp() });
-            toast({ title: "Cliente Creado", description: "Un nuevo cliente ha sido añadido a la cartera." });
+        } catch(error) {
+             errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: clientDoc.path,
+                operation: 'update',
+                requestResourceData: data,
+            }));
         }
-        setIsFormOpen(false);
-        setSelectedClient(null);
-    } catch(error) {
-        console.error("Error saving client:", error);
-        toast({ title: "Error al guardar", variant: "destructive" });
+    } else {
+        const clientData = { ...data, createdAt: serverTimestamp() };
+        const clientsCollection = collection(db, "clients");
+        try {
+            await addDoc(clientsCollection, clientData);
+            toast({ title: "Cliente Creado", description: "Un nuevo cliente ha sido añadido a la cartera." });
+        } catch(error) {
+             errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: clientsCollection.path,
+                operation: 'create',
+                requestResourceData: clientData,
+            }));
+        }
     }
-  }, [selectedClient, toast]);
+    setIsFormOpen(false);
+    setSelectedClient(null);
+  }, [selectedClient, toast, setIsFormOpen, setSelectedClient]);
 
   const handleDeleteClient = useCallback(async (id: string) => {
-      try {
-        await deleteDoc(doc(db, "clients", id));
-        toast({ title: "Cliente Eliminado", variant: "destructive" });
-      } catch(error) {
-         console.error("Error deleting client:", error);
-         toast({ title: "Error al eliminar", variant: "destructive" });
-      }
+    const clientDoc = doc(db, "clients", id);
+    try {
+      await deleteDoc(clientDoc);
+      toast({ title: "Cliente Eliminado", variant: "destructive" });
+    } catch(error) {
+       errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: clientDoc.path,
+            operation: 'delete',
+        }));
+    }
   }, [toast]);
   
   const columns: ColumnDef<Client>[] = useMemo(() => [

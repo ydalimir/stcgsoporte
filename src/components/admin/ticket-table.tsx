@@ -243,11 +243,6 @@ export function TicketTable() {
             path: 'tickets',
             operation: 'list',
         }));
-        toast({
-          title: "Error al cargar los tickets",
-          description: "No se pudieron obtener los datos. Intente de nuevo.",
-          variant: "destructive",
-        });
         setIsLoading(false);
       }
     );
@@ -258,37 +253,36 @@ export function TicketTable() {
 
   const updateTicketStatus = async (ticketId: string, status: string) => {
     const ticketRef = doc(db, "tickets", ticketId)
+    const payload = { status };
     try {
-      await updateDoc(ticketRef, { status })
+      await updateDoc(ticketRef, payload)
       toast({
         title: "Ticket Actualizado",
         description: `El estado del ticket se ha cambiado a "${status}".`,
       })
     } catch (error) {
-      console.error("Error updating ticket status:", error)
-      toast({
-        title: "Error al actualizar",
-        description: "No se pudo cambiar el estado del ticket.",
-        variant: "destructive",
-      })
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: ticketRef.path,
+        operation: 'update',
+        requestResourceData: payload,
+      }));
     }
   }
   
   const handleDeleteTicket = async (ticketId: string) => {
+    const ticketRef = doc(db, "tickets", ticketId);
     try {
-      await deleteDoc(doc(db, "tickets", ticketId));
+      await deleteDoc(ticketRef);
       toast({
         title: "Ticket Eliminado",
         description: "El ticket ha sido eliminado permanentemente.",
         variant: "destructive",
       });
     } catch (error) {
-      console.error("Error deleting ticket:", error);
-      toast({
-        title: "Error al eliminar",
-        description: "No se pudo eliminar el ticket.",
-        variant: "destructive",
-      });
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: ticketRef.path,
+        operation: 'delete',
+      }));
     }
   };
 

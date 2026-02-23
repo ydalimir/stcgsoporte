@@ -95,7 +95,6 @@ export function SparePartsManager() {
             path: 'spare_parts',
             operation: 'list',
         }));
-        toast({ title: "Error al cargar", description: "No se pudieron cargar las refacciones.", variant: "destructive"});
         setIsLoading(false);
     });
     return () => unsubscribe();
@@ -114,19 +113,26 @@ export function SparePartsManager() {
         setIsFormOpen(false);
         setSelectedPart(null);
     } catch(error) {
-        console.error("Error saving part:", error);
-        toast({ title: "Error al guardar", description: "No se pudo guardar la refacción.", variant: "destructive" });
+        const operation = selectedPart?.id ? 'update' : 'create';
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: selectedPart?.id ? `spare_parts/${selectedPart.id}` : 'spare_parts',
+            operation: operation,
+            requestResourceData: data,
+        }));
     }
-  }, [selectedPart, toast]);
+  }, [selectedPart, toast, setIsFormOpen, setSelectedPart]);
 
   const handleDeletePart = useCallback(async (id?: string) => {
       if(!id) return;
+      const partDoc = doc(db, "spare_parts", id);
       try {
-        await deleteDoc(doc(db, "spare_parts", id));
+        await deleteDoc(partDoc);
         toast({ title: "Refacción Eliminada", variant: "destructive" });
       } catch(error) {
-         console.error("Error deleting part:", error);
-         toast({ title: "Error al eliminar", description: "No se pudo eliminar la refacción.", variant: "destructive" });
+         errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: partDoc.path,
+            operation: 'delete',
+        }));
       }
   }, [toast]);
   
