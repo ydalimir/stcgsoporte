@@ -135,6 +135,7 @@ const downloadQuotePDF = async (quote: Quote) => {
     const pageMargin = 14;
     const bottomMargin = 40; 
     const topMargin = 40;
+    let lastDrawnPage = 1;
 
     let logoDataUrl: string | null = null;
     try {
@@ -190,7 +191,7 @@ const downloadQuotePDF = async (quote: Quote) => {
         theme: 'plain',
         styles: { fontSize: 9, cellPadding: 1, overflow: 'linebreak' },
         columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },
-        margin: { left: pageMargin, right: pageMargin },
+        margin: { left: pageMargin, right: pageMargin, top: topMargin },
         showHead: false,
     });
     
@@ -199,8 +200,9 @@ const downloadQuotePDF = async (quote: Quote) => {
     autoTable(doc, {
         startY: finalY + 2,
         didDrawPage: (data) => {
-            if (data.pageNumber > data.previous.pageNumber) {
+            if (data.pageNumber > lastDrawnPage) {
                drawHeader();
+               lastDrawnPage = data.pageNumber;
             }
         },
         head: [['No.', 'Descripción', 'Unidad', 'Cantidad', 'Precio', 'Importe']],
@@ -260,8 +262,9 @@ const downloadQuotePDF = async (quote: Quote) => {
             styles: { overflow: 'linebreak' },
             margin: { top: topMargin, left: pageMargin, right: pageMargin, bottom: bottomMargin },
             didDrawPage: (data) => {
-                if(data.pageNumber > data.previous.pageNumber) {
+                if(data.pageNumber > lastDrawnPage) {
                     drawHeader();
+                    lastDrawnPage = data.pageNumber;
                 }
             },
         });
@@ -1498,7 +1501,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
                         />
                         <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Describe el proyecto en detalle..." {...field} /></FormControl><FormMessage /></FormItem> )} />
                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="responsible" render={({ field }) => ( <FormItem><FormLabel>Responsable (Opcional)</FormLabel><FormControl><Input placeholder="Se asignará a usted si está vacío" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                            <FormField control={form.control} name="responsible" render={({ field }) => ( <FormItem><FormLabel>Responsable (Opcional)</FormLabel><FormControl><Input placeholder="Se asignará a usted si está vacío" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                             <FormField control={form.control} name="programmedDate" render={({ field }) => ( <FormItem><FormLabel>Fecha Programada</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem> )} />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

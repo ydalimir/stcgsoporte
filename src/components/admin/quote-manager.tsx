@@ -178,6 +178,7 @@ const downloadPDF = async (quote: Quote) => {
     const pageMargin = 14;
     const bottomMargin = 40; 
     const topMargin = 40;
+    let lastDrawnPage = 1;
 
     let logoDataUrl: string | null = null;
     try {
@@ -233,7 +234,7 @@ const downloadPDF = async (quote: Quote) => {
         theme: 'plain',
         styles: { fontSize: 9, cellPadding: 1, overflow: 'linebreak' },
         columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },
-        margin: { left: pageMargin, right: pageMargin },
+        margin: { top: topMargin, left: pageMargin, right: pageMargin },
         showHead: false,
     });
     
@@ -242,8 +243,9 @@ const downloadPDF = async (quote: Quote) => {
     autoTable(doc, {
         startY: finalY + 2,
         didDrawPage: (data) => {
-            if (data.pageNumber > data.previous.pageNumber) {
+            if (data.pageNumber > lastDrawnPage) {
                drawHeader();
+               lastDrawnPage = data.pageNumber;
             }
         },
         head: [['No.', 'Descripción', 'Unidad', 'Cantidad', 'Precio', 'Importe']],
@@ -303,8 +305,9 @@ const downloadPDF = async (quote: Quote) => {
             styles: { overflow: 'linebreak' },
             margin: { top: topMargin, left: pageMargin, right: pageMargin, bottom: bottomMargin },
             didDrawPage: (data) => {
-                if(data.pageNumber > data.previous.pageNumber) {
+                if(data.pageNumber > lastDrawnPage) {
                     drawHeader();
+                    lastDrawnPage = data.pageNumber;
                 }
             },
         });
@@ -325,7 +328,7 @@ const downloadPDF = async (quote: Quote) => {
     doc.line(70, signatureY, 140, signatureY);
     doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
     doc.text("FIRMA DE ACEPTACIÓN", 105, signatureY + 5, { align: 'center' });
-
+    
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
@@ -834,3 +837,4 @@ export function QuoteManager() {
     </div>
   );
 }
+
