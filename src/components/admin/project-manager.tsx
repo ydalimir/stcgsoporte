@@ -560,50 +560,6 @@ export function ProjectManager() {
     };
   }, [user, userProfile, isProfileLoading, toast]);
   
-  const table = useReactTable({ 
-    data: projects, 
-    columns: useMemo(() => getColumns({
-        handleDeleteProject, 
-        handleStatusChange, 
-        quotes, 
-        projects, 
-        handleLinkQuote, 
-        purchaseOrders, 
-        handleLinkPurchaseOrder, 
-        handleSaveAndLinkQuote, 
-        handleUpdateQuote, 
-        handleSaveAndLinkPO, 
-        handleUpdatePO, 
-        handleEditPO, 
-        handleEditQuote, 
-        user, 
-        userProfile,
-        setLinkingProject,
-        setIsQuoteFormOpen,
-        setLinkingProjectForPO,
-        setIsPOFormOpen,
-    }), [ projects, quotes, purchaseOrders, user, userProfile]),
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    state: { globalFilter: filter },
-    onGlobalFilterChange: setFilter,
-  });
-
-  useEffect(() => {
-    if (highlightId && table.getRowModel().rows.length > 0) {
-      const targetRow = rowRefs.current[highlightId];
-      if (targetRow) {
-        setTimeout(() => {
-          targetRow.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-          });
-        }, 100); // Delay to allow for rendering
-      }
-    }
-  }, [highlightId, projects, table.getRowModel().rows]);
-
   const handleSaveProject = useCallback(async (data: Omit<Project, 'id' | 'lastUpdated' | 'createdAt' | 'userId'>) => {
     if (!user) return;
     try {
@@ -710,10 +666,10 @@ export function ProjectManager() {
         }
     }, [editingQuote, toast]);
 
-    const handleEditQuote = (quote: Quote) => {
+    const handleEditQuote = useCallback((quote: Quote) => {
         setEditingQuote(quote);
         setIsQuoteFormOpen(true);
-    };
+    }, []);
 
   const handleLinkPurchaseOrder = useCallback(async (projectId: string, purchaseOrderId: string | null) => {
       const projectDoc = doc(db, "projects", projectId);
@@ -776,12 +732,52 @@ export function ProjectManager() {
       }
   }, [editingPO, toast]);
 
-    const handleEditPO = (po: PurchaseOrder) => {
+    const handleEditPO = useCallback((po: PurchaseOrder) => {
         setEditingPO(po);
         setIsPOFormOpen(true);
-    };
+    }, []);
   
-  
+  const columns = useMemo(() => getColumns({
+        handleDeleteProject, 
+        handleStatusChange, 
+        quotes, 
+        projects, 
+        handleLinkQuote, 
+        purchaseOrders, 
+        handleLinkPurchaseOrder, 
+        handleEditQuote, 
+        handleEditPO, 
+        user, 
+        userProfile,
+        setLinkingProject,
+        setIsQuoteFormOpen,
+        setLinkingProjectForPO,
+        setIsPOFormOpen,
+    }), [ projects, quotes, purchaseOrders, user, userProfile, handleDeleteProject, handleStatusChange, handleLinkQuote, handleLinkPurchaseOrder, handleEditQuote, handleEditPO]);
+
+  const table = useReactTable({ 
+    data: projects, 
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    state: { globalFilter: filter },
+    onGlobalFilterChange: setFilter,
+  });
+
+  useEffect(() => {
+    if (highlightId && table.getRowModel().rows.length > 0) {
+      const targetRow = rowRefs.current[highlightId];
+      if (targetRow) {
+        setTimeout(() => {
+          targetRow.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+        }, 100); // Delay to allow for rendering
+      }
+    }
+  }, [highlightId, projects, table.getRowModel().rows]);
 
   const quoteForForm = useMemo(() => 
     editingQuote || (linkingProject ? { clientName: linkingProject.client } : null)
@@ -1316,3 +1312,4 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
         </Dialog>
     )
 }
+
