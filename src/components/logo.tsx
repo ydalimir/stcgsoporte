@@ -20,7 +20,7 @@ export function Logo({
       aria-label="LEBAREF Home"
     >
       <Image
-        src="https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771958796/logo-Photoroom_klbk3u.png"
+        src="https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771961790/logo-Photoroom_1_rpqv3n.png"
         alt="LEBAREF Logo"
         width={width}
         height={height}
