@@ -80,6 +80,7 @@ const modules = [
     { id: 'services', label: 'Servicios' },
     { id: 'spare_parts', label: 'Refacciones' },
     { id: 'calendar', label: 'Calendario' },
+    { id: 'reports', label: 'Reportes' },
 ] as const;
 
 const userSchema = z.object({

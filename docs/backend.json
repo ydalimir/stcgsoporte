@@ -21,7 +21,8 @@
                 "tickets": { "type": "boolean" },
                 "services": { "type": "boolean" },
                 "spare_parts": { "type": "boolean" },
-                "calendar": { "type": "boolean" }
+                "calendar": { "type": "boolean" },
+                "reports": { "type": "boolean" }
             },
             "description": "Map of modules the user has access to, e.g. {'projects': true, 'clients': true}"
         },

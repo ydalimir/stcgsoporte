@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Home, Briefcase, FileText, Users, ShoppingCart, Truck, User, LogOut, Menu, Wrench, Package, Calendar } from "lucide-react";
+import { Home, Briefcase, FileText, Users, ShoppingCart, Truck, User, LogOut, Menu, Wrench, Package, Calendar, AreaChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -56,9 +56,6 @@ export default function AdminLayout({
             if (docSnap.exists()) {
                 setUserProfile(docSnap.data() as UserProfile);
             } else {
-                // This case can happen if the user doc hasn't been created yet.
-                // For now, we assume a logged-in user in /admin should have a doc.
-                // You might want to handle this more gracefully, e.g., redirect or show an error.
                 console.error("User profile document not found!");
                 setUserProfile(null);
             }
@@ -99,15 +96,19 @@ export default function AdminLayout({
         { href: "/admin/spare-parts", label: "Refacciones", icon: Package, id: "spare_parts" },
     ].filter(link => hasAccess(link.id));
 
+    const toolsLinks = [
+        { href: "/admin/calendar", label: "Calendario", icon: Calendar, id: "calendar"},
+        { href: "/admin/reports", label: "Reportes", icon: AreaChart, id: "reports" }
+    ].filter(link => hasAccess(link.id));
+
     const adminControlLink = { href: "/admin/users", label: "Control de Usuarios", icon: User, id: "users" };
-    const calendarLink = { href: "/admin/calendar", label: "Calendario", icon: Calendar, id: "calendar"};
     
     const allNavLinks = [
         ...mainLinks,
         ...salesLinks,
         ...purchasesLinks,
         ...warehouseLinks,
-        calendarLink,
+        ...toolsLinks,
         ...(hasAccess(adminControlLink.id) ? [adminControlLink] : [])
     ];
 
@@ -166,11 +167,11 @@ export default function AdminLayout({
                 <NavGroup title="Ventas" links={salesLinks} />
                 <NavGroup title="Compras" links={purchasesLinks} />
                 <NavGroup title="Almacenes" links={warehouseLinks} />
+                <NavGroup title="Herramientas" links={toolsLinks} />
                 </nav>
             </div>
                 <div className="mt-auto p-4">
                     <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-                        <NavLink link={calendarLink} />
                         {hasAccess(adminControlLink.id) && (
                             <NavLink link={adminControlLink} />
                         )}
