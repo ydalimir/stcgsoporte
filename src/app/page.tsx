@@ -53,14 +53,15 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-2">
-      <div className="relative flex flex-col items-center justify-center bg-gray-900 text-white p-8">
+      <div className="relative flex flex-col items-center justify-center p-8">
          <Image
             src="https://res.cloudinary.com/mundodepixeles/image/upload/v1768286128/photo-1541888946425-d81bb19240f5_enhjmo.avif"
             alt="Taller de mantenimiento"
             fill
-            className="object-cover opacity-20"
+            className="object-cover"
             data-ai-hint="workshop tools"
         />
+        <div className="absolute inset-0 bg-white/75" />
         <div className="relative z-10 text-center space-y-4">
           <Logo className="justify-center" width={150} height={38} />
         </div>

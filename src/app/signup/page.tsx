@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -120,17 +119,18 @@ export default function SignUpPage() {
           </form>
         </div>
       </div>
-       <div className="relative flex-col items-center justify-center bg-gray-900 text-white p-8 hidden md:flex order-1 md:order-2">
+       <div className="relative hidden flex-col items-center justify-center p-8 md:flex order-1 md:order-2">
          <Image
             src="https://ucarecdn.com/2e73c219-cd6c-4d47-abfd-e4b2a36f286b/normal_65b16ffde4984.webp"
             alt="Mantenimiento de equipo de cocina"
             fill
-            className="object-cover opacity-20"
+            className="object-cover"
             data-ai-hint="kitchen maintenance"
         />
+        <div className="absolute inset-0 bg-white/75" />
         <div className="relative z-10 text-center space-y-4">
             <Logo className="justify-center" width={150} height={38} />
-            <p className="text-lg text-muted-foreground">La solución definitiva para la gestión de servicios técnicos.</p>
+            <p className="text-lg text-foreground/80">La solución definitiva para la gestión de servicios técnicos.</p>
         </div>
       </div>
     </div>
