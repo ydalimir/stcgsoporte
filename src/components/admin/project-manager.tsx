@@ -120,33 +120,34 @@ const downloadQuotePDF = (quote: Quote) => {
     const doc = new jsPDF();
     const quoteId = quote.quoteNumber;
     const pageHeight = doc.internal.pageSize.height;
-    let yPos = 20;
+    const pageWidth = doc.internal.pageSize.width;
+    const pageMargin = 14;
+    const bottomMargin = 40; 
 
-    // --- Header ---
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.setTextColor(41, 71, 121); // Primary color
-    doc.text("LEBAREF", 14, yPos);
-    
-    const headerDetailsX = 196;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(`COTIZACIÓN`, headerDetailsX, yPos - 2, { align: 'right' });
-    
-    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(128, 128, 128);
-    doc.text(`${quoteId}`, headerDetailsX, yPos + 4, { align: 'right' });
+    const drawHeader = () => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(18);
+        doc.setTextColor(41, 71, 121); 
+        doc.text("LEBAREF", pageMargin, 20);
+        
+        const headerDetailsX = pageWidth - pageMargin;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text(`COTIZACIÓN`, headerDetailsX, 20 - 2, { align: 'right' });
+        
+        doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(128, 128, 128);
+        doc.text(`${quoteId}`, headerDetailsX, 20 + 4, { align: 'right' });
 
-    yPos = 30;
-    doc.setDrawColor(221, 221, 221); // A light grey color
-    doc.line(14, yPos, 196, yPos);
-    yPos += 10;
-    doc.setTextColor(0, 0, 0); // Reset color
+        doc.setDrawColor(221, 221, 221); 
+        doc.line(pageMargin, 30, pageWidth - pageMargin, 30);
+        doc.setTextColor(0, 0, 0);
+    };
+
+    drawHeader();
 
     const localDate = new Date(quote.date.replace(/-/g, '\/'));
-
-    // --- Client and Service Info ---
     autoTable(doc, {
-        startY: yPos,
+        startY: 35,
         body: [
             [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'})}`, styles: { halign: 'right' } }],
             [{ content: `Empresa: ${quote.clientName}` }, { content: `Ciudad: Mérida`, styles: { halign: 'right' } }],
@@ -158,17 +159,14 @@ const downloadQuotePDF = (quote: Quote) => {
         theme: 'plain',
         styles: { fontSize: 9, cellPadding: 1 }
     });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
 
-
-    // --- Items Table ---
     const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
     const ivaPercentage = quote.iva ?? 16;
     const ivaAmount = subtotal * (ivaPercentage / 100);
     const total = quote.total ?? subtotal + ivaAmount;
     
     autoTable(doc, {
-      startY: yPos,
+      startY: (doc as any).lastAutoTable.finalY + 5,
       head: [['No.', 'Descripción', 'Unidad', 'Cantidad', 'Precio', 'Importe']],
       body: quote.items.map((item, index) => [
         index + 1,
@@ -183,55 +181,61 @@ const downloadQuotePDF = (quote: Quote) => {
         ['', '', '', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
         ['', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' } }],
       ],
-      headStyles: { fillColor: [41, 71, 121] },
-      didDrawPage: (data) => {
-        yPos = data.cursor?.y ?? yPos;
-      }
+      headStyles: { fillColor: [41, 71, 121], fontSize: 8 },
+      bodyStyles: { fontSize: 8 },
+      margin: { bottom: bottomMargin }
     });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
     
-    // --- Comentarios y Diagnostico ---
     if (quote.observations) {
-        doc.setFontSize(9).setFont(undefined, 'bold');
-        doc.text("Comentarios y Diagnóstico:", 14, yPos);
-        yPos += 5;
-        doc.setFontSize(9).setFont(undefined, 'normal');
-        const splitObservations = doc.splitTextToSize(quote.observations, 180);
-        doc.text(splitObservations, 14, yPos);
-        yPos += splitObservations.length * 4 + 5;
+        autoTable(doc, {
+            startY: (doc as any).lastAutoTable.finalY + 5,
+            body: [
+                [{ content: 'Comentarios y Diagnóstico:', styles: { fontStyle: 'bold', fontSize: 9 } }],
+                [{ content: doc.splitTextToSize(quote.observations, 180), styles: { fontSize: 9 } }],
+            ],
+            theme: 'plain',
+            margin: { bottom: bottomMargin }
+        });
     }
     
-    // --- Garantias ---
     if (quote.policies) {
-        doc.setFontSize(10).setFont(undefined, 'bold');
-        doc.text("Garantías:", 14, yPos);
-        yPos += 5;
-        doc.setFontSize(7).setFont(undefined, 'normal');
-        const splitPolicies = doc.splitTextToSize(quote.policies, 180);
-        doc.text(splitPolicies, 14, yPos);
-        yPos += splitPolicies.length * 3 + 10;
+         autoTable(doc, {
+            startY: (doc as any).lastAutoTable.finalY + 5,
+            body: [
+                [{ content: 'Garantías:', styles: { fontStyle: 'bold', fontSize: 10 } }],
+                [{ content: doc.splitTextToSize(quote.policies, 180), styles: { fontSize: 7 } }],
+            ],
+            theme: 'plain',
+            margin: { bottom: bottomMargin }
+        });
     }
     
-    // --- Payment Conditions ---
     if (quote.paymentTerms) {
-        doc.setFontSize(10).setFont(undefined, 'bold');
-        doc.text("Condiciones de Pago:", 14, yPos);
-        yPos += 6;
-        
-        doc.setFontSize(8).setFont(undefined, 'normal');
-        const paymentTermsLines = doc.splitTextToSize(quote.paymentTerms, 180);
-        doc.text(paymentTermsLines, 14, yPos);
+        autoTable(doc, {
+            startY: (doc as any).lastAutoTable.finalY + 5,
+            body: [
+                [{ content: 'Condiciones de Pago:', styles: { fontStyle: 'bold', fontSize: 10 } }],
+                [{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 8 } }],
+            ],
+            theme: 'plain',
+            margin: { bottom: bottomMargin }
+        });
+    }
+
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8).setTextColor(150);
+        doc.text("Gracias por su preferencia.", pageMargin, pageHeight - 15);
+        doc.text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 15, { align: 'right' });
     }
     
-    // --- Footer with Signature ---
-    const finalY = pageHeight - 35;
+    doc.setPage(totalPages);
+    const signatureY = pageHeight - 30;
     doc.setDrawColor(150, 150, 150);
-    doc.line(70, finalY, 140, finalY); // Signature line
+    doc.line(70, signatureY, 140, signatureY);
     doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
-    doc.text("FIRMA DE ACEPTACIÓN", 105, finalY + 5, { align: 'center' });
-    
-    doc.setFontSize(8).setTextColor(150);
-    doc.text("Gracias por su preferencia.", 14, pageHeight - 10);
+    doc.text("FIRMA DE ACEPTACIÓN", 105, signatureY + 5, { align: 'center' });
     
     doc.save(`${quoteId}.pdf`);
 }
@@ -239,7 +243,6 @@ const downloadQuotePDF = (quote: Quote) => {
 const downloadQuoteExcel = (quote: Quote) => {
     const quoteId = quote.quoteNumber;
     
-    // Items table
     const itemsHeader = ["Descripción", "Unidad", "Cantidad", "Precio Unitario", "Importe"];
     const itemsData = quote.items.map(item => [
       item.description,
@@ -252,14 +255,13 @@ const downloadQuoteExcel = (quote: Quote) => {
     const ws = XLSX.utils.aoa_to_sheet([itemsHeader]);
     XLSX.utils.sheet_add_json(ws, itemsData, {origin: -1, skipHeader: true});
 
-    // Totals
     const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
     const ivaPercentage = quote.iva ?? 16;
     const ivaAmount = subtotal * (ivaPercentage / 100);
     const total = quote.total ?? subtotal + ivaAmount;
 
     const totalsData = [
-        [], // Spacer
+        [], 
         ["", "", "", "Subtotal", subtotal],
         ["", "", "", `IVA (${ivaPercentage}%)`, ivaAmount],
         ["", "", "", "Total", total],
@@ -277,7 +279,6 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     const poId = po.purchaseOrderNumber;
     let yPos = 20;
 
-    // --- Header ---
     doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(41, 71, 121);
     doc.text("LEBAREF", 14, yPos);
     
@@ -292,7 +293,6 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, 200, yPos, { align: 'right' });
     yPos += 15;
 
-    // --- Addresses ---
     autoTable(doc, {
         startY: yPos,
         theme: 'plain',
@@ -310,7 +310,6 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     yPos = (doc as any).lastAutoTable.finalY + 5;
     
     
-    // --- Details Table ---
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
     const quoteDisplay = linkedQuote ? linkedQuote.quoteNumber : 'N/A';
     const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A'
@@ -329,8 +328,6 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     });
     yPos = (doc as any).lastAutoTable.finalY + 5;
 
-
-    // --- Items Table ---
     const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
     const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
     const subTotalAfterDiscount = subtotal - discountAmount;
@@ -352,14 +349,10 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
       headStyles: { fillColor: [220, 220, 220], textColor: 0, fontSize: 8, fontStyle: 'bold', halign: 'center' },
       bodyStyles: { fontSize: 8 },
       columnStyles: { 5: { halign: 'right' }},
-      didDrawPage: (data) => {
-        yPos = data.cursor?.y ?? yPos;
-      }
     });
 
     const finalY = (doc as any).lastAutoTable.finalY;
 
-    // --- Totals ---
     const totalsX = 140;
     const totalsY = finalY + 5;
     doc.setFontSize(9);
@@ -375,16 +368,15 @@ const downloadPurchaseOrderPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     doc.text('TOTAL', totalsX, totalsY + 15, { align: 'left'});
     doc.text(`$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 200, totalsY + 15, { align: 'right'});
     
-    // --- Observations & Signature ---
     const obsY = finalY + 5;
     doc.setFont("helvetica", "normal");
     doc.text('Observaciones / Instrucciones:', 14, obsY);
-    const splitObservations = doc.splitTextToSize(po.observations || '', 120); // Split text to fit width
+    const splitObservations = doc.splitTextToSize(po.observations || '', 120); 
     doc.text(splitObservations, 14, obsY + 5);
 
     const signatureY = Math.max(obsY + 30, totalsY + 30);
     doc.text('FIRMA AUTORIZADA', 14, signatureY);
-    doc.rect(14, signatureY + 2, 80, 20); // Signature box
+    doc.rect(14, signatureY + 2, 80, 20); 
 
     doc.setFontSize(8).setTextColor(150);
     doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo electrónico:", 105, doc.internal.pageSize.height - 15, {align: 'center'});
@@ -481,7 +473,6 @@ export function ProjectManager() {
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
 
   useEffect(() => {
-    // Reset refs on data change to ensure they are fresh
     rowRefs.current = {};
   }, [projects]);
 
@@ -774,7 +765,7 @@ export function ProjectManager() {
             behavior: 'smooth',
             block: 'center',
           });
-        }, 100); // Delay to allow for rendering
+        }, 100);
       }
     }
   }, [highlightId, projects, table.getRowModel().rows]);
@@ -852,6 +843,8 @@ export function ProjectManager() {
         onSave={editingPO ? handleUpdatePO : handleSaveAndLinkPO}
         purchaseOrder={poForForm as PurchaseOrder}
         userRole={role}
+        user={user}
+        purchaseOrders={purchaseOrders}
       />
     </div>
   );
@@ -887,9 +880,9 @@ const getColumns = (
             );
             
             const availableQuotes = quotes.filter(q => {
-                if (otherLinkedQuoteIds.has(q.id)) return false; // Exclude quotes linked to OTHER projects
-                if (userProfile?.role === 'admin') return true; // Admin sees all unlinked quotes
-                return q.userId === user?.uid; // Employee sees only their own unlinked quotes
+                if (otherLinkedQuoteIds.has(q.id)) return false; 
+                if (userProfile?.role === 'admin') return true; 
+                return q.userId === user?.uid; 
             });
 
             const onSelectQuote = (quoteId: string | null) => {
@@ -1000,9 +993,9 @@ const getColumns = (
             const otherLinkedPoIds = new Set(projects.filter(p => p.id !== project.id).map(p => p.purchaseOrderId).filter(Boolean));
             
             const availablePOs = purchaseOrders.filter(po => {
-                if (otherLinkedPoIds.has(po.id)) return false; // Exclude POs linked to OTHER projects
-                if (userProfile?.role === 'admin') return true; // Admin sees all unlinked POs
-                return po.userId === user?.uid; // Employee sees only their own unlinked POs
+                if (otherLinkedPoIds.has(po.id)) return false; 
+                if (userProfile?.role === 'admin') return true; 
+                return po.userId === user?.uid; 
             });
 
             const onSelectPO = (poId: string | null) => {

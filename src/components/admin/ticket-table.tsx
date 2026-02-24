@@ -156,7 +156,6 @@ const downloadServiceOrderPDF = (ticket: Ticket) => {
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        if (i > 1) drawHeader();
         doc.setFontSize(8).setTextColor(150).text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 10, { align: 'right' });
     }
 

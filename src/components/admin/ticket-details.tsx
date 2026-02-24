@@ -76,7 +76,6 @@ const downloadServiceOrderPDF = (ticket: Ticket) => {
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        if (i > 1) drawHeader();
         doc.setFontSize(8).setTextColor(150).text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 10, { align: 'right' });
     }
 
@@ -152,7 +151,6 @@ export function TicketDetails({ ticket }: TicketDetailsProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Client Information */}
         <section>
             <h3 className="text-lg font-semibold mb-2 font-headline">Información del Cliente</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
@@ -164,7 +162,6 @@ export function TicketDetails({ ticket }: TicketDetailsProps) {
 
         <Separator />
 
-        {/* Service Details */}
         <section>
             <h3 className="text-lg font-semibold mb-2 font-headline">Detalles del Servicio</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">

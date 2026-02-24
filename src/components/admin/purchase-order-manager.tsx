@@ -204,9 +204,6 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        if (i > 1) {
-            drawHeader();
-        }
         doc.setFontSize(8).setTextColor(150);
         doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo electrónico:", pageWidth / 2, pageHeight - 25, {align: 'center'});
         doc.text("lebarefmantenimiento@gmail.com / corporativo@lebaref.com", pageWidth / 2, pageHeight - 20, {align: 'center'});
@@ -367,11 +364,11 @@ export function PurchaseOrderManager() {
   const handleSave = useCallback(async (poData: any) => {
     if (!user) return;
     try {
-        if (selectedPO) { // UPDATE
+        if (selectedPO) { 
             const poRef = doc(db, "purchase_orders", selectedPO.id);
             await updateDoc(poRef, poData);
             toast({ title: "Orden de Compra Actualizada", description: `La orden para ${poData.supplierName} ha sido actualizada.` });
-        } else { // CREATE
+        } else { 
             await runTransaction(db, async (transaction) => {
                 if (!user) throw new Error("User not authenticated");
                 const userDocRef = doc(db, "users", user.uid);

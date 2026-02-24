@@ -157,12 +157,12 @@ const downloadPDF = (quote: Quote) => {
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
     const pageMargin = 14;
-    const bottomMargin = 40; // Reserved space for footer and signature
+    const bottomMargin = 40; 
 
     const drawHeader = () => {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(18);
-        doc.setTextColor(41, 71, 121); // Primary color
+        doc.setTextColor(41, 71, 121); 
         doc.text("LEBAREF", pageMargin, 20);
         
         const headerDetailsX = pageWidth - pageMargin;
@@ -173,15 +173,13 @@ const downloadPDF = (quote: Quote) => {
         doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(128, 128, 128);
         doc.text(`${quoteId}`, headerDetailsX, 20 + 4, { align: 'right' });
 
-        doc.setDrawColor(221, 221, 221); // A light grey color
+        doc.setDrawColor(221, 221, 221); 
         doc.line(pageMargin, 30, pageWidth - pageMargin, 30);
-        doc.setTextColor(0, 0, 0); // Reset color
+        doc.setTextColor(0, 0, 0);
     };
 
-    // --- Draw Header on Page 1 ---
     drawHeader();
 
-    // --- Client and Service Info ---
     const localDate = new Date(quote.date.replace(/-/g, '\/'));
     autoTable(doc, {
         startY: 35,
@@ -197,7 +195,6 @@ const downloadPDF = (quote: Quote) => {
         styles: { fontSize: 9, cellPadding: 1 }
     });
     
-    // --- Items Table ---
     const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
     const ivaPercentage = quote.iva ?? 16;
     const ivaAmount = subtotal * (ivaPercentage / 100);
@@ -224,7 +221,6 @@ const downloadPDF = (quote: Quote) => {
       margin: { bottom: bottomMargin }
     });
     
-    // --- Other Sections ---
     if (quote.observations) {
         autoTable(doc, {
             startY: (doc as any).lastAutoTable.finalY + 5,
@@ -261,27 +257,18 @@ const downloadPDF = (quote: Quote) => {
         });
     }
 
-    // --- Footer and Signature Loop ---
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-
-        // Redraw header on new pages
-        if (i > 1) {
-            drawHeader();
-        }
-
-        // Draw footer on all pages
         doc.setFontSize(8).setTextColor(150);
         doc.text("Gracias por su preferencia.", pageMargin, pageHeight - 15);
         doc.text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 15, { align: 'right' });
     }
     
-    // Draw signature only on the last page
     doc.setPage(totalPages);
-    const signatureY = pageHeight - 30; // Position above the footer
+    const signatureY = pageHeight - 30;
     doc.setDrawColor(150, 150, 150);
-    doc.line(70, signatureY, 140, signatureY); // Signature line
+    doc.line(70, signatureY, 140, signatureY);
     doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
     doc.text("FIRMA DE ACEPTACIÓN", 105, signatureY + 5, { align: 'center' });
     
@@ -291,7 +278,6 @@ const downloadPDF = (quote: Quote) => {
 const downloadExcel = (quote: Quote) => {
     const quoteId = quote.quoteNumber;
     
-    // Items table
     const itemsHeader = ["Descripción", "Unidad", "Cantidad", "Precio Unitario", "Importe"];
     const itemsData = quote.items.map(item => [
       item.description,
@@ -304,14 +290,13 @@ const downloadExcel = (quote: Quote) => {
     const ws = XLSX.utils.aoa_to_sheet([itemsHeader]);
     XLSX.utils.sheet_add_json(ws, itemsData, {origin: -1, skipHeader: true});
 
-    // Totals
     const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
     const ivaPercentage = quote.iva ?? 16;
     const ivaAmount = subtotal * (ivaPercentage / 100);
     const total = quote.total ?? subtotal + ivaAmount;
 
     const totalsData = [
-        [], // Spacer
+        [], 
         ["", "", "", "Subtotal", subtotal],
         ["", "", "", `IVA (${ivaPercentage}%)`, ivaAmount],
         ["", "", "", "Total", total],
@@ -380,7 +365,7 @@ export function QuoteManager() {
   const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'quoteNumber' | 'userId'>) => {
     if (!user) return;
     try {
-        if (selectedQuote) { // UPDATE
+        if (selectedQuote) { 
             const wasAccepted = selectedQuote.status === 'Aceptada';
             const isNowAccepted = quoteData.status === 'Aceptada';
             
@@ -392,7 +377,7 @@ export function QuoteManager() {
                 await updateDoc(quoteRef, quoteData);
                 toast({ title: "Cotización Actualizada", description: `La cotización para ${quoteData.clientName} ha sido actualizada.` });
             }
-        } else { // CREATE
+        } else { 
             await runTransaction(db, async (transaction) => {
                 if (!user) throw new Error("User not authenticated");
                 const userDocRef = doc(db, "users", user.uid);
@@ -659,8 +644,4 @@ export function QuoteManager() {
     </div>
   );
 }
-
-
-
-
 
