@@ -124,6 +124,7 @@ type UserProfile = {
   userCode: string;
   quoteCounter: number;
   purchaseOrderCounter: number;
+  displayName: string;
 };
 
 const downloadQuotePDF = (quote: Quote) => {
@@ -215,36 +216,34 @@ const downloadQuotePDF = (quote: Quote) => {
 
     let finalY = (doc as any).lastAutoTable.finalY;
 
-    const addSection = (title: string, content: string) => {
-        const splitContent = doc.splitTextToSize(content, 180);
-        const contentHeight = splitContent.length * 5; 
-        if (finalY + contentHeight + 10 > pageHeight - bottomMargin) {
-            doc.addPage();
-            drawHeader();
-            finalY = 30; // After header
-        }
-         autoTable(doc, {
-            startY: finalY + 5,
-            body: [
-                [{ content: title, styles: { fontStyle: 'bold', fontSize: 10 } }],
-                [{ content: splitContent, styles: { fontSize: title === 'Garantías:' ? 7 : 8 } }],
-            ],
-            theme: 'plain',
-            margin: { left: pageMargin, right: pageMargin }
-        });
-        finalY = (doc as any).lastAutoTable.finalY;
-    }
-
+    const sectionsBody: any[] = [];
     if (quote.observations) {
-        addSection('Comentarios y Diagnóstico:', quote.observations);
+        sectionsBody.push([{ content: 'Comentarios y Diagnóstico:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
+        sectionsBody.push([{ content: doc.splitTextToSize(quote.observations, 180), styles: { fontSize: 8, cellPadding: {top: 1, bottom: 4} } }]);
     }
     if (quote.policies) {
-        addSection('Garantías:', quote.policies);
+        sectionsBody.push([{ content: 'Garantías:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
+        sectionsBody.push([{ content: doc.splitTextToSize(quote.policies, 180), styles: { fontSize: 7, cellPadding: {top: 1, bottom: 4} } }]);
     }
     if (quote.paymentTerms) {
-        addSection('Condiciones de Pago:', quote.paymentTerms);
+        sectionsBody.push([{ content: 'Condiciones de Pago:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
+        sectionsBody.push([{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 8, cellPadding: {top: 1, bottom: 4} } }]);
     }
-    
+
+    if (sectionsBody.length > 0) {
+        autoTable(doc, {
+            startY: finalY + 2,
+            body: sectionsBody,
+            theme: 'plain',
+            styles: { overflow: 'linebreak' },
+            margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin },
+            didDrawPage: (data) => {
+                // Redraw header on new pages
+                drawHeader();
+            },
+        });
+    }
+
     doc.setPage((doc as any).internal.getNumberOfPages());
     finalY = (doc as any).lastAutoTable.finalY;
 
@@ -593,7 +592,7 @@ export function ProjectManager() {
 
     const unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
-        setProjects(data.sort((a,b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)));
+        setProjects(data);
         setIsLoading(false);
     }, (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'projects', operation: 'list' }));
@@ -648,11 +647,11 @@ export function ProjectManager() {
   }, [projects, date]);
   
   const handleSaveProject = useCallback(async (data: Omit<Project, 'id' | 'lastUpdated' | 'createdAt' | 'userId'>) => {
-    if (!user) return;
+    if (!user || !userProfile) return;
     
     const finalData = {
         ...data,
-        responsible: data.responsible?.trim() || user.displayName || 'Usuario sin nombre',
+        responsible: data.responsible?.trim() || userProfile.displayName || user.displayName || 'Usuario sin nombre',
     };
 
     try {
@@ -671,7 +670,7 @@ export function ProjectManager() {
         console.error("Error saving project:", error);
         toast({ title: "Error al guardar", variant: "destructive" });
     }
-  }, [selectedProject, toast, user]);
+  }, [selectedProject, toast, user, userProfile]);
 
   const handleDeleteProject = useCallback(async (id: string) => {
       try {
@@ -1541,3 +1540,4 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
 
 
     
+

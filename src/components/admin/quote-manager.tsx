@@ -259,36 +259,34 @@ const downloadPDF = (quote: Quote) => {
 
     let finalY = (doc as any).lastAutoTable.finalY;
 
-    const addSection = (title: string, content: string) => {
-        const splitContent = doc.splitTextToSize(content, 180);
-        const contentHeight = splitContent.length * 5; 
-        if (finalY + contentHeight + 10 > pageHeight - bottomMargin) {
-            doc.addPage();
-            drawHeader();
-            finalY = 30; // After header
-        }
-         autoTable(doc, {
-            startY: finalY + 5,
-            body: [
-                [{ content: title, styles: { fontStyle: 'bold', fontSize: 10 } }],
-                [{ content: splitContent, styles: { fontSize: title === 'Garantías:' ? 7 : 8 } }],
-            ],
-            theme: 'plain',
-            margin: { left: pageMargin, right: pageMargin }
-        });
-        finalY = (doc as any).lastAutoTable.finalY;
-    }
-
+    const sectionsBody: any[] = [];
     if (quote.observations) {
-        addSection('Comentarios y Diagnóstico:', quote.observations);
+        sectionsBody.push([{ content: 'Comentarios y Diagnóstico:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
+        sectionsBody.push([{ content: doc.splitTextToSize(quote.observations, 180), styles: { fontSize: 8, cellPadding: {top: 1, bottom: 4} } }]);
     }
     if (quote.policies) {
-        addSection('Garantías:', quote.policies);
+        sectionsBody.push([{ content: 'Garantías:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
+        sectionsBody.push([{ content: doc.splitTextToSize(quote.policies, 180), styles: { fontSize: 7, cellPadding: {top: 1, bottom: 4} } }]);
     }
     if (quote.paymentTerms) {
-        addSection('Condiciones de Pago:', quote.paymentTerms);
+        sectionsBody.push([{ content: 'Condiciones de Pago:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
+        sectionsBody.push([{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 8, cellPadding: {top: 1, bottom: 4} } }]);
     }
-    
+
+    if (sectionsBody.length > 0) {
+        autoTable(doc, {
+            startY: finalY + 2,
+            body: sectionsBody,
+            theme: 'plain',
+            styles: { overflow: 'linebreak' },
+            margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin },
+            didDrawPage: (data) => {
+                // Redraw header on new pages
+                drawHeader();
+            },
+        });
+    }
+
     doc.setPage((doc as any).internal.getNumberOfPages());
     finalY = (doc as any).lastAutoTable.finalY;
 
@@ -819,3 +817,4 @@ export function QuoteManager() {
 
 
     
+
