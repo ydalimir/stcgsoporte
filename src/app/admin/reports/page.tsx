@@ -29,9 +29,7 @@ type UserProfile = {
   permissions?: { [key: string]: boolean };
 };
 
-const StatCard = ({ title, value, comparison, icon }: { title: string, value: string, comparison: string, icon: React.ReactNode }) => {
-    const isPositive = comparison.startsWith('+');
-    const isNegative = comparison.startsWith('-');
+const StatCard = ({ title, value, icon }: { title: string, value: string, icon: React.ReactNode }) => {
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -40,9 +38,6 @@ const StatCard = ({ title, value, comparison, icon }: { title: string, value: st
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{value}</div>
-                <p className={cn("text-xs", isPositive && "text-green-500", isNegative && "text-red-500", !isPositive && !isNegative && "text-muted-foreground")}>
-                    {comparison}
-                </p>
             </CardContent>
         </Card>
     );
@@ -159,12 +154,8 @@ export default function ReportsPage() {
 }
 
 function VentasReportTab({ allQuotes, range }: { allQuotes: Quote[], range?: DateRange }) {
-    const { currentPeriodStats, prevPeriodStats } = useMemo(() => {
-        if (!range?.from || !range?.to) return { currentPeriodStats: null, prevPeriodStats: null };
-
-        const periodDuration = differenceInDays(range.to, range.from);
-        const prevPeriodStart = sub(range.from, { days: periodDuration + 1 });
-        const prevPeriodEnd = sub(range.to, { days: periodDuration + 1 });
+    const { currentPeriodStats } = useMemo(() => {
+        if (!range?.from || !range?.to) return { currentPeriodStats: null };
 
         const processData = (startDate: Date, endDate: Date) => {
             const filteredQuotes = allQuotes.filter(q => {
@@ -186,19 +177,11 @@ function VentasReportTab({ allQuotes, range }: { allQuotes: Quote[], range?: Dat
         };
 
         const currentPeriodStats = processData(range.from, range.to);
-        const prevPeriodStats = processData(prevPeriodStart, prevPeriodEnd);
 
-        return { currentPeriodStats, prevPeriodStats };
+        return { currentPeriodStats };
 
     }, [allQuotes, range]);
 
-    const getComparison = (current: number, previous: number) => {
-        if (previous === 0) return current > 0 ? "+100.00% (desde 0)" : "Sin cambios";
-        const diff = ((current - previous) / previous) * 100;
-        if (diff === 0) return "Sin cambios vs período anterior";
-        return `${diff > 0 ? '+' : ''}${diff.toFixed(2)}% vs período anterior`;
-    };
-    
     const handleDownloadVentas = () => {
         if (!range?.from || !range?.to) return;
         const paidQuotesInRange = allQuotes.filter(q => {
@@ -223,17 +206,13 @@ function VentasReportTab({ allQuotes, range }: { allQuotes: Quote[], range?: Dat
 
     if (!currentPeriodStats) return <div>Seleccione un rango de fechas para ver el reporte.</div>;
 
-    const incomeComparison = getComparison(currentPeriodStats.totalIncome, prevPeriodStats.totalIncome);
-    const acceptedComparison = getComparison(currentPeriodStats.acceptedCount, prevPeriodStats.acceptedCount);
-    const paidComparison = getComparison(currentPeriodStats.paidCount, prevPeriodStats.paidCount);
-
     return (
         <div className="grid gap-6">
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title="Ingresos Totales" value={`$${currentPeriodStats.totalIncome.toLocaleString('es-MX')}`} comparison={incomeComparison} icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} />
-                <StatCard title="Cotizaciones Aceptadas" value={`${currentPeriodStats.acceptedCount}`} comparison={acceptedComparison} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
-                <StatCard title="Cotizaciones Pagadas" value={`${currentPeriodStats.paidCount}`} comparison={paidComparison} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
-                <StatCard title="Cotizaciones Rechazadas" value={`${currentPeriodStats.rejectedCount}`} comparison={getComparison(currentPeriodStats.rejectedCount, prevPeriodStats.rejectedCount)} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
+                <StatCard title="Ingresos Totales" value={`$${currentPeriodStats.totalIncome.toLocaleString('es-MX')}`} icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} />
+                <StatCard title="Cotizaciones Aceptadas" value={`${currentPeriodStats.acceptedCount}`} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
+                <StatCard title="Cotizaciones Pagadas" value={`${currentPeriodStats.paidCount}`} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
+                <StatCard title="Cotizaciones Rechazadas" value={`${currentPeriodStats.rejectedCount}`} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
             </div>
             <div className="flex justify-end mt-4">
                 <Button onClick={handleDownloadVentas} disabled={!range?.from || !range.to}>
@@ -246,12 +225,8 @@ function VentasReportTab({ allQuotes, range }: { allQuotes: Quote[], range?: Dat
 }
 
 function ComprasReportTab({ allPurchaseOrders, range }: { allPurchaseOrders: PurchaseOrder[], allSuppliers: Supplier[], range?: DateRange }) {
-     const { currentPeriodStats, prevPeriodStats } = useMemo(() => {
-        if (!range?.from || !range?.to) return { currentPeriodStats: null, prevPeriodStats: null };
-
-        const periodDuration = differenceInDays(range.to, range.from);
-        const prevPeriodStart = sub(range.from, { days: periodDuration + 1 });
-        const prevPeriodEnd = sub(range.to, { days: periodDuration + 1 });
+     const { currentPeriodStats } = useMemo(() => {
+        if (!range?.from || !range?.to) return { currentPeriodStats: null };
 
         const processData = (startDate: Date, endDate: Date) => {
             const filteredPOs = allPurchaseOrders.filter(po => {
@@ -268,18 +243,10 @@ function ComprasReportTab({ allPurchaseOrders, range }: { allPurchaseOrders: Pur
         };
 
         const currentPeriodStats = processData(range.from, range.to);
-        const prevPeriodStats = processData(prevPeriodStart, prevPeriodEnd);
 
-        return { currentPeriodStats, prevPeriodStats };
+        return { currentPeriodStats };
 
     }, [allPurchaseOrders, range]);
-
-    const getComparison = (current: number, previous: number) => {
-        if (previous === 0) return current > 0 ? "+100.00% (desde 0)" : "Sin cambios";
-        const diff = ((current - previous) / previous) * 100;
-        if (diff === 0) return "Sin cambios vs período anterior";
-        return `${diff > 0 ? '+' : ''}${diff.toFixed(2)}% vs período anterior`;
-    };
     
     const handleDownloadCompras = () => {
         if (!range?.from || !range?.to) return;
@@ -304,14 +271,11 @@ function ComprasReportTab({ allPurchaseOrders, range }: { allPurchaseOrders: Pur
 
     if (!currentPeriodStats) return <div>Seleccione un rango de fechas para ver el reporte.</div>;
 
-    const spendingComparison = getComparison(currentPeriodStats.totalSpending, prevPeriodStats.totalSpending);
-    const poCountComparison = getComparison(currentPeriodStats.poCount, prevPeriodStats.poCount);
-
     return (
          <div className="grid gap-6">
             <div className="grid md:grid-cols-2 gap-6">
-                <StatCard title="Gasto Total" value={`$${currentPeriodStats.totalSpending.toLocaleString('es-MX')}`} comparison={spendingComparison} icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />} />
-                <StatCard title="Órdenes de Compra" value={`${currentPeriodStats.poCount}`} comparison={poCountComparison} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
+                <StatCard title="Gasto Total" value={`$${currentPeriodStats.totalSpending.toLocaleString('es-MX')}`} icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />} />
+                <StatCard title="Órdenes de Compra" value={`${currentPeriodStats.poCount}`} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
             </div>
             <div className="flex justify-end mt-4">
                 <Button onClick={handleDownloadCompras} disabled={!range?.from || !range.to}>
