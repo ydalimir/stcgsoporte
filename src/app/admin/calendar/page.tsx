@@ -265,7 +265,7 @@ function ProjectList({ projects }: { projects: Project[] }) {
                                'text-green-600 border-green-600': project.status === 'Completado',
                             })}>{project.status}</Badge>
                          </div>
-                         <Button variant="secondary" size="sm" className="mt-1 h-8" onClick={() => router.push('/admin/projects')}>
+                         <Button variant="secondary" size="sm" className="mt-1 h-8" onClick={() => router.push(`/admin/projects?highlight=${project.id}`)}>
                             Ir a Proyecto
                             <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>

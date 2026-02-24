@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Loader2, PlusCircle, MoreHorizontal, Edit, Trash2, Check, ChevronsUpDown, Download, FileSpreadsheet } from "lucide-react";
 import {
   Table,
@@ -87,6 +87,7 @@ import { PurchaseOrderForm } from "../forms/purchase-order-form";
 import type { Client } from "./client-manager";
 import * as XLSX from "xlsx";
 import { User } from "firebase/auth";
+import { useSearchParams } from "next/navigation";
 
 
 const projectSchema = z.object({
@@ -456,6 +457,7 @@ const downloadPurchaseOrderExcel = (po: PurchaseOrder) => {
 
 export function ProjectManager() {
   const { user, isLoading: authIsLoading } = useAuth();
+  const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
@@ -474,6 +476,14 @@ export function ProjectManager() {
   const [isPOFormOpen, setIsPOFormOpen] = useState(false);
   const [linkingProjectForPO, setLinkingProjectForPO] = useState<Project | null>(null);
   const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
+  
+  const highlightId = searchParams.get('highlight');
+  const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+
+  useEffect(() => {
+    // Reset refs on data change to ensure they are fresh
+    rowRefs.current = {};
+  }, [projects]);
 
 
   useEffect(() => {
@@ -549,6 +559,50 @@ export function ProjectManager() {
         unsubscribePOs();
     };
   }, [user, userProfile, isProfileLoading, toast]);
+  
+  const table = useReactTable({ 
+    data: projects, 
+    columns: useMemo(() => getColumns({
+        handleDeleteProject, 
+        handleStatusChange, 
+        quotes, 
+        projects, 
+        handleLinkQuote, 
+        purchaseOrders, 
+        handleLinkPurchaseOrder, 
+        handleSaveAndLinkQuote, 
+        handleUpdateQuote, 
+        handleSaveAndLinkPO, 
+        handleUpdatePO, 
+        handleEditPO, 
+        handleEditQuote, 
+        user, 
+        userProfile,
+        setLinkingProject,
+        setIsQuoteFormOpen,
+        setLinkingProjectForPO,
+        setIsPOFormOpen,
+    }), [ projects, quotes, purchaseOrders, user, userProfile]),
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    state: { globalFilter: filter },
+    onGlobalFilterChange: setFilter,
+  });
+
+  useEffect(() => {
+    if (highlightId && table.getRowModel().rows.length > 0) {
+      const targetRow = rowRefs.current[highlightId];
+      if (targetRow) {
+        setTimeout(() => {
+          targetRow.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+        }, 100); // Delay to allow for rendering
+      }
+    }
+  }, [highlightId, projects, table.getRowModel().rows]);
 
   const handleSaveProject = useCallback(async (data: Omit<Project, 'id' | 'lastUpdated' | 'createdAt' | 'userId'>) => {
     if (!user) return;
@@ -727,7 +781,89 @@ export function ProjectManager() {
         setIsPOFormOpen(true);
     };
   
-  const columns: ColumnDef<Project>[] = useMemo(() => [
+  
+
+  const quoteForForm = useMemo(() => 
+    editingQuote || (linkingProject ? { clientName: linkingProject.client } : null)
+  , [editingQuote, linkingProject]);
+
+  const poForForm = useMemo(() => 
+    editingPO || (linkingProjectForPO ? {} : null)
+  , [editingPO, linkingProjectForPO]);
+
+  const role = userProfile?.role;
+  
+  const linkedQuoteIds = useMemo(() => new Set(projects.map(p => p.quoteId).filter(Boolean)), [projects]);
+  const linkedPoIds = useMemo(() => new Set(projects.map(p => p.purchaseOrderId).filter(Boolean)), [projects]);
+
+  if (isLoading || authIsLoading || isProfileLoading) {
+    return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  }
+
+  return (
+    <div>
+        <div className="flex justify-between items-center mb-4">
+             <Input placeholder="Buscar por cliente o descripción..." value={filter} onChange={(e) => setFilter(e.target.value)} className="max-w-sm"/>
+            <Button onClick={() => { setSelectedProject(null); setIsFormOpen(true);}}><PlusCircle className="mr-2 h-4 w-4" /> Crear Proyecto</Button>
+        </div>
+        <div className="rounded-md border">
+            <Table>
+                <TableHeader>{table.getHeaderGroups().map(headerGroup => (<TableRow key={headerGroup.id}>{headerGroup.headers.map(header => <TableHead key={header.id}>{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>)}</TableRow>))}</TableHeader>
+                <TableBody>
+                    {table.getRowModel().rows?.length ? (table.getRowModel().rows.map(row => (<TableRow key={row.id} ref={el => (rowRefs.current[row.original.id] = el)} className={cn({'highlight': row.original.id === highlightId})}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))) : (<TableRow><TableCell colSpan={table.getAllColumns().length} className="h-24 text-center">No hay proyectos. Empieza creando uno.</TableCell></TableRow>)}
+                </TableBody>
+            </Table>
+        </div>
+        <div className="flex items-center justify-end space-x-2 py-4">
+            <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>Anterior</Button>
+            <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Siguiente</Button>
+        </div>
+
+      <ProjectFormDialog 
+        isOpen={isFormOpen} 
+        onOpenChange={setIsFormOpen} 
+        onSave={handleSaveProject} 
+        project={selectedProject} 
+        quotes={quotes} 
+        purchaseOrders={purchaseOrders} 
+        user={user}
+        userProfile={userProfile}
+        linkedQuoteIds={linkedQuoteIds}
+        linkedPoIds={linkedPoIds}
+      />
+      <QuoteForm 
+        isOpen={isQuoteFormOpen}
+        onOpenChange={(open) => {
+            if (!open) {
+                setLinkingProject(null);
+                setEditingQuote(null);
+            }
+            setIsQuoteFormOpen(open);
+        }}
+        onSave={editingQuote ? handleUpdateQuote : handleSaveAndLinkQuote as any}
+        quote={quoteForForm}
+        userRole={role}
+      />
+      <PurchaseOrderForm
+        isOpen={isPOFormOpen}
+        onOpenChange={(open) => {
+            if (!open) {
+                setLinkingProjectForPO(null);
+                setEditingPO(null);
+            }
+            setIsPOFormOpen(open);
+        }}
+        onSave={editingPO ? handleUpdatePO : handleSaveAndLinkPO}
+        purchaseOrder={poForForm as PurchaseOrder}
+        userRole={role}
+      />
+    </div>
+  );
+}
+
+const getColumns = (
+    { handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, purchaseOrders, handleLinkPurchaseOrder, handleEditQuote, handleEditPO, user, userProfile, setLinkingProject, setIsQuoteFormOpen, setLinkingProjectForPO, setIsPOFormOpen }: any
+): ColumnDef<Project>[] => [
       { accessorKey: "client", header: "Cliente" },
       { accessorKey: "description", header: "Descripción", cell: ({row}) => <div className="max-w-xs whitespace-normal">{row.original.description}</div> },
       { accessorKey: "responsible", header: "Responsable", cell: ({row}) => {
@@ -976,95 +1112,8 @@ export function ProjectManager() {
             )
         }
       }
-  ], [handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, purchaseOrders, handleLinkPurchaseOrder, handleSaveAndLinkQuote, handleUpdateQuote, handleSaveAndLinkPO, handleUpdatePO, handleEditPO, handleEditQuote, user, userProfile]);
-  
-  const table = useReactTable({ 
-    data: projects, 
-    columns, 
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    state: { globalFilter: filter },
-    onGlobalFilterChange: setFilter,
-  });
+];
 
-  const quoteForForm = useMemo(() => 
-    editingQuote || (linkingProject ? { clientName: linkingProject.client } : null)
-  , [editingQuote, linkingProject]);
-
-  const poForForm = useMemo(() => 
-    editingPO || (linkingProjectForPO ? {} : null)
-  , [editingPO, linkingProjectForPO]);
-
-  const role = userProfile?.role;
-  
-  const linkedQuoteIds = useMemo(() => new Set(projects.map(p => p.quoteId).filter(Boolean)), [projects]);
-  const linkedPoIds = useMemo(() => new Set(projects.map(p => p.purchaseOrderId).filter(Boolean)), [projects]);
-
-  if (isLoading || authIsLoading || isProfileLoading) {
-    return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
-  }
-
-  return (
-    <div>
-        <div className="flex justify-between items-center mb-4">
-             <Input placeholder="Buscar por cliente o descripción..." value={filter} onChange={(e) => setFilter(e.target.value)} className="max-w-sm"/>
-            <Button onClick={() => { setSelectedProject(null); setIsFormOpen(true);}}><PlusCircle className="mr-2 h-4 w-4" /> Crear Proyecto</Button>
-        </div>
-        <div className="rounded-md border">
-            <Table>
-                <TableHeader>{table.getHeaderGroups().map(headerGroup => (<TableRow key={headerGroup.id}>{headerGroup.headers.map(header => <TableHead key={header.id}>{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>)}</TableRow>))}</TableHeader>
-                <TableBody>
-                    {table.getRowModel().rows?.length ? (table.getRowModel().rows.map(row => (<TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))) : (<TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No hay proyectos. Empieza creando uno.</TableCell></TableRow>)}
-                </TableBody>
-            </Table>
-        </div>
-        <div className="flex items-center justify-end space-x-2 py-4">
-            <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>Anterior</Button>
-            <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Siguiente</Button>
-        </div>
-
-      <ProjectFormDialog 
-        isOpen={isFormOpen} 
-        onOpenChange={setIsFormOpen} 
-        onSave={handleSaveProject} 
-        project={selectedProject} 
-        quotes={quotes} 
-        purchaseOrders={purchaseOrders} 
-        user={user}
-        userProfile={userProfile}
-        linkedQuoteIds={linkedQuoteIds}
-        linkedPoIds={linkedPoIds}
-      />
-      <QuoteForm 
-        isOpen={isQuoteFormOpen}
-        onOpenChange={(open) => {
-            if (!open) {
-                setLinkingProject(null);
-                setEditingQuote(null);
-            }
-            setIsQuoteFormOpen(open);
-        }}
-        onSave={editingQuote ? handleUpdateQuote : handleSaveAndLinkQuote as any}
-        quote={quoteForForm}
-        userRole={role}
-      />
-      <PurchaseOrderForm
-        isOpen={isPOFormOpen}
-        onOpenChange={(open) => {
-            if (!open) {
-                setLinkingProjectForPO(null);
-                setEditingPO(null);
-            }
-            setIsPOFormOpen(open);
-        }}
-        onSave={editingPO ? handleUpdatePO : handleSaveAndLinkPO}
-        purchaseOrder={poForForm as PurchaseOrder}
-        userRole={role}
-      />
-    </div>
-  );
-}
 
 interface ProjectFormDialogProps {
   isOpen: boolean;

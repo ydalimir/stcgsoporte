@@ -109,3 +109,12 @@
 .project-vencido::after {
   background-color: hsl(var(--destructive)); /* red */
 }
+
+@keyframes highlight-bg {
+  from { background-color: hsl(var(--accent)); }
+  to { background-color: transparent; }
+}
+
+.highlight {
+  animation: highlight-bg 2.5s ease-out;
+}
