@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -12,7 +11,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
-import { Logo } from "@/components/logo";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -63,7 +61,15 @@ export default function LoginPage() {
             data-ai-hint="workshop tools"
         />
         <div className="relative z-10 text-center space-y-4">
-            <Logo className="justify-center" width={150} height={38} />
+            <Link href="/" className="flex items-center gap-2 justify-center" aria-label="LEBAREF Home">
+              <Image
+                src="https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771961790/logo-Photoroom_1_rpqv3n.png"
+                alt="LEBAREF Logo"
+                width={150}
+                height={38}
+                priority
+              />
+            </Link>
             {/* <p className="text-lg text-muted-foreground">Expertos en gestión y mantenimiento de equipos.</p> */}
         </div>
       </div>
