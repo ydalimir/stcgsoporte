@@ -133,8 +133,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote, userRole }: Quo
   useEffect(() => {
       const qServices = collection(db, "services");
       const unsubscribeServices = onSnapshot(qServices, (snapshot) => {
-          const servicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
-          setServices(servicesData);
+          setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
       }, (error) => {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'services',
@@ -144,8 +143,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote, userRole }: Quo
 
       const qParts = collection(db, "spare_parts");
       const unsubscribeParts = onSnapshot(qParts, (snapshot) => {
-        const partsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SparePart));
-        setSpareParts(partsData);
+        setSpareParts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SparePart)));
     }, (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'spare_parts',
@@ -153,8 +151,10 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote, userRole }: Quo
         }));
     });
       
+    let unsubscribeClients = () => {};
+    if (userRole) {
       const qClients = collection(db, "clients");
-      const unsubscribeClients = onSnapshot(qClients, (snapshot) => {
+      unsubscribeClients = onSnapshot(qClients, (snapshot) => {
         const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
         setClients(clientsData);
       }, (error) => {
@@ -163,13 +163,14 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote, userRole }: Quo
             operation: 'list',
         }));
       });
+    }
 
       return () => {
         unsubscribeServices();
         unsubscribeParts();
         unsubscribeClients();
       }
-  }, []);
+  }, [userRole]);
 
   const form = useForm<QuoteFormValues>({
     resolver: zodResolver(quoteFormSchema),

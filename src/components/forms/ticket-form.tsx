@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -121,18 +122,21 @@ export function TicketForm({ onTicketCreated, isAdminMode = false }: TicketFormP
   }, [searchParams, form, user, isAdminMode]);
 
   useEffect(() => {
-    const qClients = collection(db, "clients");
-    const unsubscribeClients = onSnapshot(qClients, (snapshot) => {
-        const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
-        setClients(clientsData);
-    }, (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'clients', operation: 'list' }));
-    });
+    let unsubscribeClients = () => {};
+    if (user || isAdminMode) {
+        const qClients = collection(db, "clients");
+        unsubscribeClients = onSnapshot(qClients, (snapshot) => {
+            const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+            setClients(clientsData);
+        }, (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'clients', operation: 'list' }));
+        });
+    }
 
     return () => {
         unsubscribeClients();
     };
-  }, []);
+  }, [user, isAdminMode]);
 
   async function createTicketInApp(data: TicketFormValues) {
     if (!user && !isAdminMode) {
