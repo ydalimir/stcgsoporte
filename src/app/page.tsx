@@ -61,7 +61,7 @@ export default function LoginPage() {
             className="object-cover"
             data-ai-hint="workshop tools"
         />
-        <div className="absolute inset-0 bg-white/75" />
+        <div className="absolute inset-0 bg-white/60" />
         <div className="relative z-10 text-center space-y-4">
           <Logo className="justify-center" width={150} height={38} />
         </div>

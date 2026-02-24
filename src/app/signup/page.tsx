@@ -127,7 +127,7 @@ export default function SignUpPage() {
             className="object-cover"
             data-ai-hint="kitchen maintenance"
         />
-        <div className="absolute inset-0 bg-white/75" />
+        <div className="absolute inset-0 bg-white/60" />
         <div className="relative z-10 text-center space-y-4">
             <Logo className="justify-center" width={150} height={38} />
             <p className="text-lg text-foreground/80">La solución definitiva para la gestión de servicios técnicos.</p>
