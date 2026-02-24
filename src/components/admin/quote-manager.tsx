@@ -176,7 +176,7 @@ const downloadPDF = (quote: Quote) => {
     yPos += 10;
     doc.setTextColor(0, 0, 0); // Reset color
 
-    const localDate = new Date(quote.date);
+    const localDate = new Date(quote.date.replace(/-/g, '\/'));
 
     // --- Client and Service Info ---
     autoTable(doc, {
@@ -219,12 +219,10 @@ const downloadPDF = (quote: Quote) => {
       margin: { bottom: 40 }
     });
     
-    let lastY = (doc as any).lastAutoTable.finalY;
-
     // --- Comentarios y Diagnostico ---
     if (quote.observations) {
         autoTable(doc, {
-            startY: lastY + 5,
+            startY: (doc as any).lastAutoTable.finalY + 5,
             body: [
                 [{ content: 'Comentarios y Diagnóstico:', styles: { fontStyle: 'bold', fontSize: 9 } }],
                 [{ content: doc.splitTextToSize(quote.observations, 180), styles: { fontSize: 9 } }],
@@ -232,13 +230,12 @@ const downloadPDF = (quote: Quote) => {
             theme: 'plain',
             margin: { bottom: 40 }
         });
-        lastY = (doc as any).lastAutoTable.finalY;
     }
     
     // --- Garantias ---
     if (quote.policies) {
          autoTable(doc, {
-            startY: lastY + 5,
+            startY: (doc as any).lastAutoTable.finalY + 5,
             body: [
                 [{ content: 'Garantías:', styles: { fontStyle: 'bold', fontSize: 10 } }],
                 [{ content: doc.splitTextToSize(quote.policies, 180), styles: { fontSize: 7 } }],
@@ -246,13 +243,12 @@ const downloadPDF = (quote: Quote) => {
             theme: 'plain',
             margin: { bottom: 40 }
         });
-        lastY = (doc as any).lastAutoTable.finalY;
     }
     
     // --- Payment Conditions ---
     if (quote.paymentTerms) {
         autoTable(doc, {
-            startY: lastY + 5,
+            startY: (doc as any).lastAutoTable.finalY + 5,
             body: [
                 [{ content: 'Condiciones de Pago:', styles: { fontStyle: 'bold', fontSize: 10 } }],
                 [{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 8 } }],
@@ -474,7 +470,7 @@ export function QuoteManager() {
         header: "Fecha", 
         cell: ({ row }) => {
             if (!row.original.date) return 'N/A';
-            const localDate = new Date(row.original.date);
+            const localDate = new Date(row.original.date.replace(/-/g, '\/'));
             return localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
         } 
       },
@@ -655,4 +651,5 @@ export function QuoteManager() {
     </div>
   );
 }
+
 

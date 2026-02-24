@@ -176,8 +176,6 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
       margin: { bottom: 60 } // Margin for footer and signature
     });
 
-    let lastY = (doc as any).lastAutoTable.finalY;
-
     // --- Totals and Observations ---
     const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
     const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
@@ -193,7 +191,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     `.trim().split('\n').map(line => line.trim()).filter(Boolean).join('\n');
     
     autoTable(doc, {
-        startY: lastY + 5,
+        startY: (doc as any).lastAutoTable.finalY + 5,
         body: [
             [
                 { content: `Observaciones / Instrucciones:\n${po.observations || ''}`, styles: { cellWidth: 120 } },
@@ -213,12 +211,13 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
 
         // Footer
         doc.setFontSize(8).setTextColor(150);
-        doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo electrónico:", 105, pageHeight - 15, {align: 'center'});
-        doc.text("lebarefmantenimiento@gmail.com / corporativo@lebaref.com", 105, pageHeight - 10, {align: 'center'});
+        doc.text(`Página ${i} de ${totalPages}`, doc.internal.pageSize.width - 35, pageHeight - 10);
+        doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo electrónico:", 105, pageHeight - 20, {align: 'center'});
+        doc.text("lebarefmantenimiento@gmail.com / corporativo@lebaref.com", 105, pageHeight - 15, {align: 'center'});
         
         // Signature only on the last page
         if (i === totalPages) {
-            const signatureY = pageHeight - 45;
+            const signatureY = pageHeight - 55;
             doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0,0,0);
             doc.text('FIRMA AUTORIZADA', 14, signatureY);
             doc.rect(14, signatureY + 2, 80, 20); // Signature box
