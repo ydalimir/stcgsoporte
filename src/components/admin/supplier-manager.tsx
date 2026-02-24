@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -195,6 +196,11 @@ export function SupplierManager() {
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+        pagination: {
+            pageSize: 10,
+        }
+    },
     state: { globalFilter: filter },
     onGlobalFilterChange: setFilter,
   });

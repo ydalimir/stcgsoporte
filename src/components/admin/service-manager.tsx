@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -53,7 +54,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { ColumnDef, flexRender, getCoreRowModel, useReactTable, getPaginationRowModel } from "@tanstack/react-table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -184,7 +185,17 @@ export function ServiceManager() {
       }
   ], []);
   
-  const table = useReactTable({ data: services, columns, getCoreRowModel: getCoreRowModel() });
+  const table = useReactTable({ 
+    data: services, 
+    columns, 
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+        pagination: {
+            pageSize: 10,
+        },
+    },
+  });
   
   if (isLoading && authIsLoading) {
     return <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -226,6 +237,25 @@ export function ServiceManager() {
                     )}
                 </TableBody>
             </Table>
+        </div>
+
+        <div className="flex items-center justify-end space-x-2 py-4">
+            <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            >
+            Anterior
+            </Button>
+            <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            >
+            Siguiente
+            </Button>
         </div>
 
       <ServiceFormDialog

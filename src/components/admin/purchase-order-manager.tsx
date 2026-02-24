@@ -584,6 +584,11 @@ export function PurchaseOrderManager() {
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
+    initialState: {
+        pagination: {
+            pageSize: 10,
+        }
+    },
     state: {
       globalFilter: filter,
       sorting,
