@@ -104,7 +104,7 @@ const projectSchema = z.object({
   id: z.string().optional(),
   client: z.string().min(2, { message: "El nombre del cliente es requerido." }),
   description: z.string().min(10, { message: "La descripción es requerida (mínimo 10 caracteres)." }),
-  responsible: z.string().min(2, { message: "El nombre del responsable es requerido." }),
+  responsible: z.string().optional(),
   status: z.enum(["Nuevo", "En Progreso", "En Pausa", "Completado"]),
   programmedDate: z.string().min(1, { message: "La fecha programada es requerida." }),
   priority: z.enum(["Baja", "Media", "Alta"]),
@@ -627,13 +627,19 @@ export function ProjectManager() {
   
   const handleSaveProject = useCallback(async (data: Omit<Project, 'id' | 'lastUpdated' | 'createdAt' | 'userId'>) => {
     if (!user) return;
+    
+    const finalData = {
+        ...data,
+        responsible: data.responsible?.trim() || user.displayName || 'Usuario sin nombre',
+    };
+
     try {
         if (selectedProject?.id) {
             const projectDoc = doc(db, "projects", selectedProject.id);
-            await updateDoc(projectDoc, { ...data, lastUpdated: serverTimestamp() });
+            await updateDoc(projectDoc, { ...finalData, lastUpdated: serverTimestamp() });
             toast({ title: "Proyecto Actualizado", description: "El proyecto ha sido actualizado." });
         } else {
-            const projectData = { ...data, lastUpdated: serverTimestamp(), createdAt: serverTimestamp(), userId: user.uid };
+            const projectData = { ...finalData, lastUpdated: serverTimestamp(), createdAt: serverTimestamp(), userId: user.uid };
             await addDoc(collection(db, "projects"), projectData);
             toast({ title: "Proyecto Creado", description: "Un nuevo proyecto ha sido creado." });
         }
@@ -899,7 +905,7 @@ export function ProjectManager() {
                                     format(date.from, "d 'de' LLL, y", { locale: es })
                                 )
                             ) : (
-                                <span>Filtrar por fecha programada...</span>
+                                "Filtrar por fecha programada..."
                             )}
                         </Button>
                     </PopoverTrigger>
@@ -1433,7 +1439,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
                         />
                         <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Describe el proyecto en detalle..." {...field} /></FormControl><FormMessage /></FormItem> )} />
                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="responsible" render={({ field }) => ( <FormItem><FormLabel>Responsable</FormLabel><FormControl><Input placeholder="Persona a cargo" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                            <FormField control={form.control} name="responsible" render={({ field }) => ( <FormItem><FormLabel>Responsable (Opcional)</FormLabel><FormControl><Input placeholder="Se asignará a usted si está vacío" {...field} /></FormControl><FormMessage /></FormItem> )} />
                             <FormField control={form.control} name="programmedDate" render={({ field }) => ( <FormItem><FormLabel>Fecha Programada</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem> )} />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
