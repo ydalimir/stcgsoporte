@@ -96,46 +96,34 @@ type UserProfile = {
 
 const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     const doc = new jsPDF();
-    const poId = po.purchaseOrderNumber;
-    let yPos = 20;
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
     const pageMargin = 14;
     const bottomMargin = 30;
 
-    // --- HEADER ---
-    const drawHeader = () => {
-        yPos = 20;
-        doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(41, 71, 121);
-        doc.text("LEBAREF", pageMargin, yPos);
-        
-        doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(0, 0, 0);
-        doc.text("ORDEN DE COMPRA", pageWidth - pageMargin, yPos, { align: 'right' });
-        yPos += 8;
-
-        doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(100, 100, 100);
-        const poDate = po.date ? new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
-        doc.text(`FECHA: ${poDate}`, pageWidth - pageMargin, yPos, { align: 'right' });
-        yPos += 4;
-        doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, pageWidth - pageMargin, yPos, { align: 'right' });
-    };
-
-    // --- FOOTER ---
     const drawFooter = (pageNumber: number, totalPages: number) => {
         doc.setFontSize(8).setTextColor(150);
-        doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo electrónico:", pageWidth / 2, pageHeight - 15, {align: 'center'});
-        doc.text("lebarefmantenimiento@gmail.com / corporativo@lebaref.com", pageWidth / 2, pageHeight - 10, {align: 'center'});
+        doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo:", pageWidth / 2, pageHeight - 15, {align: 'center'});
+        doc.text("corporativo@lebaref.com", pageWidth / 2, pageHeight - 10, {align: 'center'});
         doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 10, { align: 'right' });
     };
-
-    // --- CONTENT ---
+    
     autoTable(doc, {
         didDrawPage: (data) => {
             if (data.pageNumber === 1) {
-                drawHeader();
+                // Draw header only on the first page
+                doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(41, 71, 121);
+                doc.text("LEBAREF", pageMargin, 20);
+                
+                doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(0, 0, 0);
+                doc.text("ORDEN DE COMPRA", pageWidth - pageMargin, 20, { align: 'right' });
+
+                doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(100, 100, 100);
+                const poDate = po.date ? new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
+                doc.text(`FECHA: ${poDate}`, pageWidth - pageMargin, 28, { align: 'right' });
+                doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, pageWidth - pageMargin, 32, { align: 'right' });
             }
         },
-        margin: { top: 40, bottom: bottomMargin },
         // --- BILL TO / SEND TO ---
         body: [
             [
@@ -148,6 +136,8 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
             ]
         ],
         theme: 'plain',
+        startY: 40,
+        margin: { top: 40, bottom: bottomMargin }
     });
     
     // --- PO DETAILS GRID ---
@@ -165,6 +155,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         ]],
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
+        margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin },
     });
 
     // --- ITEMS TABLE ---
@@ -189,59 +180,63 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
       headStyles: { fillColor: [220, 220, 220], textColor: 0, fontSize: 8, fontStyle: 'bold', halign: 'center' },
       bodyStyles: { fontSize: 8 },
       columnStyles: { 5: { halign: 'right' }},
+      margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin },
     });
 
     let finalY = (doc as any).lastAutoTable.finalY;
-    
-    // --- Check if there's enough space for the final sections ---
-    if (pageHeight - finalY < 80) { // 80 is an estimated height for observations, totals, and signature
-        doc.addPage();
-        finalY = pageMargin; // Reset Y position on new page
-    }
 
-    // --- OBSERVATIONS AND TOTALS (SIDE-BY-SIDE) ---
-    const observationsY = finalY + 10;
-    doc.setFont("helvetica", "bold").setFontSize(9);
-    doc.text('Observaciones / Instrucciones:', pageMargin, observationsY);
-    doc.setFont("helvetica", "normal").setFontSize(9);
-    const splitObservations = doc.splitTextToSize(po.observations || '', 110);
-    doc.text(splitObservations, pageMargin, observationsY + 5);
-
-    const totalsX = 130;
-    const totalsY = finalY + 10;
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text('SUBTOTAL', totalsX, totalsY, { align: 'left'});
-    doc.text(`$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - pageMargin, totalsY, { align: 'right'});
+    // --- Function to check space and add new page if needed ---
+    const checkPageSpace = (requiredSpace: number) => {
+        if (finalY + requiredSpace > pageHeight - bottomMargin) {
+            doc.addPage();
+            finalY = pageMargin; // Reset Y position
+        }
+    };
     
-    let currentTotalsY = totalsY;
+    // --- OBSERVATIONS ---
+    const observationsLines = po.observations ? doc.splitTextToSize(po.observations, 110) : [];
+    const observationsHeight = (observationsLines.length * 5) + 10; // 5 per line + padding
+    checkPageSpace(observationsHeight + 40); // Check space for observations and totals
+    
+    autoTable(doc, {
+        startY: finalY + 5,
+        body: [
+            [{ content: 'Observaciones / Instrucciones:', styles: { fontStyle: 'bold' } }],
+            [{ content: observationsLines.join('\n') }],
+        ],
+        theme: 'plain',
+        styles: { fontSize: 9 },
+        margin: { left: pageMargin, right: pageWidth / 2, bottom: bottomMargin }
+    });
+
+    // --- TOTALS ---
+    const totalsBody = [
+        [{ content: 'SUBTOTAL', styles: { halign: 'left' }}, { content: `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' }}],
+    ];
     if (po.discountPercentage && po.discountPercentage > 0) {
-        currentTotalsY += 5;
-        doc.text(`DESCUENTO ${po.discountPercentage}%`, totalsX, currentTotalsY, { align: 'left'});
-        doc.text(`-$${discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - pageMargin, currentTotalsY, { align: 'right'});
+        totalsBody.push([{ content: `DESCUENTO ${po.discountPercentage}%`, styles: { halign: 'left' }}, { content: `-$${discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' }}]);
     }
-    
-    currentTotalsY += 5;
-    doc.text('IVA', totalsX, currentTotalsY, { align: 'left'});
-    doc.text(`$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - pageMargin, currentTotalsY, { align: 'right'});
-    
-    currentTotalsY += 5;
-    doc.setFont("helvetica", "bold");
-    doc.text('TOTAL', totalsX, currentTotalsY, { align: 'left'});
-    doc.text(`$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - pageMargin, currentTotalsY, { align: 'right'});
-    
+    totalsBody.push([{ content: 'IVA', styles: { halign: 'left' }}, { content: `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' }}]);
+    totalsBody.push([{ content: 'TOTAL', styles: { fontStyle: 'bold', halign: 'left' }}, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' }}]);
+
+    autoTable(doc, {
+        startY: finalY + 5,
+        body: totalsBody,
+        theme: 'plain',
+        styles: { fontSize: 9 },
+        margin: { left: pageWidth / 2 + 10, right: pageMargin, bottom: bottomMargin }
+    });
+
+    finalY = (doc as any).lastAutoTable.finalY;
+
     // --- SIGNATURE ---
-    const obsHeight = splitObservations.length * 5;
-    let signatureY = Math.max(observationsY + obsHeight + 15, currentTotalsY + 15);
-    if (pageHeight - signatureY < 40) {
-        doc.addPage();
-        signatureY = pageMargin;
-    }
+    checkPageSpace(30);
+    const signatureY = finalY + 15;
     doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0,0,0);
     doc.text('FIRMA AUTORIZADA', pageMargin, signatureY);
     doc.setDrawColor(0,0,0);
     doc.line(pageMargin, signatureY + 2, pageMargin + 80, signatureY + 2); 
-
+    
     // --- RENDER FOOTER ON ALL PAGES ---
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
@@ -249,7 +244,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         drawFooter(i, totalPages);
     }
     
-    doc.save(`${poId}.pdf`);
+    doc.save(`${po.purchaseOrderNumber}.pdf`);
 };
 
 const downloadExcel = (po: PurchaseOrder) => {
