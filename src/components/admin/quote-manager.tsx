@@ -11,6 +11,8 @@ import {
   getPaginationRowModel,
   getFilteredRowModel,
   ColumnFiltersState,
+  SortingState,
+  getSortedRowModel,
 } from "@tanstack/react-table";
 import {
   Table,
@@ -35,7 +37,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2, FileSpreadsheet, ChevronDown } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2, FileSpreadsheet, ArrowUpDown, Calendar as CalendarIcon } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,6 +60,16 @@ import { useAuth } from "@/hooks/use-auth";
 import { errorEmitter } from "@/lib/error-emitter";
 import { FirestorePermissionError } from "@/lib/errors";
 import * as XLSX from "xlsx";
+import { DateRange } from "react-day-picker";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 
 export type QuoteItem = {
@@ -320,9 +332,11 @@ export function QuoteManager() {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'date', desc: true }]);
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const [date, setDate] = useState<DateRange | undefined>(undefined);
 
   useEffect(() => {
     if (authIsLoading) return;
@@ -354,7 +368,7 @@ export function QuoteManager() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const quotesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
-        setQuotes(quotesData.sort((a, b) => (b.quoteNumber || "").localeCompare(a.quoteNumber || "")));
+        setQuotes(quotesData);
         setIsLoading(false);
     }, (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -365,6 +379,23 @@ export function QuoteManager() {
     });
     return () => unsubscribe();
   }, [user, userProfile, isProfileLoading, toast]);
+  
+  const filteredQuotes = useMemo(() => {
+    if (!date?.from) return quotes;
+    
+    const fromDate = new Date(date.from);
+    fromDate.setHours(0, 0, 0, 0);
+
+    const toDate = date.to ? new Date(date.to) : new Date(date.from);
+    toDate.setHours(23, 59, 59, 999);
+
+    return quotes.filter(quote => {
+        if (!quote.date) return false;
+        const quoteDate = new Date(quote.date.replace(/-/g, '\/'));
+        return quoteDate >= fromDate && quoteDate <= toDate;
+    });
+  }, [quotes, date]);
+
 
   const handleSave = useCallback(async (quoteData: Omit<Quote, 'id' | 'quoteNumber' | 'userId'>) => {
     if (!user) return;
@@ -456,7 +487,11 @@ export function QuoteManager() {
     () => [
       { 
         accessorKey: "quoteNumber", 
-        header: "ID",
+        header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                ID <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
         cell: ({ row }) => {
           return row.original.quoteNumber || 'N/A';
         }
@@ -464,7 +499,11 @@ export function QuoteManager() {
       { accessorKey: "clientName", header: "Cliente" },
       { 
         accessorKey: "date", 
-        header: "Fecha", 
+        header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                Fecha <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
         cell: ({ row }) => {
             if (!row.original.date) return 'N/A';
             const localDate = new Date(row.original.date.replace(/-/g, '\/'));
@@ -548,11 +587,13 @@ export function QuoteManager() {
   );
 
   const table = useReactTable({
-    data: quotes,
+    data: filteredQuotes,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     initialState: {
         pagination: {
@@ -562,6 +603,7 @@ export function QuoteManager() {
     state: {
       globalFilter: filter,
       columnFilters,
+      sorting,
     },
     onGlobalFilterChange: setFilter,
   });
@@ -582,29 +624,43 @@ export function QuoteManager() {
               onChange={(e) => setFilter(e.target.value)}
               className="max-w-sm"
             />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  <span className="mr-2">Estado:</span>
-                  <span>{(table.getColumn('status')?.getFilterValue() as string) || 'Todos'}</span>
-                  <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuRadioGroup
-                    value={(table.getColumn('status')?.getFilterValue() as string) ?? 'Todos'}
-                    onValueChange={(value) =>
-                        table.getColumn("status")?.setFilterValue(value === "Todos" ? null : value)
-                    }
-                >
-                    <DropdownMenuRadioItem value="Todos">Todos</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="Borrador">Borrador</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="Enviada">Enviada</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="Aceptada">Aceptada</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="Rechazada">Rechazada</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                        id="date"
+                        variant={"outline"}
+                        className={cn(
+                            "w-[300px] justify-start text-left font-normal",
+                            !date && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date?.from ? (
+                            date.to ? (
+                                <>
+                                    {format(date.from, "d 'de' LLL, y", { locale: es })} -{" "}
+                                    {format(date.to, "d 'de' LLL, y", { locale: es })}
+                                </>
+                            ) : (
+                                format(date.from, "d 'de' LLL, y", { locale: es })
+                            )
+                        ) : (
+                            <span>Selecciona un rango</span>
+                        )}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={date?.from}
+                        selected={date}
+                        onSelect={setDate}
+                        numberOfMonths={2}
+                        locale={es}
+                    />
+                </PopoverContent>
+            </Popover>
         </div>
         <Button onClick={() => { setSelectedQuote(null); setIsFormOpen(true); }}>
           <PlusCircle className="mr-2 h-4 w-4" /> Crear Cotización
