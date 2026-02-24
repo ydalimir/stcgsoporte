@@ -136,9 +136,6 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
             if (data.pageNumber === 1) {
                 if (logoDataUrl) {
                     doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 40, 15);
-                } else {
-                    doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(41, 71, 121);
-                    doc.text("LEBAREF", pageMargin, 20);
                 }
                 
                 doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(0, 0, 0);
@@ -251,10 +248,10 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
 
     checkPageSpace(30);
     const signatureY = finalY + 15;
-    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0,0,0);
-    doc.text('FIRMA AUTORIZADA', pageMargin, signatureY);
     doc.setDrawColor(0,0,0);
-    doc.line(pageMargin, signatureY + 2, pageMargin + 80, signatureY + 2); 
+    doc.line(pageMargin, signatureY, pageMargin + 80, signatureY); 
+    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0,0,0);
+    doc.text('FIRMA AUTORIZADA', pageMargin + 40, signatureY + 5, { align: 'center' });
     
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
@@ -751,3 +748,4 @@ export function PurchaseOrderManager() {
     </div>
   );
 }
+

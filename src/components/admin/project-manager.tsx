@@ -154,11 +154,6 @@ const downloadQuotePDF = async (quote: Quote) => {
     const drawHeader = () => {
         if (logoDataUrl) {
             doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 40, 15);
-        } else {
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(18);
-            doc.setTextColor(0, 0, 0); 
-            doc.text("LEBAREF", pageMargin, 20);
         }
         
         const headerDetailsX = pageWidth - pageMargin;
@@ -191,7 +186,7 @@ const downloadQuotePDF = async (quote: Quote) => {
         theme: 'plain',
         styles: { fontSize: 9, cellPadding: 1, overflow: 'linebreak' },
         columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },
-        margin: { left: pageMargin, right: pageMargin, top: topMargin },
+        margin: { top: topMargin, left: pageMargin, right: pageMargin },
         showHead: false,
     });
     
@@ -364,9 +359,6 @@ const downloadPurchaseOrderPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
             if (data.pageNumber === 1) {
                 if (logoDataUrl) {
                     doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 40, 15);
-                } else {
-                    doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(0, 0, 0);
-                    doc.text("LEBAREF", pageMargin, 20);
                 }
                 
                 doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(0, 0, 0);
@@ -486,10 +478,10 @@ const downloadPurchaseOrderPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
     // --- SIGNATURE ---
     checkPageSpace(30);
     const signatureY = finalY + 15;
-    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0,0,0);
-    doc.text('FIRMA AUTORIZADA', pageMargin, signatureY);
     doc.setDrawColor(0,0,0);
-    doc.line(pageMargin, signatureY + 2, pageMargin + 80, signatureY + 2); 
+    doc.line(pageMargin, signatureY, pageMargin + 80, signatureY); 
+    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0,0,0);
+    doc.text('FIRMA AUTORIZADA', pageMargin + 40, signatureY + 5, { align: 'center' });
     
     // --- RENDER FOOTER ON ALL PAGES ---
     const totalPages = (doc as any).internal.getNumberOfPages();
@@ -1575,3 +1567,4 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
         </Dialog>
     )
 }
+
