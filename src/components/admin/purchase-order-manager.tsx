@@ -10,6 +10,8 @@ import {
   useReactTable,
   getPaginationRowModel,
   getFilteredRowModel,
+  getSortedRowModel,
+  SortingState,
 } from "@tanstack/react-table";
 import {
   Table,
@@ -34,7 +36,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2, FileSpreadsheet } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2, FileSpreadsheet, ArrowUpDown, Calendar as CalendarIcon, Eraser } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,6 +60,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { errorEmitter } from "@/lib/error-emitter";
 import { FirestorePermissionError } from "@/lib/errors";
 import type { Quote } from "./quote-manager";
+import { DateRange } from "react-day-picker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 export type PurchaseOrderItem = {
   description: string;
@@ -328,6 +337,8 @@ export function PurchaseOrderManager() {
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'date', desc: true }]);
+  const [date, setDate] = useState<DateRange | undefined>(undefined);
 
   useEffect(() => {
     if (authIsLoading) return;
@@ -360,7 +371,7 @@ export function PurchaseOrderManager() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const poData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PurchaseOrder));
-        setPurchaseOrders(poData.sort((a, b) => (b.purchaseOrderNumber || "").localeCompare(a.purchaseOrderNumber || "")));
+        setPurchaseOrders(poData);
         setIsLoading(false);
     }, (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -388,6 +399,23 @@ export function PurchaseOrderManager() {
       unsubscribeQuotes();
     };
   }, [user, userProfile, isProfileLoading, toast]);
+
+    const filteredPOs = useMemo(() => {
+        if (!date?.from) return purchaseOrders;
+        
+        const fromDate = new Date(date.from);
+        fromDate.setHours(0, 0, 0, 0);
+
+        const toDate = date.to ? new Date(date.to) : new Date(date.from);
+        toDate.setHours(23, 59, 59, 999);
+
+        return purchaseOrders.filter(po => {
+            if (!po.date) return false;
+            const poDate = new Date(po.date.replace(/-/g, '\/'));
+            return poDate >= fromDate && poDate <= toDate;
+        });
+    }, [purchaseOrders, date]);
+
 
   const handleSave = useCallback(async (poData: any) => {
     if (!user) return;
@@ -451,7 +479,11 @@ export function PurchaseOrderManager() {
     () => [
       { 
         accessorKey: "purchaseOrderNumber", 
-        header: "ID",
+        header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                ID <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
         cell: ({ row }) => {
           return row.original.purchaseOrderNumber || 'N/A';
         }
@@ -459,7 +491,11 @@ export function PurchaseOrderManager() {
       { accessorKey: "supplierName", header: "Proveedor" },
       { 
         accessorKey: "date", 
-        header: "Fecha", 
+        header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                Fecha <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
         cell: ({ row }) => {
             const date = row.original.date;
             if (!date) return 'N/A';
@@ -541,13 +577,16 @@ export function PurchaseOrderManager() {
   );
 
   const table = useReactTable({
-    data: purchaseOrders,
+    data: filteredPOs,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onSortingChange: setSorting,
     state: {
       globalFilter: filter,
+      sorting,
     },
     onGlobalFilterChange: setFilter,
   });
@@ -559,12 +598,74 @@ export function PurchaseOrderManager() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <Input
-          placeholder="Buscar por proveedor..."
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="max-w-sm"
-        />
+        <div className="flex items-center gap-2">
+            <Input
+              placeholder="Buscar por ID o proveedor..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="max-w-sm"
+            />
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                        id="date"
+                        variant={"outline"}
+                        className={cn(
+                            "w-[300px] justify-start text-left font-normal",
+                            !date && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date?.from ? (
+                            date.to ? (
+                                <>
+                                    {format(date.from, "d 'de' LLL, y", { locale: es })} -{" "}
+                                    {format(date.to, "d 'de' LLL, y", { locale: es })}
+                                </>
+                            ) : (
+                                format(date.from, "d 'de' LLL, y", { locale: es })
+                            )
+                        ) : (
+                            <span>Filtrar por fecha...</span>
+                        )}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={date?.from}
+                        selected={date}
+                        onSelect={setDate}
+                        numberOfMonths={1}
+                        locale={es}
+                    />
+                </PopoverContent>
+            </Popover>
+            {(filter || date) && (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                    setFilter("");
+                                    setDate(undefined);
+                                }}
+                                className="h-9 w-9"
+                            >
+                                <Eraser className="h-4 w-4" />
+                                <span className="sr-only">Limpiar filtros</span>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Limpiar filtros</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            )}
+        </div>
         <Button onClick={() => { setSelectedPO(null); setIsFormOpen(true); }}>
           <PlusCircle className="mr-2 h-4 w-4" /> Crear Orden de Compra
         </Button>
