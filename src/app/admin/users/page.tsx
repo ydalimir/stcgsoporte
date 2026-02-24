@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Loader2, PlusCircle, MoreHorizontal, Edit, Trash2, Eye, EyeOff, User, UserPlus } from "lucide-react";
+import { Loader2, PlusCircle, MoreHorizontal, Edit, Trash2, Eye, EyeOff, User, UserPlus, Key } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -48,14 +48,14 @@ import {
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc, runTransaction } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { errorEmitter } from "@/lib/error-emitter";
 import { FirestorePermissionError } from "@/lib/errors";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getAuth, createUserWithEmailAndPassword, type User as FirebaseUser } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, type User as FirebaseUser } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 
 // IMPORTANT: We need a secondary Firebase app instance to create users
@@ -137,6 +137,23 @@ export default function UsersPage() {
 
         return () => unsubscribe();
     }, [adminUser, toast]);
+
+    const handlePasswordReset = useCallback(async (email: string) => {
+        try {
+            await sendPasswordResetEmail(auth, email);
+            toast({
+                title: "Correo de Reinicio Enviado",
+                description: `Se ha enviado un enlace para reiniciar la contraseña a ${email}.`,
+            });
+        } catch (error: any) {
+            console.error("Error sending password reset email:", error);
+            toast({
+                title: "Error al enviar correo",
+                description: "No se pudo enviar el correo de reinicio de contraseña.",
+                variant: "destructive",
+            });
+        }
+    }, [toast]);
 
     const handleSaveUser = useCallback(async (data: z.infer<typeof userSchema>) => {
         if (data.id) { // UPDATE
@@ -234,11 +251,28 @@ export default function UsersPage() {
                   <DropdownMenuContent>
                       <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                       <DropdownMenuItem onClick={() => { setSelectedUser(row.original); setIsFormOpen(true); }}><Edit className="mr-2 h-4 w-4"/> Editar</DropdownMenuItem>
+                       <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={e => e.preventDefault()}><Key className="mr-2 h-4 w-4"/> Restablecer Contraseña</DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Enviar correo de restablecimiento?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Se enviará un correo a <strong>{row.original.email}</strong> con un enlace seguro para que el usuario pueda restablecer su contraseña.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handlePasswordReset(row.original.email)}>Enviar Correo</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                   </DropdownMenuContent>
               </DropdownMenu>
           )
         }
-    ], []);
+    ], [handlePasswordReset]);
   
     const table = useReactTable({ data: users, columns, getCoreRowModel: getCoreRowModel() });
   
@@ -358,6 +392,9 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                             <FormField control={form.control} name="password" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Contraseña</FormLabel>
+                                     <FormDescription>
+                                        Solo para usuarios nuevos. La contraseña debe tener al menos 6 caracteres.
+                                    </FormDescription>
                                     <div className="relative">
                                         <FormControl>
                                             <Input type={showPassword ? "text" : "password"} {...field} />
@@ -464,5 +501,7 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
         </Dialog>
     )
 }
+
+    
 
     
