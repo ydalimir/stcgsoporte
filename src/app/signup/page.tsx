@@ -64,8 +64,8 @@ export default function SignUpPage() {
   };
 
   return (
-     <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-2">
-       <div className="flex items-center justify-center bg-background p-8 order-2 md:order-1">
+     <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-5">
+       <div className="flex items-center justify-center bg-background p-8 order-2 md:order-1 md:col-span-3">
         <div className="w-full max-w-sm">
             <div className="text-center mb-8">
                 <div className="mx-auto bg-primary/10 text-primary w-fit p-3 rounded-full mb-4">
@@ -119,7 +119,7 @@ export default function SignUpPage() {
           </form>
         </div>
       </div>
-       <div className="relative hidden flex-col items-center justify-center p-8 md:flex order-1 md:order-2">
+       <div className="relative hidden flex-col items-center justify-center p-8 md:flex order-1 md:order-2 md:col-span-2">
          <Image
             src="https://ucarecdn.com/2e73c219-cd6c-4d47-abfd-e4b2a36f286b/normal_65b16ffde4984.webp"
             alt="Mantenimiento de equipo de cocina"
