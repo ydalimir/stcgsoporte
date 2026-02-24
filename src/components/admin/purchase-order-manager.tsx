@@ -100,7 +100,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
     const pageMargin = 14;
-    const bottomMargin = 40; // Reserved space for footer and signature
+    const bottomMargin = 40; 
 
     const drawHeader = () => {
         doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(41, 71, 121);
@@ -115,10 +115,8 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, pageWidth - pageMargin, 20 + 12, { align: 'right' });
     };
 
-    // --- Draw Header on Page 1 ---
     drawHeader();
     
-    // --- Addresses ---
     autoTable(doc, {
         startY: 40,
         theme: 'plain',
@@ -134,7 +132,6 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         ]
     });
     
-    // --- Details Table ---
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
     const quoteDisplay = linkedQuote ? linkedQuote.quoteNumber : 'N/A';
     const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
@@ -160,7 +157,6 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         headStyles: { fillColor: [255, 255, 255], textColor: 0 },
     });
 
-    // --- Items Table with Totals ---
     const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
     const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
     const subTotalAfterDiscount = subtotal - discountAmount;
@@ -192,7 +188,6 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         margin: { bottom: bottomMargin }
     });
 
-    // --- Observations ---
     if (po.observations) {
         autoTable(doc, {
             startY: (doc as any).lastAutoTable.finalY + 5,
@@ -206,29 +201,23 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         });
     }
 
-    // --- Footer and Signature Loop ---
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-
-        // Redraw header on new pages
         if (i > 1) {
             drawHeader();
         }
-
-        // Draw footer on all pages
         doc.setFontSize(8).setTextColor(150);
         doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo electrónico:", pageWidth / 2, pageHeight - 25, {align: 'center'});
         doc.text("lebarefmantenimiento@gmail.com / corporativo@lebaref.com", pageWidth / 2, pageHeight - 20, {align: 'center'});
         doc.text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 15, { align: 'right' });
     }
 
-    // --- Add Signature ONLY on the last page ---
     doc.setPage(totalPages);
     const signatureY = pageHeight - 35;
     doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0,0,0);
     doc.text('FIRMA AUTORIZADA', pageMargin + 30, signatureY);
-    doc.rect(pageMargin, signatureY + 2, 80, 20); // Signature box
+    doc.rect(pageMargin, signatureY + 2, 80, 20); 
 
     doc.save(`${poId}.pdf`);
 };

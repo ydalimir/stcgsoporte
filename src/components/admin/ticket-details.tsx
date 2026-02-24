@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { Ticket } from "@/components/admin/ticket-table";
@@ -24,76 +25,68 @@ type TicketDetailsProps = {
 const downloadServiceOrderPDF = (ticket: Ticket) => {
     const doc = new jsPDF();
     const ticketId = ticket.ticketNumber ? `ORD-${String(ticket.ticketNumber).padStart(3, '0')}` : ticket.id;
-    let yPos = 15;
+    const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
+    const pageMargin = 14;
+    const bottomMargin = 50;
 
-    // --- Header ---
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
-    doc.text("LEBAREF", 14, yPos);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text("Orden de Servicio", 14, yPos + 5);
+    const drawHeader = () => {
+        doc.setFont("helvetica", "bold").setFontSize(20).text("LEBAREF", pageMargin, 15);
+        doc.setFont("helvetica", "normal").setFontSize(10).text("Orden de Servicio", pageMargin, 15 + 5);
+        doc.setFont("helvetica", "bold").setFontSize(12).text(`Orden #${ticketId}`, pageWidth - pageMargin, 15, { align: 'right' });
+        doc.setFont("helvetica", "normal").setFontSize(10).text(`Fecha: ${ticket.createdAt?.toDate().toLocaleDateString('es-MX') || "N/A"}`, pageWidth - pageMargin, 15 + 5, { align: 'right' });
+        doc.setDrawColor(221, 221, 221).line(pageMargin, 15 + 10, pageWidth - pageMargin, 15 + 10);
+    };
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(`Orden #${ticketId}`, 196, yPos, { align: 'right' });
+    drawHeader();
     
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(`Fecha: ${ticket.createdAt?.toDate().toLocaleDateString('es-MX') || "N/A"}`, 196, yPos + 5, { align: 'right' });
-    
-    yPos += 20;
-    doc.setDrawColor(221, 221, 221); // A light grey color
-    doc.line(14, yPos, 196, yPos);
-    yPos += 10;
-
-    // --- Client and Service Info in two columns ---
     autoTable(doc, {
-      startY: yPos,
+      startY: 35,
       body: [
-        [
-          { content: 'CLIENTE', styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
-          { content: 'DETALLES DEL SERVICIO', styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }
-        ],
-        [
-          { content: `Nombre: ${ticket.clientName}\nDirección: ${ticket.clientAddress}\nTeléfono: ${ticket.clientPhone}`, styles: { cellWidth: 91 } },
-          { content: `Tipo: ${ticket.serviceType}\nEquipo: ${ticket.equipmentType}\nUrgencia: ${ticket.urgency.charAt(0).toUpperCase() + ticket.urgency.slice(1)}`, styles: { cellWidth: 91 } }
-        ]
+        [{ content: 'CLIENTE', styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }, { content: 'DETALLES DEL SERVICIO', styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }],
+        [{ content: `Nombre: ${ticket.clientName}\nDirección: ${ticket.clientAddress}\nTeléfono: ${ticket.clientPhone}`, styles: { cellWidth: 91 } }, { content: `Tipo: ${ticket.serviceType}\nEquipo: ${ticket.equipmentType}\nUrgencia: ${ticket.urgency.charAt(0).toUpperCase() + ticket.urgency.slice(1)}`, styles: { cellWidth: 91 } }]
       ],
       theme: 'plain',
-      styles: { fontSize: 9, cellPadding: 2 }
+      styles: { fontSize: 9, cellPadding: 2 },
+      margin: { bottom: bottomMargin }
     });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
 
-    // --- Description ---
-    doc.setFontSize(10).setFont(undefined, 'bold');
-    doc.text("Descripción del Problema / Necesidad:", 14, yPos);
-    yPos += 6;
-    doc.setFontSize(9).setFont(undefined, 'normal');
-    const splitDescription = doc.splitTextToSize(ticket.description, 180);
-    doc.text(splitDescription, 15, yPos + 4);
-    doc.setDrawColor(200, 200, 200);
-    doc.rect(14, yPos, 182, 35); // Box for the description
-    yPos += 45;
+    autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 5,
+        body: [
+            [{ content: 'Descripción del Problema / Necesidad:', styles: { fontStyle: 'bold' }}],
+            [{ content: ticket.description }]
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9 },
+        margin: { bottom: bottomMargin }
+    });
 
-    // --- Technician Notes ---
-    doc.setFontSize(10).setFont(undefined, 'bold');
-    doc.text("Notas del Técnico:", 14, yPos);
-    yPos += 6;
-    doc.rect(14, yPos, 182, 50); // Box for technician notes
-    yPos += 60;
-    
-    // --- Signatures ---
-    const signatureY = doc.internal.pageSize.height - 40;
+     autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 5,
+        body: [
+            [{ content: 'Notas del Técnico:', styles: { fontStyle: 'bold' }}],
+            [{ content: `\n\n\n\n`, styles: { minCellHeight: 30 } }]
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9 },
+        margin: { bottom: bottomMargin }
+    });
+
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        if (i > 1) drawHeader();
+        doc.setFontSize(8).setTextColor(150).text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 10, { align: 'right' });
+    }
+
+    doc.setPage(totalPages);
+    const signatureY = pageHeight - 40;
     doc.setDrawColor(150, 150, 150);
     doc.line(20, signatureY, 80, signatureY);
-    doc.setFontSize(10).setFont(undefined, 'normal');
-    doc.text("Firma del Cliente", 50, signatureY + 5, { align: 'center' });
-
+    doc.setFontSize(10).setTextColor(100).text("Firma del Cliente", 50, signatureY + 5, { align: 'center' });
     doc.line(116, signatureY, 176, signatureY);
     doc.text("Firma del Técnico", 146, signatureY + 5, { align: 'center' });
-
 
     doc.save(`${ticketId}.pdf`);
 }
