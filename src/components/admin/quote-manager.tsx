@@ -154,33 +154,37 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
 const downloadPDF = (quote: Quote) => {
     const doc = new jsPDF();
     const quoteId = quote.quoteNumber;
-    let yPos = 20;
+    const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
+    const pageMargin = 14;
+    const bottomMargin = 40; // Reserved space for footer and signature
 
-    // --- Header ---
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.setTextColor(41, 71, 121); // Primary color
-    doc.text("LEBAREF", 14, yPos);
-    
-    const headerDetailsX = 196;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(`COTIZACIÓN`, headerDetailsX, yPos - 2, { align: 'right' });
-    
-    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(128, 128, 128);
-    doc.text(`${quoteId}`, headerDetailsX, yPos + 4, { align: 'right' });
+    const drawHeader = () => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(18);
+        doc.setTextColor(41, 71, 121); // Primary color
+        doc.text("LEBAREF", pageMargin, 20);
+        
+        const headerDetailsX = pageWidth - pageMargin;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text(`COTIZACIÓN`, headerDetailsX, 20 - 2, { align: 'right' });
+        
+        doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(128, 128, 128);
+        doc.text(`${quoteId}`, headerDetailsX, 20 + 4, { align: 'right' });
 
-    yPos = 30;
-    doc.setDrawColor(221, 221, 221); // A light grey color
-    doc.line(14, yPos, 196, yPos);
-    yPos += 10;
-    doc.setTextColor(0, 0, 0); // Reset color
+        doc.setDrawColor(221, 221, 221); // A light grey color
+        doc.line(pageMargin, 30, pageWidth - pageMargin, 30);
+        doc.setTextColor(0, 0, 0); // Reset color
+    };
 
-    const localDate = new Date(quote.date.replace(/-/g, '\/'));
+    // --- Draw Header on Page 1 ---
+    drawHeader();
 
     // --- Client and Service Info ---
+    const localDate = new Date(quote.date.replace(/-/g, '\/'));
     autoTable(doc, {
-        startY: yPos,
+        startY: 35,
         body: [
             [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'})}`, styles: { halign: 'right' } }],
             [{ content: `Empresa: ${quote.clientName}` }, { content: `Ciudad: Mérida`, styles: { halign: 'right' } }],
@@ -215,12 +219,12 @@ const downloadPDF = (quote: Quote) => {
         ['', '', '', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
         ['', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' } }],
       ],
-      headStyles: { fillColor: [41, 71, 121], fontSize: 9 },
+      headStyles: { fillColor: [41, 71, 121], fontSize: 8 },
       bodyStyles: { fontSize: 8 },
-      margin: { bottom: 50 }
+      margin: { bottom: bottomMargin }
     });
     
-    // --- Comentarios y Diagnostico ---
+    // --- Other Sections ---
     if (quote.observations) {
         autoTable(doc, {
             startY: (doc as any).lastAutoTable.finalY + 5,
@@ -229,11 +233,10 @@ const downloadPDF = (quote: Quote) => {
                 [{ content: doc.splitTextToSize(quote.observations, 180), styles: { fontSize: 9 } }],
             ],
             theme: 'plain',
-            margin: { bottom: 50 }
+            margin: { bottom: bottomMargin }
         });
     }
     
-    // --- Garantias ---
     if (quote.policies) {
          autoTable(doc, {
             startY: (doc as any).lastAutoTable.finalY + 5,
@@ -242,11 +245,10 @@ const downloadPDF = (quote: Quote) => {
                 [{ content: doc.splitTextToSize(quote.policies, 180), styles: { fontSize: 7 } }],
             ],
             theme: 'plain',
-            margin: { bottom: 50 }
+            margin: { bottom: bottomMargin }
         });
     }
     
-    // --- Payment Conditions ---
     if (quote.paymentTerms) {
         autoTable(doc, {
             startY: (doc as any).lastAutoTable.finalY + 5,
@@ -255,31 +257,36 @@ const downloadPDF = (quote: Quote) => {
                 [{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 8 } }],
             ],
             theme: 'plain',
-            margin: { bottom: 50 }
+            margin: { bottom: bottomMargin }
         });
     }
 
-    // --- Footer with Signature (on every page) ---
+    // --- Footer and Signature Loop ---
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        const pageHeight = doc.internal.pageSize.height;
 
-        doc.setFontSize(8).setTextColor(150);
-        doc.text("Gracias por su preferencia.", 14, pageHeight - 15);
-        doc.text(`Página ${i} de ${totalPages}`, doc.internal.pageSize.width - 35, pageHeight - 15);
-
-        if (i === totalPages) {
-            const signatureY = pageHeight - 30;
-            doc.setDrawColor(150, 150, 150);
-            doc.line(70, signatureY, 140, signatureY); // Signature line
-            doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
-            doc.text("FIRMA DE ACEPTACIÓN", 105, signatureY + 5, { align: 'center' });
+        // Redraw header on new pages
+        if (i > 1) {
+            drawHeader();
         }
+
+        // Draw footer on all pages
+        doc.setFontSize(8).setTextColor(150);
+        doc.text("Gracias por su preferencia.", pageMargin, pageHeight - 15);
+        doc.text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 15, { align: 'right' });
     }
     
+    // Draw signature only on the last page
+    doc.setPage(totalPages);
+    const signatureY = pageHeight - 30; // Position above the footer
+    doc.setDrawColor(150, 150, 150);
+    doc.line(70, signatureY, 140, signatureY); // Signature line
+    doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
+    doc.text("FIRMA DE ACEPTACIÓN", 105, signatureY + 5, { align: 'center' });
+    
     doc.save(`${quoteId}.pdf`);
-}
+};
 
 const downloadExcel = (quote: Quote) => {
     const quoteId = quote.quoteNumber;
@@ -652,6 +659,7 @@ export function QuoteManager() {
     </div>
   );
 }
+
 
 
 
