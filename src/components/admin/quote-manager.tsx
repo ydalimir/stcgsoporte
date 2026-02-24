@@ -10,6 +10,7 @@ import {
   useReactTable,
   getPaginationRowModel,
   getFilteredRowModel,
+  ColumnFiltersState,
 } from "@tanstack/react-table";
 import {
   Table,
@@ -34,7 +35,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2, FileSpreadsheet } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2, FileSpreadsheet, ChevronDown } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -178,8 +179,68 @@ const downloadPDF = (quote: Quote) => {
         doc.setTextColor(0, 0, 0);
     };
 
-    drawHeader();
+    autoTable(doc, {
+        didDrawPage: (data) => {
+            if (data.pageNumber === 1) {
+                drawHeader();
+            }
+        },
+        head: [['No.', 'Descripción', 'Unidad', 'Cantidad', 'Precio', 'Importe']],
+        body: quote.items.map((item, index) => [
+            index + 1,
+            item.description, 
+            item.unidad || 'PZA',
+            (item.quantity || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            `$${(item.price || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        ]),
+        foot: (() => {
+            const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+            const ivaPercentage = quote.iva ?? 16;
+            const ivaAmount = subtotal * (ivaPercentage / 100);
+            const total = quote.total ?? subtotal + ivaAmount;
+            return [
+                ['', '', '', '', { content: 'Subtotal', styles: { halign: 'right' } }, { content: `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
+                ['', '', '', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
+                ['', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' } }],
+            ];
+        })(),
+        headStyles: { fillColor: [41, 71, 121], fontSize: 8 },
+        bodyStyles: { fontSize: 8 },
+        margin: { top: 35, bottom: bottomMargin }
+    });
 
+    let finalY = (doc as any).lastAutoTable.finalY;
+
+    const addSection = (title: string, content: string) => {
+        const splitContent = doc.splitTextToSize(content, 180);
+        const contentHeight = splitContent.length * 5; 
+        if (finalY + contentHeight + 10 > pageHeight - bottomMargin) {
+            doc.addPage();
+            finalY = pageMargin;
+        }
+         autoTable(doc, {
+            startY: finalY + 5,
+            body: [
+                [{ content: title, styles: { fontStyle: 'bold', fontSize: 10 } }],
+                [{ content: splitContent, styles: { fontSize: title === 'Garantías:' ? 7 : 8 } }],
+            ],
+            theme: 'plain',
+            margin: { left: pageMargin, right: pageMargin }
+        });
+        finalY = (doc as any).lastAutoTable.finalY;
+    }
+
+    if (quote.observations) {
+        addSection('Comentarios y Diagnóstico:', quote.observations);
+    }
+    if (quote.policies) {
+        addSection('Garantías:', quote.policies);
+    }
+    if (quote.paymentTerms) {
+        addSection('Condiciones de Pago:', quote.paymentTerms);
+    }
+    
     const localDate = new Date(quote.date.replace(/-/g, '\/'));
     autoTable(doc, {
         startY: 35,
@@ -192,70 +253,11 @@ const downloadPDF = (quote: Quote) => {
             [{ content: `Equipo/Lugar: ${quote.equipoLugar || ''}`, colSpan: 2 }],
         ],
         theme: 'plain',
-        styles: { fontSize: 9, cellPadding: 1 }
+        styles: { fontSize: 9, cellPadding: 1 },
+        margin: { top: 0, right: pageMargin, bottom: 0, left: pageMargin },
+        tableWidth: 'auto',
+        showHead: false,
     });
-    
-    const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
-    const ivaPercentage = quote.iva ?? 16;
-    const ivaAmount = subtotal * (ivaPercentage / 100);
-    const total = quote.total ?? subtotal + ivaAmount;
-    
-    autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 5,
-      head: [['No.', 'Descripción', 'Unidad', 'Cantidad', 'Precio', 'Importe']],
-      body: quote.items.map((item, index) => [
-        index + 1,
-        item.description, 
-        item.unidad || 'PZA',
-        (item.quantity || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-        `$${(item.price || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      ]),
-      foot: [
-        ['', '', '', '', { content: 'Subtotal', styles: { halign: 'right' } }, { content: `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
-        ['', '', '', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
-        ['', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' } }],
-      ],
-      headStyles: { fillColor: [41, 71, 121], fontSize: 8 },
-      bodyStyles: { fontSize: 8 },
-      margin: { bottom: bottomMargin }
-    });
-    
-    if (quote.observations) {
-        autoTable(doc, {
-            startY: (doc as any).lastAutoTable.finalY + 5,
-            body: [
-                [{ content: 'Comentarios y Diagnóstico:', styles: { fontStyle: 'bold', fontSize: 9 } }],
-                [{ content: doc.splitTextToSize(quote.observations, 180), styles: { fontSize: 9 } }],
-            ],
-            theme: 'plain',
-            margin: { bottom: bottomMargin }
-        });
-    }
-    
-    if (quote.policies) {
-         autoTable(doc, {
-            startY: (doc as any).lastAutoTable.finalY + 5,
-            body: [
-                [{ content: 'Garantías:', styles: { fontStyle: 'bold', fontSize: 10 } }],
-                [{ content: doc.splitTextToSize(quote.policies, 180), styles: { fontSize: 7 } }],
-            ],
-            theme: 'plain',
-            margin: { bottom: bottomMargin }
-        });
-    }
-    
-    if (quote.paymentTerms) {
-        autoTable(doc, {
-            startY: (doc as any).lastAutoTable.finalY + 5,
-            body: [
-                [{ content: 'Condiciones de Pago:', styles: { fontStyle: 'bold', fontSize: 10 } }],
-                [{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 8 } }],
-            ],
-            theme: 'plain',
-            margin: { bottom: bottomMargin }
-        });
-    }
 
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
@@ -263,14 +265,15 @@ const downloadPDF = (quote: Quote) => {
         doc.setFontSize(8).setTextColor(150);
         doc.text("Gracias por su preferencia.", pageMargin, pageHeight - 15);
         doc.text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 15, { align: 'right' });
+
+        if (i === totalPages) {
+            const signatureY = pageHeight - 30;
+            doc.setDrawColor(150, 150, 150);
+            doc.line(70, signatureY, 140, signatureY);
+            doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
+            doc.text("FIRMA DE ACEPTACIÓN", 105, signatureY + 5, { align: 'center' });
+        }
     }
-    
-    doc.setPage(totalPages);
-    const signatureY = pageHeight - 30;
-    doc.setDrawColor(150, 150, 150);
-    doc.line(70, signatureY, 140, signatureY);
-    doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
-    doc.text("FIRMA DE ACEPTACIÓN", 105, signatureY + 5, { align: 'center' });
     
     doc.save(`${quoteId}.pdf`);
 };
@@ -316,6 +319,7 @@ export function QuoteManager() {
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState("");
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
@@ -549,6 +553,7 @@ export function QuoteManager() {
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    onColumnFiltersChange: setColumnFilters,
     initialState: {
         pagination: {
             pageSize: 5,
@@ -556,6 +561,7 @@ export function QuoteManager() {
     },
     state: {
       globalFilter: filter,
+      columnFilters,
     },
     onGlobalFilterChange: setFilter,
   });
@@ -569,12 +575,37 @@ export function QuoteManager() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <Input
-          placeholder="Buscar cotización por cliente..."
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="max-w-sm"
-        />
+        <div className="flex items-center gap-4">
+            <Input
+              placeholder="Buscar por ID, cliente..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="max-w-sm"
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <span className="mr-2">Estado:</span>
+                  <span>{(table.getColumn('status')?.getFilterValue() as string) || 'Todos'}</span>
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuRadioGroup
+                    value={(table.getColumn('status')?.getFilterValue() as string) ?? 'Todos'}
+                    onValueChange={(value) =>
+                        table.getColumn("status")?.setFilterValue(value === "Todos" ? null : value)
+                    }
+                >
+                    <DropdownMenuRadioItem value="Todos">Todos</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="Borrador">Borrador</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="Enviada">Enviada</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="Aceptada">Aceptada</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="Rechazada">Rechazada</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
         <Button onClick={() => { setSelectedQuote(null); setIsFormOpen(true); }}>
           <PlusCircle className="mr-2 h-4 w-4" /> Crear Cotización
         </Button>
@@ -645,3 +676,6 @@ export function QuoteManager() {
   );
 }
 
+
+
+    
