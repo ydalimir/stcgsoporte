@@ -37,7 +37,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2, FileSpreadsheet, ArrowUpDown, Calendar as CalendarIcon } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2, FileSpreadsheet, ArrowUpDown, Calendar as CalendarIcon, Eraser } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,6 +66,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -617,9 +623,9 @@ export function QuoteManager() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
             <Input
-              placeholder="Buscar por ID, cliente..."
+              placeholder="Buscar por ID o cliente..."
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               className="max-w-sm"
@@ -645,7 +651,7 @@ export function QuoteManager() {
                                 format(date.from, "d 'de' LLL, y", { locale: es })
                             )
                         ) : (
-                            <span>Selecciona un rango</span>
+                            <span>Filtrar por fecha...</span>
                         )}
                     </Button>
                 </PopoverTrigger>
@@ -656,11 +662,34 @@ export function QuoteManager() {
                         defaultMonth={date?.from}
                         selected={date}
                         onSelect={setDate}
-                        numberOfMonths={2}
+                        numberOfMonths={1}
                         locale={es}
                     />
                 </PopoverContent>
             </Popover>
+            {(filter || date) && (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                    setFilter("");
+                                    setDate(undefined);
+                                }}
+                                className="h-9 w-9"
+                            >
+                                <Eraser className="h-4 w-4" />
+                                <span className="sr-only">Limpiar filtros</span>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Limpiar filtros</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            )}
         </div>
         <Button onClick={() => { setSelectedQuote(null); setIsFormOpen(true); }}>
           <PlusCircle className="mr-2 h-4 w-4" /> Crear Cotización
