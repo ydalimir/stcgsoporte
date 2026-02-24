@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -81,7 +82,9 @@
 
 .project-nuevo::after,
 .project-en-progreso::after,
-.project-en-pausa::after {
+.project-en-pausa::after,
+.project-completado::after,
+.project-vencido::after {
   content: '';
   position: absolute;
   bottom: 6px;
@@ -94,9 +97,15 @@
 .project-nuevo::after {
   background-color: hsl(var(--primary));
 }
+.project-completado::after {
+  background-color: hsl(142 71% 45%); /* green */
+}
 .project-en-progreso::after {
   background-color: hsl(45 93% 47%); /* yellow */
 }
 .project-en-pausa::after {
-  background-color: hsl(var(--destructive));
+  background-color: hsl(28 95% 53%); /* orange */
+}
+.project-vencido::after {
+  background-color: hsl(var(--destructive)); /* red */
 }

@@ -89,45 +89,76 @@ export default function CalendarPage() {
         return () => unsubscribe();
     }, [user, userProfile, authIsLoading]);
 
-    const { selectedDayProjects, overdueProjects } = useMemo(() => {
-        if (!date) {
-            return { selectedDayProjects: [], overdueProjects: [] };
-        }
+    const { selectedDayProjects, overdueProjects, projectModifiers } = useMemo(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const selectedDateStr = date.toISOString().split('T')[0];
-
-        const selectedDayProjects = projects.filter(p => p.programmedDate === selectedDateStr && p.status !== 'Completado');
-        
-        const overdueProjects = projects.filter(p => {
+        const allOverdueProjects = projects.filter(p => {
              if (p.status === 'Completado' || !p.programmedDate) return false;
              const programmedDate = new Date(p.programmedDate.replace(/-/g, '\/'));
              return programmedDate < today;
         });
 
-        return { selectedDayProjects, overdueProjects };
+        const selectedDateStr = date?.toISOString().split('T')[0];
+        const allSelectedDayProjects = projects.filter(p => p.programmedDate === selectedDateStr && p.status !== 'Completado');
 
+        // Logic for calendar dots
+        const dateGroups: Record<string, Set<Project['status']>> = {};
+        projects.forEach(p => {
+            if (!p.programmedDate) return;
+            const dateStr = p.programmedDate;
+            if (!dateGroups[dateStr]) {
+                dateGroups[dateStr] = new Set();
+            }
+            dateGroups[dateStr].add(p.status);
+        });
+
+        const finalModifiers: Record<string, Date[]> = {
+            vencido: [],
+            completado: [],
+            enProgreso: [],
+            enPausa: [],
+            nuevo: [],
+        };
+        
+        const statusPriority: Project['status'][] = ["En Progreso", "En Pausa", "Nuevo", "Completado"];
+        
+        for (const dateStr in dateGroups) {
+            const statuses = dateGroups[dateStr];
+            const projectDate = new Date(dateStr.replace(/-/g, '\/'));
+            
+            const isOverdue = projectDate < today && (statuses.has("Nuevo") || statuses.has("En Progreso") || statuses.has("En Pausa"));
+            
+            if (isOverdue) {
+                finalModifiers.vencido.push(projectDate);
+            } else {
+                let assigned = false;
+                for (const status of statusPriority) {
+                    if (statuses.has(status)) {
+                        if (status === "En Progreso") finalModifiers.enProgreso.push(projectDate);
+                        else if (status === "En Pausa") finalModifiers.enPausa.push(projectDate);
+                        else if (status === "Nuevo") finalModifiers.nuevo.push(projectDate);
+                        else if (status === "Completado") finalModifiers.completado.push(projectDate);
+                        assigned = true;
+                        break; 
+                    }
+                }
+            }
+        }
+
+        return { 
+            selectedDayProjects: allSelectedDayProjects,
+            overdueProjects: allOverdueProjects, 
+            projectModifiers: finalModifiers, 
+        };
     }, [date, projects]);
     
-    const projectModifiers = useMemo(() => {
-        const modifiers: Record<string, Date[]> = {};
-        projects.forEach(p => {
-            if (p.status === 'Completado' || !p.programmedDate) return;
-            const date = new Date(p.programmedDate.replace(/-/g, '\/'));
-            const dateKey = `project-${p.status.toLowerCase().replace(/ /g, '-')}`;
-            if (!modifiers[dateKey]) {
-                modifiers[dateKey] = [];
-            }
-            modifiers[dateKey].push(date);
-        });
-        return modifiers;
-    }, [projects]);
-    
     const projectModifiersClassNames = {
-        'project-nuevo': 'project-nuevo',
-        'project-en-progreso': 'project-en-progreso',
-        'project-en-pausa': 'project-en-pausa',
+        vencido: 'project-vencido',
+        completado: 'project-completado',
+        enProgreso: 'project-en-progreso',
+        enPausa: 'project-en-pausa',
+        nuevo: 'project-nuevo',
     };
 
     if (isLoading || authIsLoading) {
@@ -174,7 +205,7 @@ export default function CalendarPage() {
                         <CardTitle>
                             Proyectos para el {date ? date.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '...'}
                         </CardTitle>
-                         <CardDescription>Proyectos programados para la fecha seleccionada.</CardDescription>
+                         <CardDescription>Proyectos pendientes programados para la fecha seleccionada.</CardDescription>
                     </CardHeader>
                     <CardContent>
                        {selectedDayProjects.length > 0 ? (
@@ -182,7 +213,7 @@ export default function CalendarPage() {
                        ) : (
                            <div className="text-center text-muted-foreground py-10">
                                 <Briefcase className="mx-auto h-12 w-12" />
-                                <p className="mt-4">No hay proyectos programados para esta fecha.</p>
+                                <p className="mt-4">No hay proyectos pendientes para esta fecha.</p>
                            </div>
                        )}
                     </CardContent>
