@@ -1262,7 +1262,19 @@ const getColumns = (
             'text-green-600 border-green-600': priority === 'Baja',
          })}>{priority}</Badge>
       }},
-      { accessorKey: "lastUpdated", header: "Última Act.", cell: ({row}) => row.original.lastUpdated ? new Date(row.original.lastUpdated.toDate()).toLocaleDateString() : 'N/A' },
+      { 
+        accessorKey: "createdAt", 
+        header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                Creado <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
+        cell: ({row}) => {
+            if (!row.original.createdAt) return 'N/A';
+            const localDate = new Date(row.original.createdAt.toDate());
+            return localDate.toLocaleDateString('es-MX');
+        } 
+      },
       { id: "actions",
         cell: ({ row }) => {
             const project = row.original;
