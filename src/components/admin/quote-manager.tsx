@@ -215,8 +215,9 @@ const downloadPDF = (quote: Quote) => {
         ['', '', '', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
         ['', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' } }],
       ],
-      headStyles: { fillColor: [41, 71, 121] },
-      margin: { bottom: 40 }
+      headStyles: { fillColor: [41, 71, 121], fontSize: 9 },
+      bodyStyles: { fontSize: 8 },
+      margin: { bottom: 50 }
     });
     
     // --- Comentarios y Diagnostico ---
@@ -228,7 +229,7 @@ const downloadPDF = (quote: Quote) => {
                 [{ content: doc.splitTextToSize(quote.observations, 180), styles: { fontSize: 9 } }],
             ],
             theme: 'plain',
-            margin: { bottom: 40 }
+            margin: { bottom: 50 }
         });
     }
     
@@ -241,7 +242,7 @@ const downloadPDF = (quote: Quote) => {
                 [{ content: doc.splitTextToSize(quote.policies, 180), styles: { fontSize: 7 } }],
             ],
             theme: 'plain',
-            margin: { bottom: 40 }
+            margin: { bottom: 50 }
         });
     }
     
@@ -254,7 +255,7 @@ const downloadPDF = (quote: Quote) => {
                 [{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 8 } }],
             ],
             theme: 'plain',
-            margin: { bottom: 40 }
+            margin: { bottom: 50 }
         });
     }
 
@@ -265,15 +266,15 @@ const downloadPDF = (quote: Quote) => {
         const pageHeight = doc.internal.pageSize.height;
 
         doc.setFontSize(8).setTextColor(150);
-        doc.text("Gracias por su preferencia.", 14, pageHeight - 10);
-        doc.text(`Página ${i} de ${totalPages}`, doc.internal.pageSize.width - 35, pageHeight - 10);
+        doc.text("Gracias por su preferencia.", 14, pageHeight - 15);
+        doc.text(`Página ${i} de ${totalPages}`, doc.internal.pageSize.width - 35, pageHeight - 15);
 
         if (i === totalPages) {
-            const finalY = pageHeight - 35;
+            const signatureY = pageHeight - 30;
             doc.setDrawColor(150, 150, 150);
-            doc.line(70, finalY, 140, finalY); // Signature line
+            doc.line(70, signatureY, 140, signatureY); // Signature line
             doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
-            doc.text("FIRMA DE ACEPTACIÓN", 105, finalY + 5, { align: 'center' });
+            doc.text("FIRMA DE ACEPTACIÓN", 105, signatureY + 5, { align: 'center' });
         }
     }
     
@@ -651,5 +652,6 @@ export function QuoteManager() {
     </div>
   );
 }
+
 
 

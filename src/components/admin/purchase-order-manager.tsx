@@ -173,7 +173,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
       headStyles: { fillColor: [220, 220, 220], textColor: 0, fontSize: 8, fontStyle: 'bold', halign: 'center' },
       bodyStyles: { fontSize: 8 },
       columnStyles: { 5: { halign: 'right' }},
-      margin: { bottom: 60 } // Margin for footer and signature
+      margin: { bottom: 70 } // Margin for footer and signature
     });
 
     // --- Totals and Observations ---
@@ -200,7 +200,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         ],
         theme: 'plain',
         styles: { fontSize: 9 },
-        margin: { bottom: 60 }
+        margin: { bottom: 70 }
     });
     
     // --- Footer & Signature on each page ---
@@ -211,13 +211,13 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
 
         // Footer
         doc.setFontSize(8).setTextColor(150);
-        doc.text(`Página ${i} de ${totalPages}`, doc.internal.pageSize.width - 35, pageHeight - 10);
-        doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo electrónico:", 105, pageHeight - 20, {align: 'center'});
-        doc.text("lebarefmantenimiento@gmail.com / corporativo@lebaref.com", 105, pageHeight - 15, {align: 'center'});
+        doc.text(`Página ${i} de ${totalPages}`, doc.internal.pageSize.width - 35, pageHeight - 15);
+        doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo electrónico:", 105, pageHeight - 25, {align: 'center'});
+        doc.text("lebarefmantenimiento@gmail.com / corporativo@lebaref.com", 105, pageHeight - 20, {align: 'center'});
         
         // Signature only on the last page
         if (i === totalPages) {
-            const signatureY = pageHeight - 55;
+            const signatureY = pageHeight - 50;
             doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0,0,0);
             doc.text('FIRMA AUTORIZADA', 14, signatureY);
             doc.rect(14, signatureY + 2, 80, 20); // Signature box
