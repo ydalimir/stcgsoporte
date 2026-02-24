@@ -53,7 +53,7 @@ const quoteFormSchema = z.object({
   clientEmail: z.string().email({ message: "Correo inválido." }).optional().or(z.literal('')),
   clientAddress: z.string().min(1, "La dirección es requerida."),
   date: z.string().min(1, "La fecha es requerida."),
-  status: z.enum(["Borrador", "Enviada", "Aceptada", "Rechazada"]),
+  status: z.enum(["Borrador", "Enviada", "Aceptada", "Rechazada", "Pagada"]),
   tipoServicio: z.string().optional(),
   tipoTrabajo: z.string().optional(),
   equipoLugar: z.string().optional(),
@@ -355,6 +355,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote, userRole }: Quo
                           <SelectItem value="Borrador">Borrador</SelectItem>
                           <SelectItem value="Enviada">Enviada</SelectItem>
                           <SelectItem value="Aceptada">Aceptada</SelectItem>
+                          <SelectItem value="Pagada">Pagada</SelectItem>
                           <SelectItem value="Rechazada">Rechazada</SelectItem>
                         </SelectContent>
                       </Select>

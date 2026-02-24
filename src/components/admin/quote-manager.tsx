@@ -101,7 +101,7 @@ export type Quote = {
   subtotal: number;
   total: number;
   iva?: number;
-  status: "Borrador" | "Enviada" | "Aceptada" | "Rechazada";
+  status: "Borrador" | "Enviada" | "Aceptada" | "Rechazada" | "Pagada";
   items: QuoteItem[];
   linkedTicketId?: string;
   tipoServicio?: string;
@@ -116,7 +116,7 @@ type UserProfile = {
   quoteCounter: number;
 };
 
-const createOrUpdateTicketFromQuote = async (quote: Quote) => {
+const createOrUpdateTicketFromQuote = async (quote: Quote, currentUserId: string) => {
     if (!quote.items || quote.items.length === 0) {
       throw new Error("La cotización no tiene items.");
     }
@@ -137,7 +137,7 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
       status: "Recibido",
       createdAt: serverTimestamp(),
       price: quote.total,
-      userId: quote.userId,
+      userId: currentUserId,
       quoteId: quote.id,
     };
   
@@ -411,7 +411,7 @@ export function QuoteManager() {
             const isNowAccepted = quoteData.status === 'Aceptada';
             
             if (isNowAccepted && !wasAccepted) {
-                await createOrUpdateTicketFromQuote({ ...selectedQuote, ...quoteData });
+                await createOrUpdateTicketFromQuote({ ...selectedQuote, ...quoteData }, user.uid);
                 toast({ title: "Cotización Aceptada", description: `Se ha creado o actualizado la orden de servicio.` });
             } else {
                 const quoteRef = doc(db, "quotes", selectedQuote.id);
@@ -470,11 +470,15 @@ export function QuoteManager() {
   }, [toast]);
 
   const handleStatusChange = useCallback(async (quote: Quote, newStatus: Quote['status']) => {
+    if (!user) {
+        toast({ title: "No autenticado", description: "Debes iniciar sesión para realizar esta acción.", variant: "destructive" });
+        return;
+    }
     const quoteRef = doc(db, "quotes", quote.id);
     const payload = { status: newStatus };
     try {
         if (newStatus === "Aceptada") {
-            await createOrUpdateTicketFromQuote(quote);
+            await createOrUpdateTicketFromQuote(quote, user.uid);
             toast({ title: "¡Cotización Aceptada!", description: `Se ha generado/actualizado el ticket de servicio.` });
         } else {
             await updateDoc(quoteRef, payload);
@@ -487,7 +491,7 @@ export function QuoteManager() {
             requestResourceData: payload,
         }));
     }
-  }, [toast]);
+  }, [toast, user]);
 
   const columns: ColumnDef<Quote>[] = useMemo(
     () => [
@@ -557,6 +561,7 @@ export function QuoteManager() {
                              <DropdownMenuRadioItem value="Borrador">Borrador</DropdownMenuRadioItem>
                              <DropdownMenuRadioItem value="Enviada">Enviada</DropdownMenuRadioItem>
                              <DropdownMenuRadioItem value="Aceptada">Aceptada</DropdownMenuRadioItem>
+                             <DropdownMenuRadioItem value="Pagada">Pagada</DropdownMenuRadioItem>
                              <DropdownMenuRadioItem value="Rechazada">Rechazada</DropdownMenuRadioItem>
                         </DropdownMenuRadioGroup>
                     </DropdownMenuSubContent>

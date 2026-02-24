@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
@@ -64,10 +65,12 @@ export default function ReportsPage() {
             return;
         }
         const unsub = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
-            const profile = docSnap.data() as UserProfile;
-            setUserProfile(profile);
-            if (profile.role !== 'admin' && !profile.permissions?.reports) {
-                router.push('/admin');
+            if (docSnap.exists()) {
+                const profile = docSnap.data() as UserProfile;
+                setUserProfile(profile);
+                if (profile.role !== 'admin' && !profile.permissions?.reports) {
+                    router.push('/admin');
+                }
             }
         });
         return () => unsub();
@@ -171,11 +174,13 @@ function VentasReportTab({ allQuotes, range }: { allQuotes: Quote[], range?: Dat
             
             const accepted = filteredQuotes.filter(q => q.status === 'Aceptada');
             const rejected = filteredQuotes.filter(q => q.status === 'Rechazada');
-            const totalIncome = accepted.reduce((sum, q) => sum + q.total, 0);
+            const paid = filteredQuotes.filter(q => q.status === 'Pagada');
+            const totalIncome = paid.reduce((sum, q) => sum + q.total, 0);
 
             return {
                 acceptedCount: accepted.length,
                 rejectedCount: rejected.length,
+                paidCount: paid.length,
                 totalIncome: totalIncome,
             };
         };
@@ -196,17 +201,18 @@ function VentasReportTab({ allQuotes, range }: { allQuotes: Quote[], range?: Dat
     
     const handleDownloadVentas = () => {
         if (!range?.from || !range?.to) return;
-        const acceptedQuotesInRange = allQuotes.filter(q => {
+        const paidQuotesInRange = allQuotes.filter(q => {
             const quoteDate = new Date(q.date.replace(/-/g, '\/'));
             const isInRange = quoteDate >= range.from! && quoteDate <= range.to!;
-            return q.status === 'Aceptada' && isInRange;
+            return q.status === 'Pagada' && isInRange;
         });
 
-        const dataToExport = acceptedQuotesInRange.map(q => ({
+        const dataToExport = paidQuotesInRange.map(q => ({
             'ID Cotización': q.quoteNumber,
             'Cliente': q.clientName,
             'Fecha': new Date(q.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}),
             'Total': q.total,
+            'Estado': q.status,
         }));
 
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -219,12 +225,14 @@ function VentasReportTab({ allQuotes, range }: { allQuotes: Quote[], range?: Dat
 
     const incomeComparison = getComparison(currentPeriodStats.totalIncome, prevPeriodStats.totalIncome);
     const acceptedComparison = getComparison(currentPeriodStats.acceptedCount, prevPeriodStats.acceptedCount);
+    const paidComparison = getComparison(currentPeriodStats.paidCount, prevPeriodStats.paidCount);
 
     return (
         <div className="grid gap-6">
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard title="Ingresos Totales" value={`$${currentPeriodStats.totalIncome.toLocaleString('es-MX')}`} comparison={incomeComparison} icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} />
                 <StatCard title="Cotizaciones Aceptadas" value={`${currentPeriodStats.acceptedCount}`} comparison={acceptedComparison} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
+                <StatCard title="Cotizaciones Pagadas" value={`${currentPeriodStats.paidCount}`} comparison={paidComparison} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
                 <StatCard title="Cotizaciones Rechazadas" value={`${currentPeriodStats.rejectedCount}`} comparison={getComparison(currentPeriodStats.rejectedCount, prevPeriodStats.rejectedCount)} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
             </div>
             <div className="flex justify-end mt-4">
