@@ -197,10 +197,31 @@ const downloadPDF = (quote: Quote) => {
         doc.setTextColor(0, 0, 0);
     };
 
+    drawHeader(); // Draw header on page 1
+
+    const localDate = new Date(quote.date.replace(/-/g, '\/'));
     autoTable(doc, {
+        startY: 35,
+        body: [
+            [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'})}`, styles: { halign: 'right' } }],
+            [{ content: `Empresa: ${quote.clientName}` }, { content: `Ciudad: Mérida`, styles: { halign: 'right' } }],
+            [{ content: `Dirección: ${quote.clientAddress}` }, { content: `Tipo de Servicio: ${quote.tipoServicio || ''}`, styles: { halign: 'right' } }],
+            [{ content: `Teléfono: ${quote.clientPhone}` }, { content: `Tipo de Trabajo: ${quote.tipoTrabajo || ''}`, styles: { halign: 'right' } }],
+            [{ content: `RFC: ${quote.rfc || ''}`}, ''],
+            [{ content: `Equipo/Lugar: ${quote.equipoLugar || ''}`, colSpan: 2 }],
+        ],
+        theme: 'plain',
+        styles: { fontSize: 9, cellPadding: 1, overflow: 'linebreak' },
+        columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },
+        margin: { left: pageMargin, right: pageMargin },
+        showHead: false,
+    });
+    
+    autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 2,
         didDrawPage: (data) => {
-            if (data.pageNumber === 1) {
-                drawHeader();
+            if (data.pageNumber > 1) {
+               drawHeader();
             }
         },
         head: [['No.', 'Descripción', 'Unidad', 'Cantidad', 'Precio', 'Importe']],
@@ -224,8 +245,16 @@ const downloadPDF = (quote: Quote) => {
             ];
         })(),
         headStyles: { fillColor: [41, 71, 121], fontSize: 8 },
-        bodyStyles: { fontSize: 8 },
-        margin: { top: 35, bottom: bottomMargin }
+        bodyStyles: { fontSize: 8, overflow: 'linebreak' },
+        columnStyles: {
+            0: { cellWidth: 10 },
+            1: { cellWidth: 72 },
+            2: { cellWidth: 15 },
+            3: { cellWidth: 20, halign: 'right' },
+            4: { cellWidth: 30, halign: 'right' },
+            5: { cellWidth: 35, halign: 'right' },
+        },
+        margin: { top: 30, bottom: bottomMargin, left: pageMargin, right: pageMargin }
     });
 
     let finalY = (doc as any).lastAutoTable.finalY;
@@ -235,7 +264,8 @@ const downloadPDF = (quote: Quote) => {
         const contentHeight = splitContent.length * 5; 
         if (finalY + contentHeight + 10 > pageHeight - bottomMargin) {
             doc.addPage();
-            finalY = pageMargin;
+            drawHeader();
+            finalY = 30; // After header
         }
          autoTable(doc, {
             startY: finalY + 5,
@@ -259,24 +289,6 @@ const downloadPDF = (quote: Quote) => {
         addSection('Condiciones de Pago:', quote.paymentTerms);
     }
     
-    const localDate = new Date(quote.date.replace(/-/g, '\/'));
-    autoTable(doc, {
-        startY: 35,
-        body: [
-            [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'})}`, styles: { halign: 'right' } }],
-            [{ content: `Empresa: ${quote.clientName}` }, { content: `Ciudad: Mérida`, styles: { halign: 'right' } }],
-            [{ content: `Dirección: ${quote.clientAddress}` }, { content: `Tipo de Servicio: ${quote.tipoServicio || ''}`, styles: { halign: 'right' } }],
-            [{ content: `Teléfono: ${quote.clientPhone}` }, { content: `Tipo de Trabajo: ${quote.tipoTrabajo || ''}`, styles: { halign: 'right' } }],
-            [{ content: `RFC: ${quote.rfc || ''}`}, ''],
-            [{ content: `Equipo/Lugar: ${quote.equipoLugar || ''}`, colSpan: 2 }],
-        ],
-        theme: 'plain',
-        styles: { fontSize: 9, cellPadding: 1 },
-        margin: { top: 0, right: pageMargin, bottom: 0, left: pageMargin },
-        tableWidth: 'auto',
-        showHead: false,
-    });
-
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
