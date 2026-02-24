@@ -177,6 +177,7 @@ const downloadPDF = async (quote: Quote) => {
     const pageWidth = doc.internal.pageSize.width;
     const pageMargin = 14;
     const bottomMargin = 40; 
+    const topMargin = 40;
 
     let logoDataUrl: string | null = null;
     try {
@@ -198,16 +199,17 @@ const downloadPDF = async (quote: Quote) => {
         } else {
             doc.setFont("helvetica", "bold");
             doc.setFontSize(18);
-            doc.setTextColor(41, 71, 121); 
+            doc.setTextColor(0, 0, 0); 
             doc.text("LEBAREF", pageMargin, 20);
         }
         
         const headerDetailsX = pageWidth - pageMargin;
         doc.setFont("helvetica", "bold");
         doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
         doc.text(`COTIZACIÓN`, headerDetailsX, 20 - 2, { align: 'right' });
         
-        doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(128, 128, 128);
+        doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(100, 100, 100);
         doc.text(`${quoteId}`, headerDetailsX, 20 + 4, { align: 'right' });
 
         doc.setDrawColor(221, 221, 221); 
@@ -240,7 +242,7 @@ const downloadPDF = async (quote: Quote) => {
     autoTable(doc, {
         startY: finalY + 2,
         didDrawPage: (data) => {
-            if (data.pageNumber > 1) {
+            if (data.pageNumber > data.previous.pageNumber) {
                drawHeader();
             }
         },
@@ -274,7 +276,7 @@ const downloadPDF = async (quote: Quote) => {
             4: { cellWidth: 30, halign: 'right' },
             5: { cellWidth: 35, halign: 'right' },
         },
-        margin: { top: 30, bottom: bottomMargin, left: pageMargin, right: pageMargin }
+        margin: { top: topMargin, bottom: bottomMargin, left: pageMargin, right: pageMargin }
     });
 
     finalY = (doc as any).lastAutoTable.finalY;
@@ -299,9 +301,11 @@ const downloadPDF = async (quote: Quote) => {
             body: sectionsBody,
             theme: 'plain',
             styles: { overflow: 'linebreak' },
-            margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin },
+            margin: { top: topMargin, left: pageMargin, right: pageMargin, bottom: bottomMargin },
             didDrawPage: (data) => {
-                if(data.pageNumber > 1) drawHeader();
+                if(data.pageNumber > data.previous.pageNumber) {
+                    drawHeader();
+                }
             },
         });
         finalY = (doc as any).lastAutoTable.finalY;
@@ -313,7 +317,7 @@ const downloadPDF = async (quote: Quote) => {
     if (finalY + signatureBlockHeight > pageHeight - footerHeight) {
         doc.addPage();
         drawHeader();
-        finalY = 30;
+        finalY = topMargin;
     }
 
     const signatureY = finalY + 15;
