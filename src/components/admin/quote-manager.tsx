@@ -37,7 +37,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2, FileSpreadsheet, ArrowUpDown, Calendar as CalendarIcon, Eraser } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2, FileSpreadsheet, ArrowUpDown, Calendar as CalendarIcon, Eraser, ChevronDown } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -672,7 +672,34 @@ export function QuoteManager() {
                     />
                 </PopoverContent>
             </Popover>
-            {(filter || date) && (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="capitalize">
+                      {(table.getColumn("status")?.getFilterValue() as string) ?? "Estado"}
+                      <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuRadioGroup
+                      value={
+                        (table.getColumn("status")?.getFilterValue() as string) ?? "all"
+                      }
+                      onValueChange={(value) => {
+                        table.getColumn("status")?.setFilterValue(
+                          value === "all" ? undefined : value
+                        );
+                      }}
+                    >
+                      <DropdownMenuRadioItem value="all">Todos</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="Borrador">Borrador</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="Enviada">Enviada</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="Aceptada">Aceptada</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="Pagada">Pagada</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="Rechazada">Rechazada</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            {(filter || date || table.getColumn('status')?.getFilterValue()) && (
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -682,6 +709,7 @@ export function QuoteManager() {
                                 onClick={() => {
                                     setFilter("");
                                     setDate(undefined);
+                                    table.getColumn('status')?.setFilterValue(undefined);
                                 }}
                                 className="h-9 w-9"
                             >
