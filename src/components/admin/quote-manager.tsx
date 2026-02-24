@@ -289,20 +289,30 @@ const downloadPDF = (quote: Quote) => {
         addSection('Condiciones de Pago:', quote.paymentTerms);
     }
     
+    doc.setPage((doc as any).internal.getNumberOfPages());
+    finalY = (doc as any).lastAutoTable.finalY;
+
+    const signatureBlockHeight = 25;
+    const footerHeight = 20;
+
+    if (finalY + signatureBlockHeight > pageHeight - footerHeight) {
+        doc.addPage();
+        drawHeader();
+        finalY = 30;
+    }
+
+    const signatureY = finalY + 15;
+    doc.setDrawColor(150, 150, 150);
+    doc.line(70, signatureY, 140, signatureY);
+    doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
+    doc.text("FIRMA DE ACEPTACIÓN", 105, signatureY + 5, { align: 'center' });
+
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
         doc.setFontSize(8).setTextColor(150);
         doc.text("Gracias por su preferencia.", pageMargin, pageHeight - 15);
         doc.text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 15, { align: 'right' });
-
-        if (i === totalPages) {
-            const signatureY = pageHeight - 30;
-            doc.setDrawColor(150, 150, 150);
-            doc.line(70, signatureY, 140, signatureY);
-            doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
-            doc.text("FIRMA DE ACEPTACIÓN", 105, signatureY + 5, { align: 'center' });
-        }
     }
     
     doc.save(`${quoteId}.pdf`);
@@ -668,7 +678,7 @@ export function QuoteManager() {
                                 format(date.from, "d 'de' LLL, y", { locale: es })
                             )
                         ) : (
-                            <span>Filtrar por fecha...</span>
+                            "Filtrar por fecha..."
                         )}
                     </Button>
                 </PopoverTrigger>
