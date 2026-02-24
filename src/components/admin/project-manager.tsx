@@ -139,7 +139,7 @@ const downloadQuotePDF = async (quote: Quote) => {
 
     let logoDataUrl: string | null = null;
     try {
-        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771954648/logo_r8rudc.png';
+        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771958796/logo-Photoroom_klbk3u.png';
         const response = await fetch(logoUrl);
         const blob = await response.blob();
         logoDataUrl = await new Promise<string>(resolve => {
@@ -235,6 +235,14 @@ const downloadQuotePDF = async (quote: Quote) => {
 
     finalY = (doc as any).lastAutoTable.finalY;
 
+    // Check for available space before adding the next sections
+    if (finalY + 60 > pageHeight - bottomMargin) { // 60 is an estimate for the sections block
+        doc.addPage();
+        drawHeader();
+        lastDrawnPage++;
+        finalY = topMargin;
+    }
+
     const sectionsBody: any[] = [];
     if (quote.observations) {
         sectionsBody.push([{ content: 'Comentarios y Diagnóstico:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
@@ -247,13 +255,6 @@ const downloadQuotePDF = async (quote: Quote) => {
     if (quote.paymentTerms) {
         sectionsBody.push([{ content: 'Condiciones de Pago:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
         sectionsBody.push([{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 8, cellPadding: {top: 1, bottom: 4} } }]);
-    }
-
-    if (sectionsBody.length > 0 && finalY + 60 > pageHeight - bottomMargin) {
-      doc.addPage();
-      drawHeader();
-      lastDrawnPage++;
-      finalY = topMargin;
     }
 
     if (sectionsBody.length > 0) {
@@ -342,7 +343,7 @@ const downloadPurchaseOrderPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
 
     let logoDataUrl: string | null = null;
     try {
-        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771954648/logo_r8rudc.png';
+        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771958796/logo-Photoroom_klbk3u.png';
         const response = await fetch(logoUrl);
         const blob = await response.blob();
         logoDataUrl = await new Promise<string>(resolve => {

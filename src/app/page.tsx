@@ -62,7 +62,7 @@ export default function LoginPage() {
             data-ai-hint="workshop tools"
         />
         <div className="relative z-10 text-center space-y-4">
-            <Logo className="justify-center text-4xl" />
+            <Logo className="justify-center" width={180} height={45} />
             {/* <p className="text-lg text-muted-foreground">Expertos en gestión y mantenimiento de equipos.</p> */}
         </div>
       </div>

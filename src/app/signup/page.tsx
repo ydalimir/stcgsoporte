@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -129,7 +128,7 @@ export default function SignUpPage() {
             data-ai-hint="kitchen maintenance"
         />
         <div className="relative z-10 text-center space-y-4">
-            <Logo className="justify-center text-4xl" />
+            <Logo className="justify-center" width={180} height={45} />
             <p className="text-lg text-muted-foreground">La solución definitiva para la gestión de servicios técnicos.</p>
         </div>
       </div>

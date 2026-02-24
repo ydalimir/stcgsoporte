@@ -112,7 +112,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
 
     let logoDataUrl: string | null = null;
     try {
-        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771954648/logo_r8rudc.png';
+        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771958796/logo-Photoroom_klbk3u.png';
         const response = await fetch(logoUrl);
         const blob = await response.blob();
         logoDataUrl = await new Promise<string>(resolve => {
@@ -748,4 +748,5 @@ export function PurchaseOrderManager() {
     </div>
   );
 }
+
 
