@@ -383,7 +383,7 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
                         <FormField control={form.control} name="email" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Correo Electrónico</FormLabel>
-                                <FormControl><Input type="email" placeholder="correo@ejemplo.com" {...field} readOnly={!!user} /></FormControl>
+                                <FormControl><Input type="email" placeholder="correo@ejemplo.com" {...field} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
@@ -501,6 +501,8 @@ function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormDialogPr
         </Dialog>
     )
 }
+
+    
 
     
 
