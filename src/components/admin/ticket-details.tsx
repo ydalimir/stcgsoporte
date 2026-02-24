@@ -22,7 +22,7 @@ type TicketDetailsProps = {
   ticket: Ticket;
 };
 
-const downloadServiceOrderPDF = (ticket: Ticket) => {
+const downloadServiceOrderPDF = async (ticket: Ticket) => {
     const doc = new jsPDF();
     const ticketId = ticket.ticketNumber ? `ORD-${String(ticket.ticketNumber).padStart(3, '0')}` : ticket.id;
     const pageHeight = doc.internal.pageSize.height;
@@ -30,8 +30,27 @@ const downloadServiceOrderPDF = (ticket: Ticket) => {
     const pageMargin = 14;
     const bottomMargin = 50;
 
+    let logoDataUrl: string | null = null;
+    try {
+        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771954648/logo_r8rudc.png';
+        const response = await fetch(logoUrl);
+        const blob = await response.blob();
+        logoDataUrl = await new Promise<string>(resolve => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error("Error loading logo for PDF:", error);
+    }
+
     const drawHeader = () => {
-        doc.setFont("helvetica", "bold").setFontSize(20).text("LEBAREF", pageMargin, 15);
+        if (logoDataUrl) {
+            doc.addImage(logoDataUrl, 'PNG', pageMargin, 8, 40, 15);
+        } else {
+            doc.setFont("helvetica", "bold").setFontSize(20).text("LEBAREF", pageMargin, 15);
+        }
+        
         doc.setFont("helvetica", "normal").setFontSize(10).text("Orden de Servicio", pageMargin, 15 + 5);
         doc.setFont("helvetica", "bold").setFontSize(12).text(`Orden #${ticketId}`, pageWidth - pageMargin, 15, { align: 'right' });
         doc.setFont("helvetica", "normal").setFontSize(10).text(`Fecha: ${ticket.createdAt?.toDate().toLocaleDateString('es-MX') || "N/A"}`, pageWidth - pageMargin, 15 + 5, { align: 'right' });
@@ -197,7 +216,7 @@ export function TicketDetails({ ticket }: TicketDetailsProps) {
         </section>
       </CardContent>
       <CardFooter className="flex-col sm:flex-row justify-end gap-2 bg-muted/30 py-4 px-6">
-        <Button variant="outline" onClick={() => downloadServiceOrderPDF(ticket)}><Download className="mr-2"/>Descargar Orden</Button>
+        <Button variant="outline" onClick={async () => await downloadServiceOrderPDF(ticket)}><Download className="mr-2"/>Descargar Orden</Button>
         <Button disabled={ticket.status === 'En Progreso'} onClick={() => updateStatus("En Progreso")}>Marcar como En Progreso</Button>
         <Button disabled={ticket.status === 'Resuelto'} onClick={() => updateStatus("Resuelto")} className="bg-green-600 hover:bg-green-700">Marcar como Resuelto</Button>
       </CardFooter>

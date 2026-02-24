@@ -102,7 +102,7 @@ type UserProfile = {
   role: 'admin' | 'employee';
 };
 
-const downloadServiceOrderPDF = (ticket: Ticket) => {
+const downloadServiceOrderPDF = async (ticket: Ticket) => {
     const doc = new jsPDF();
     const ticketId = ticket.ticketNumber ? `ORD-${String(ticket.ticketNumber).padStart(3, '0')}` : ticket.id;
     const pageHeight = doc.internal.pageSize.height;
@@ -110,8 +110,27 @@ const downloadServiceOrderPDF = (ticket: Ticket) => {
     const pageMargin = 14;
     const bottomMargin = 50;
 
+    let logoDataUrl: string | null = null;
+    try {
+        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771954648/logo_r8rudc.png';
+        const response = await fetch(logoUrl);
+        const blob = await response.blob();
+        logoDataUrl = await new Promise<string>(resolve => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error("Error loading logo for PDF:", error);
+    }
+
     const drawHeader = () => {
-        doc.setFont("helvetica", "bold").setFontSize(20).text("LEBAREF", pageMargin, 15);
+        if (logoDataUrl) {
+            doc.addImage(logoDataUrl, 'PNG', pageMargin, 8, 40, 15);
+        } else {
+            doc.setFont("helvetica", "bold").setFontSize(20).text("LEBAREF", pageMargin, 15);
+        }
+        
         doc.setFont("helvetica", "normal").setFontSize(10).text("Orden de Servicio", pageMargin, 15 + 5);
         doc.setFont("helvetica", "bold").setFontSize(12).text(`Orden #${ticketId}`, pageWidth - pageMargin, 15, { align: 'right' });
         doc.setFont("helvetica", "normal").setFontSize(10).text(`Fecha: ${ticket.createdAt?.toDate().toLocaleDateString('es-MX') || "N/A"}`, pageWidth - pageMargin, 15 + 5, { align: 'right' });
@@ -388,7 +407,7 @@ export function TicketTable() {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                 <DropdownMenuItem
-                  onClick={() => downloadServiceOrderPDF(ticket)}
+                  onClick={async () => await downloadServiceOrderPDF(ticket)}
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Descargar Orden

@@ -170,7 +170,7 @@ const createOrUpdateTicketFromQuote = async (quote: Quote, currentUserId: string
     }
 };
 
-const downloadPDF = (quote: Quote) => {
+const downloadPDF = async (quote: Quote) => {
     const doc = new jsPDF();
     const quoteId = quote.quoteNumber;
     const pageHeight = doc.internal.pageSize.height;
@@ -178,11 +178,29 @@ const downloadPDF = (quote: Quote) => {
     const pageMargin = 14;
     const bottomMargin = 40; 
 
+    let logoDataUrl: string | null = null;
+    try {
+        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771954648/logo_r8rudc.png';
+        const response = await fetch(logoUrl);
+        const blob = await response.blob();
+        logoDataUrl = await new Promise<string>(resolve => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error("Error loading logo for PDF:", error);
+    }
+
     const drawHeader = () => {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(18);
-        doc.setTextColor(41, 71, 121); 
-        doc.text("LEBAREF", pageMargin, 20);
+        if (logoDataUrl) {
+            doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 40, 15);
+        } else {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(18);
+            doc.setTextColor(41, 71, 121); 
+            doc.text("LEBAREF", pageMargin, 20);
+        }
         
         const headerDetailsX = pageWidth - pageMargin;
         doc.setFont("helvetica", "bold");
@@ -197,7 +215,7 @@ const downloadPDF = (quote: Quote) => {
         doc.setTextColor(0, 0, 0);
     };
 
-    drawHeader(); // Draw header on page 1
+    drawHeader(); 
 
     const localDate = new Date(quote.date.replace(/-/g, '\/'));
     autoTable(doc, {
@@ -217,8 +235,10 @@ const downloadPDF = (quote: Quote) => {
         showHead: false,
     });
     
+    let finalY = (doc as any).lastAutoTable.finalY;
+
     autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 2,
+        startY: finalY + 2,
         didDrawPage: (data) => {
             if (data.pageNumber > 1) {
                drawHeader();
@@ -257,7 +277,7 @@ const downloadPDF = (quote: Quote) => {
         margin: { top: 30, bottom: bottomMargin, left: pageMargin, right: pageMargin }
     });
 
-    let finalY = (doc as any).lastAutoTable.finalY;
+    finalY = (doc as any).lastAutoTable.finalY;
 
     const sectionsBody: any[] = [];
     if (quote.observations) {
@@ -281,15 +301,12 @@ const downloadPDF = (quote: Quote) => {
             styles: { overflow: 'linebreak' },
             margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin },
             didDrawPage: (data) => {
-                // Redraw header on new pages
-                drawHeader();
+                if(data.pageNumber > 1) drawHeader();
             },
         });
+        finalY = (doc as any).lastAutoTable.finalY;
     }
-
-    doc.setPage((doc as any).internal.getNumberOfPages());
-    finalY = (doc as any).lastAutoTable.finalY;
-
+    
     const signatureBlockHeight = 25;
     const footerHeight = 20;
 
@@ -565,7 +582,7 @@ export function QuoteManager() {
                 <DropdownMenuItem onClick={() => { setSelectedQuote(quote); setIsFormOpen(true); }}>
                   <Edit className="mr-2 h-4 w-4" /> Editar
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => downloadPDF(quote)}>
+                <DropdownMenuItem onClick={async () => await downloadPDF(quote)}>
                   <Download className="mr-2 h-4 w-4" /> Descargar PDF
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => downloadExcel(quote)}>
@@ -813,8 +830,3 @@ export function QuoteManager() {
     </div>
   );
 }
-
-
-
-    
-

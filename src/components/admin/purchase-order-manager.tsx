@@ -103,12 +103,26 @@ type UserProfile = {
   purchaseOrderCounter: number;
 };
 
-const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
+const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
     const pageMargin = 14;
     const bottomMargin = 30;
+
+    let logoDataUrl: string | null = null;
+    try {
+        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771954648/logo_r8rudc.png';
+        const response = await fetch(logoUrl);
+        const blob = await response.blob();
+        logoDataUrl = await new Promise<string>(resolve => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error("Error loading logo for PDF:", error);
+    }
 
     const drawFooter = (pageNumber: number, totalPages: number) => {
         doc.setFontSize(8).setTextColor(150);
@@ -120,9 +134,12 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     autoTable(doc, {
         didDrawPage: (data) => {
             if (data.pageNumber === 1) {
-                // Draw header only on the first page
-                doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(41, 71, 121);
-                doc.text("LEBAREF", pageMargin, 20);
+                if (logoDataUrl) {
+                    doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 40, 15);
+                } else {
+                    doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(41, 71, 121);
+                    doc.text("LEBAREF", pageMargin, 20);
+                }
                 
                 doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(0, 0, 0);
                 doc.text("ORDEN DE COMPRA", pageWidth - pageMargin, 20, { align: 'right' });
@@ -133,7 +150,6 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
                 doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, pageWidth - pageMargin, 32, { align: 'right' });
             }
         },
-        // --- BILL TO / SEND TO ---
         body: [
             [
                 { content: 'FACTURAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 9 } },
@@ -149,7 +165,6 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         margin: { top: 40, bottom: bottomMargin }
     });
     
-    // --- PO DETAILS GRID ---
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
     const quoteDisplay = linkedQuote ? linkedQuote.quoteNumber : 'N/A';
     const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
@@ -167,7 +182,6 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin },
     });
 
-    // --- ITEMS TABLE ---
     const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
     const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
     const subTotalAfterDiscount = subtotal - discountAmount;
@@ -194,18 +208,16 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
 
     let finalY = (doc as any).lastAutoTable.finalY;
 
-    // --- Function to check space and add new page if needed ---
     const checkPageSpace = (requiredSpace: number) => {
         if (finalY + requiredSpace > pageHeight - bottomMargin) {
             doc.addPage();
-            finalY = pageMargin; // Reset Y position
+            finalY = pageMargin;
         }
     };
     
-    // --- OBSERVATIONS ---
     const observationsLines = po.observations ? doc.splitTextToSize(po.observations, 110) : [];
-    const observationsHeight = (observationsLines.length * 5) + 10; // 5 per line + padding
-    checkPageSpace(observationsHeight + 40); // Check space for observations and totals
+    const observationsHeight = (observationsLines.length * 5) + 10;
+    checkPageSpace(observationsHeight + 40);
     
     autoTable(doc, {
         startY: finalY + 5,
@@ -218,7 +230,6 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         margin: { left: pageMargin, right: pageWidth / 2, bottom: bottomMargin }
     });
 
-    // --- TOTALS ---
     const totalsBody = [
         [{ content: 'SUBTOTAL', styles: { halign: 'left' }}, { content: `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' }}],
     ];
@@ -238,7 +249,6 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
 
     finalY = (doc as any).lastAutoTable.finalY;
 
-    // --- SIGNATURE ---
     checkPageSpace(30);
     const signatureY = finalY + 15;
     doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0,0,0);
@@ -246,7 +256,6 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     doc.setDrawColor(0,0,0);
     doc.line(pageMargin, signatureY + 2, pageMargin + 80, signatureY + 2); 
     
-    // --- RENDER FOOTER ON ALL PAGES ---
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
@@ -525,7 +534,7 @@ export function PurchaseOrderManager() {
                 <DropdownMenuItem onClick={() => { setSelectedPO(po); setIsFormOpen(true); }}>
                   <Edit className="mr-2 h-4 w-4" /> Editar
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => downloadPDF(po, quotes)}>
+                <DropdownMenuItem onClick={async () => await downloadPDF(po, quotes)}>
                   <Download className="mr-2 h-4 w-4" /> Descargar PDF
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => downloadExcel(po)}>
@@ -742,5 +751,3 @@ export function PurchaseOrderManager() {
     </div>
   );
 }
-
-    
