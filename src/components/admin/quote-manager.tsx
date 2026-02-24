@@ -154,7 +154,6 @@ const createOrUpdateTicketFromQuote = async (quote: Quote) => {
 const downloadPDF = (quote: Quote) => {
     const doc = new jsPDF();
     const quoteId = quote.quoteNumber;
-    const pageHeight = doc.internal.pageSize.height;
     let yPos = 20;
 
     // --- Header ---
@@ -193,9 +192,7 @@ const downloadPDF = (quote: Quote) => {
         theme: 'plain',
         styles: { fontSize: 9, cellPadding: 1 }
     });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-
-
+    
     // --- Items Table ---
     const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
     const ivaPercentage = quote.iva ?? 16;
@@ -203,7 +200,7 @@ const downloadPDF = (quote: Quote) => {
     const total = quote.total ?? subtotal + ivaAmount;
     
     autoTable(doc, {
-      startY: yPos,
+      startY: (doc as any).lastAutoTable.finalY + 5,
       head: [['No.', 'Descripción', 'Unidad', 'Cantidad', 'Precio', 'Importe']],
       body: quote.items.map((item, index) => [
         index + 1,
@@ -219,54 +216,70 @@ const downloadPDF = (quote: Quote) => {
         ['', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' } }],
       ],
       headStyles: { fillColor: [41, 71, 121] },
-      didDrawPage: (data) => {
-        yPos = data.cursor?.y ?? yPos;
-      }
+      margin: { bottom: 40 }
     });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
     
+    let lastY = (doc as any).lastAutoTable.finalY;
+
     // --- Comentarios y Diagnostico ---
     if (quote.observations) {
-        doc.setFontSize(9).setFont(undefined, 'bold');
-        doc.text("Comentarios y Diagnóstico:", 14, yPos);
-        yPos += 5;
-        doc.setFontSize(9).setFont(undefined, 'normal');
-        const splitObservations = doc.splitTextToSize(quote.observations, 180);
-        doc.text(splitObservations, 14, yPos);
-        yPos += splitObservations.length * 4 + 5;
+        autoTable(doc, {
+            startY: lastY + 5,
+            body: [
+                [{ content: 'Comentarios y Diagnóstico:', styles: { fontStyle: 'bold', fontSize: 9 } }],
+                [{ content: doc.splitTextToSize(quote.observations, 180), styles: { fontSize: 9 } }],
+            ],
+            theme: 'plain',
+            margin: { bottom: 40 }
+        });
+        lastY = (doc as any).lastAutoTable.finalY;
     }
     
     // --- Garantias ---
     if (quote.policies) {
-        doc.setFontSize(10).setFont(undefined, 'bold');
-        doc.text("Garantías:", 14, yPos);
-        yPos += 5;
-        doc.setFontSize(7).setFont(undefined, 'normal');
-        const splitPolicies = doc.splitTextToSize(quote.policies, 180);
-        doc.text(splitPolicies, 14, yPos);
-        yPos += splitPolicies.length * 3 + 10;
+         autoTable(doc, {
+            startY: lastY + 5,
+            body: [
+                [{ content: 'Garantías:', styles: { fontStyle: 'bold', fontSize: 10 } }],
+                [{ content: doc.splitTextToSize(quote.policies, 180), styles: { fontSize: 7 } }],
+            ],
+            theme: 'plain',
+            margin: { bottom: 40 }
+        });
+        lastY = (doc as any).lastAutoTable.finalY;
     }
     
     // --- Payment Conditions ---
     if (quote.paymentTerms) {
-        doc.setFontSize(10).setFont(undefined, 'bold');
-        doc.text("Condiciones de Pago:", 14, yPos);
-        yPos += 6;
-        
-        doc.setFontSize(8).setFont(undefined, 'normal');
-        const paymentTermsLines = doc.splitTextToSize(quote.paymentTerms, 180);
-        doc.text(paymentTermsLines, 14, yPos);
+        autoTable(doc, {
+            startY: lastY + 5,
+            body: [
+                [{ content: 'Condiciones de Pago:', styles: { fontStyle: 'bold', fontSize: 10 } }],
+                [{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 8 } }],
+            ],
+            theme: 'plain',
+            margin: { bottom: 40 }
+        });
     }
-    
-    // --- Footer with Signature ---
-    const finalY = pageHeight - 35;
-    doc.setDrawColor(150, 150, 150);
-    doc.line(70, finalY, 140, finalY); // Signature line
-    doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
-    doc.text("FIRMA DE ACEPTACIÓN", 105, finalY + 5, { align: 'center' });
-    
-    doc.setFontSize(8).setTextColor(150);
-    doc.text("Gracias por su preferencia.", 14, pageHeight - 10);
+
+    // --- Footer with Signature (on every page) ---
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        const pageHeight = doc.internal.pageSize.height;
+
+        doc.setFontSize(8).setTextColor(150);
+        doc.text("Gracias por su preferencia.", 14, pageHeight - 10);
+        doc.text(`Página ${i} de ${totalPages}`, doc.internal.pageSize.width - 35, pageHeight - 10);
+
+        if (i === totalPages) {
+            const finalY = pageHeight - 35;
+            doc.setDrawColor(150, 150, 150);
+            doc.line(70, finalY, 140, finalY); // Signature line
+            doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
+            doc.text("FIRMA DE ACEPTACIÓN", 105, finalY + 5, { align: 'center' });
+        }
+    }
     
     doc.save(`${quoteId}.pdf`);
 }
@@ -642,3 +655,4 @@ export function QuoteManager() {
     </div>
   );
 }
+

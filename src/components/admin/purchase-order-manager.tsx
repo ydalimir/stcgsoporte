@@ -129,8 +129,6 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
             ]
         ]
     });
-    yPos = (doc as any).lastAutoTable.finalY + 5;
-    
     
     // --- Details Table ---
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
@@ -146,7 +144,7 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     }
 
     autoTable(doc, {
-        startY: yPos,
+        startY: (doc as any).lastAutoTable.finalY + 5,
         body: [[
             { content: `COTIZACIÓN:\n${quoteDisplay}`},
             { content: `TIPO DE PAGO:\n${po.tipoPago || 'N/A'}`},
@@ -158,18 +156,10 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
         styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
         headStyles: { fillColor: [255, 255, 255], textColor: 0 },
     });
-    yPos = (doc as any).lastAutoTable.finalY + 5;
-
 
     // --- Items Table ---
-    const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
-    const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
-    const subTotalAfterDiscount = subtotal - discountAmount;
-    const ivaAmount = subTotalAfterDiscount * (po.iva / 100);
-    const total = subTotalAfterDiscount + ivaAmount;
-    
     autoTable(doc, {
-      startY: yPos,
+      startY: (doc as any).lastAutoTable.finalY + 5,
       head: [['ARTÍCULO NO.', 'DESCRIPCIÓN', 'UNIDAD', 'CANTIDAD', 'PRECIO POR UNIDAD', 'TOTAL']],
       body: po.items.map((item, index) => [
         index + 1,
@@ -183,43 +173,57 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
       headStyles: { fillColor: [220, 220, 220], textColor: 0, fontSize: 8, fontStyle: 'bold', halign: 'center' },
       bodyStyles: { fontSize: 8 },
       columnStyles: { 5: { halign: 'right' }},
-      didDrawPage: (data) => {
-        yPos = data.cursor?.y ?? yPos;
-      }
+      margin: { bottom: 60 } // Margin for footer and signature
     });
 
-    const finalY = (doc as any).lastAutoTable.finalY;
+    let lastY = (doc as any).lastAutoTable.finalY;
 
-    // --- Totals ---
-    const totalsX = 140;
-    const totalsY = finalY + 5;
-    doc.setFontSize(9);
-    doc.text('SUBTOTAL', totalsX, totalsY, { align: 'left'});
-    doc.text(`$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 200, totalsY, { align: 'right'});
-    if(po.discountPercentage) {
-        doc.text(`DESCUENTO ${po.discountPercentage}%`, totalsX, totalsY + 5, { align: 'left'});
-        doc.text(`-$${discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 200, totalsY + 5, { align: 'right'});
-    }
-    doc.text('IVA', totalsX, totalsY + 10, { align: 'left'});
-    doc.text(`$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 200, totalsY + 10, { align: 'right'});
-    doc.setFont("helvetica", "bold");
-    doc.text('TOTAL', totalsX, totalsY + 15, { align: 'left'});
-    doc.text(`$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 200, totalsY + 15, { align: 'right'});
+    // --- Totals and Observations ---
+    const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+    const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
+    const subTotalAfterDiscount = subtotal - discountAmount;
+    const ivaAmount = subTotalAfterDiscount * (po.iva / 100);
+    const total = subTotalAfterDiscount + ivaAmount;
+
+    const totalsContent = `
+        Subtotal: $${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        ${po.discountPercentage ? `Descuento ${po.discountPercentage}%: -$${discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
+        IVA (${po.iva}%): $${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        Total: $${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    `.trim().split('\n').map(line => line.trim()).filter(Boolean).join('\n');
     
-    // --- Observations & Signature ---
-    const obsY = finalY + 5;
-    doc.setFont("helvetica", "normal");
-    doc.text('Observaciones / Instrucciones:', 14, obsY);
-    const splitObservations = doc.splitTextToSize(po.observations || '', 120); // Split text to fit width
-    doc.text(splitObservations, 14, obsY + 5);
+    autoTable(doc, {
+        startY: lastY + 5,
+        body: [
+            [
+                { content: `Observaciones / Instrucciones:\n${po.observations || ''}`, styles: { cellWidth: 120 } },
+                { content: totalsContent, styles: { halign: 'right', fontStyle: 'bold' } }
+            ]
+        ],
+        theme: 'plain',
+        styles: { fontSize: 9 },
+        margin: { bottom: 60 }
+    });
+    
+    // --- Footer & Signature on each page ---
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        const pageHeight = doc.internal.pageSize.height;
 
-    const signatureY = Math.max(obsY + 30, totalsY + 30);
-    doc.text('FIRMA AUTORIZADA', 14, signatureY);
-    doc.rect(14, signatureY + 2, 80, 20); // Signature box
-
-    doc.setFontSize(8).setTextColor(150);
-    doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo electrónico:", 105, doc.internal.pageSize.height - 15, {align: 'center'});
-    doc.text("lebarefmantenimiento@gmail.com / corporativo@lebaref.com", 105, doc.internal.pageSize.height - 10, {align: 'center'});
+        // Footer
+        doc.setFontSize(8).setTextColor(150);
+        doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo electrónico:", 105, pageHeight - 15, {align: 'center'});
+        doc.text("lebarefmantenimiento@gmail.com / corporativo@lebaref.com", 105, pageHeight - 10, {align: 'center'});
+        
+        // Signature only on the last page
+        if (i === totalPages) {
+            const signatureY = pageHeight - 45;
+            doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0,0,0);
+            doc.text('FIRMA AUTORIZADA', 14, signatureY);
+            doc.rect(14, signatureY + 2, 80, 20); // Signature box
+        }
+    }
     
     doc.save(`${poId}.pdf`);
 }
