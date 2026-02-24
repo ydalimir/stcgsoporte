@@ -97,31 +97,48 @@ type UserProfile = {
 const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
     const doc = new jsPDF();
     const poId = po.purchaseOrderNumber;
+    let yPos = 20;
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
     const pageMargin = 14;
-    const bottomMargin = 40; 
+    const bottomMargin = 30;
 
+    // --- HEADER ---
     const drawHeader = () => {
+        yPos = 20;
         doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(41, 71, 121);
-        doc.text("LEBAREF", pageMargin, 20);
+        doc.text("LEBAREF", pageMargin, yPos);
         
-        doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(41, 71, 121);
-        doc.text("ORDEN DE COMPRA", pageWidth - pageMargin, 20, { align: 'right' });
+        doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(0, 0, 0);
+        doc.text("ORDEN DE COMPRA", pageWidth - pageMargin, yPos, { align: 'right' });
+        yPos += 8;
 
         doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(100, 100, 100);
         const poDate = po.date ? new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
-        doc.text(`FECHA: ${poDate}`, pageWidth - pageMargin, 20 + 8, { align: 'right' });
-        doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, pageWidth - pageMargin, 20 + 12, { align: 'right' });
+        doc.text(`FECHA: ${poDate}`, pageWidth - pageMargin, yPos, { align: 'right' });
+        yPos += 4;
+        doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, pageWidth - pageMargin, yPos, { align: 'right' });
     };
 
-    drawHeader();
-    
+    // --- FOOTER ---
+    const drawFooter = (pageNumber: number, totalPages: number) => {
+        doc.setFontSize(8).setTextColor(150);
+        doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo electrónico:", pageWidth / 2, pageHeight - 15, {align: 'center'});
+        doc.text("lebarefmantenimiento@gmail.com / corporativo@lebaref.com", pageWidth / 2, pageHeight - 10, {align: 'center'});
+        doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 10, { align: 'right' });
+    };
+
+    // --- CONTENT ---
     autoTable(doc, {
-        startY: 40,
-        theme: 'plain',
+        didDrawPage: (data) => {
+            if (data.pageNumber === 1) {
+                drawHeader();
+            }
+        },
+        margin: { top: 40, bottom: bottomMargin },
+        // --- BILL TO / SEND TO ---
         body: [
-             [
+            [
                 { content: 'FACTURAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 9 } },
                 { content: 'ENVIAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 9 } }
             ],
@@ -129,19 +146,14 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
                 { content: po.billToDetails, styles: { fontSize: 9 } },
                 { content: po.supplierDetails, styles: { fontSize: 9 } }
             ]
-        ]
+        ],
+        theme: 'plain',
     });
     
+    // --- PO DETAILS GRID ---
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
     const quoteDisplay = linkedQuote ? linkedQuote.quoteNumber : 'N/A';
     const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
-    const creditDays = parseInt(po.diasCredito || '0', 10);
-    let paymentDueDate = 'N/A';
-    if (po.date && !isNaN(creditDays) && creditDays > 0) {
-        const baseDate = new Date(po.date.replace(/-/g, '\/'));
-        baseDate.setDate(baseDate.getDate() + creditDays);
-        paymentDueDate = baseDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
-    }
 
     autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 5,
@@ -149,73 +161,94 @@ const downloadPDF = (po: PurchaseOrder, quotes: Quote[]) => {
             { content: `COTIZACIÓN:\n${quoteDisplay}`},
             { content: `TIPO DE PAGO:\n${po.tipoPago || 'N/A'}`},
             { content: `DÍAS DE CRÉDITO:\n${po.diasCredito || '0'}`},
-            { content: `FECHA VENCIMIENTO:\n${paymentDueDate}`},
             { content: `FECHA APROX ENTREGA:\n${deliveryDate}`},
         ]],
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
-        headStyles: { fillColor: [255, 255, 255], textColor: 0 },
     });
 
+    // --- ITEMS TABLE ---
     const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
     const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
     const subTotalAfterDiscount = subtotal - discountAmount;
     const ivaAmount = subTotalAfterDiscount * (po.iva / 100);
     const total = subTotalAfterDiscount + ivaAmount;
-
+    
     autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 5,
-        head: [['ARTÍCULO NO.', 'DESCRIPCIÓN', 'UNIDAD', 'CANTIDAD', 'PRECIO POR UNIDAD', 'TOTAL']],
-        body: po.items.map((item, index) => [
-            index + 1,
-            item.description, 
-            item.unit || 'PZA',
-            (item.quantity || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-            `$${(item.price || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-        ]),
-        foot: [
-            ['', '', '', '', 'Subtotal', `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
-            ...(po.discountPercentage ? [['', '', '', '', `Descuento ${po.discountPercentage}%`, `-$${discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]] : []),
-            ['', '', '', '', `IVA (${po.iva}%)`, `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
-            ['', '', '', '', { content: 'Total', styles: { fontStyle: 'bold' } }, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold' } }],
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: [220, 220, 220], textColor: 0, fontSize: 8, fontStyle: 'bold', halign: 'center' },
-        bodyStyles: { fontSize: 8 },
-        footStyles: { halign: 'right', fontStyle: 'bold' },
-        columnStyles: { 5: { halign: 'right' }},
-        margin: { bottom: bottomMargin }
+      startY: (doc as any).lastAutoTable.finalY + 5,
+      head: [['ARTÍCULO NO.', 'DESCRIPCIÓN', 'UNIDAD', 'CANTIDAD', 'PRECIO POR UNIDAD', 'TOTAL']],
+      body: po.items.map((item, index) => [
+        index + 1,
+        item.description, 
+        item.unit || 'PZA',
+        (item.quantity || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        `$${(item.price || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: [220, 220, 220], textColor: 0, fontSize: 8, fontStyle: 'bold', halign: 'center' },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: { 5: { halign: 'right' }},
     });
 
-    if (po.observations) {
-        autoTable(doc, {
-            startY: (doc as any).lastAutoTable.finalY + 5,
-            body: [
-                [{ content: 'Observaciones / Instrucciones:', styles: { fontStyle: 'bold' } }],
-                [{ content: po.observations }]
-            ],
-            theme: 'plain',
-            styles: { fontSize: 9 },
-            margin: { bottom: bottomMargin }
-        });
+    let finalY = (doc as any).lastAutoTable.finalY;
+    
+    // --- Check if there's enough space for the final sections ---
+    if (pageHeight - finalY < 80) { // 80 is an estimated height for observations, totals, and signature
+        doc.addPage();
+        finalY = pageMargin; // Reset Y position on new page
     }
 
+    // --- OBSERVATIONS AND TOTALS (SIDE-BY-SIDE) ---
+    const observationsY = finalY + 10;
+    doc.setFont("helvetica", "bold").setFontSize(9);
+    doc.text('Observaciones / Instrucciones:', pageMargin, observationsY);
+    doc.setFont("helvetica", "normal").setFontSize(9);
+    const splitObservations = doc.splitTextToSize(po.observations || '', 110);
+    doc.text(splitObservations, pageMargin, observationsY + 5);
+
+    const totalsX = 130;
+    const totalsY = finalY + 10;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text('SUBTOTAL', totalsX, totalsY, { align: 'left'});
+    doc.text(`$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - pageMargin, totalsY, { align: 'right'});
+    
+    let currentTotalsY = totalsY;
+    if (po.discountPercentage && po.discountPercentage > 0) {
+        currentTotalsY += 5;
+        doc.text(`DESCUENTO ${po.discountPercentage}%`, totalsX, currentTotalsY, { align: 'left'});
+        doc.text(`-$${discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - pageMargin, currentTotalsY, { align: 'right'});
+    }
+    
+    currentTotalsY += 5;
+    doc.text('IVA', totalsX, currentTotalsY, { align: 'left'});
+    doc.text(`$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - pageMargin, currentTotalsY, { align: 'right'});
+    
+    currentTotalsY += 5;
+    doc.setFont("helvetica", "bold");
+    doc.text('TOTAL', totalsX, currentTotalsY, { align: 'left'});
+    doc.text(`$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - pageMargin, currentTotalsY, { align: 'right'});
+    
+    // --- SIGNATURE ---
+    const obsHeight = splitObservations.length * 5;
+    let signatureY = Math.max(observationsY + obsHeight + 15, currentTotalsY + 15);
+    if (pageHeight - signatureY < 40) {
+        doc.addPage();
+        signatureY = pageMargin;
+    }
+    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0,0,0);
+    doc.text('FIRMA AUTORIZADA', pageMargin, signatureY);
+    doc.setDrawColor(0,0,0);
+    doc.line(pageMargin, signatureY + 2, pageMargin + 80, signatureY + 2); 
+
+    // --- RENDER FOOTER ON ALL PAGES ---
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        doc.setFontSize(8).setTextColor(150);
-        doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo electrónico:", pageWidth / 2, pageHeight - 25, {align: 'center'});
-        doc.text("lebarefmantenimiento@gmail.com / corporativo@lebaref.com", pageWidth / 2, pageHeight - 20, {align: 'center'});
-        doc.text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 15, { align: 'right' });
+        drawFooter(i, totalPages);
     }
-
-    doc.setPage(totalPages);
-    const signatureY = pageHeight - 35;
-    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0,0,0);
-    doc.text('FIRMA AUTORIZADA', pageMargin + 30, signatureY);
-    doc.rect(pageMargin, signatureY + 2, 80, 20); 
-
+    
     doc.save(`${poId}.pdf`);
 };
 
