@@ -249,6 +249,13 @@ const downloadQuotePDF = async (quote: Quote) => {
         sectionsBody.push([{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 8, cellPadding: {top: 1, bottom: 4} } }]);
     }
 
+    if (sectionsBody.length > 0 && finalY + 60 > pageHeight - bottomMargin) {
+      doc.addPage();
+      drawHeader();
+      lastDrawnPage++;
+      finalY = topMargin;
+    }
+
     if (sectionsBody.length > 0) {
         autoTable(doc, {
             startY: finalY + 2,
@@ -1567,4 +1574,5 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
         </Dialog>
     )
 }
+
 

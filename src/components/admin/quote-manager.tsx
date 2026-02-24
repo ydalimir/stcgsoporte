@@ -197,11 +197,6 @@ const downloadPDF = async (quote: Quote) => {
     const drawHeader = () => {
         if (logoDataUrl) {
             doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 40, 15);
-        } else {
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(18);
-            doc.setTextColor(0, 0, 0); 
-            doc.text("LEBAREF", pageMargin, 20);
         }
         
         const headerDetailsX = pageWidth - pageMargin;
@@ -295,6 +290,13 @@ const downloadPDF = async (quote: Quote) => {
     if (quote.paymentTerms) {
         sectionsBody.push([{ content: 'Condiciones de Pago:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
         sectionsBody.push([{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 8, cellPadding: {top: 1, bottom: 4} } }]);
+    }
+    
+    if (sectionsBody.length > 0 && finalY + 60 > pageHeight - bottomMargin) {
+      doc.addPage();
+      drawHeader();
+      lastDrawnPage++;
+      finalY = topMargin;
     }
 
     if (sectionsBody.length > 0) {
@@ -837,4 +839,5 @@ export function QuoteManager() {
     </div>
   );
 }
+
 
