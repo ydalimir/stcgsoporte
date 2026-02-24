@@ -608,7 +608,7 @@ export function QuoteManager() {
     onColumnFiltersChange: setColumnFilters,
     initialState: {
         pagination: {
-            pageSize: 5,
+            pageSize: 10,
         }
     },
     state: {
