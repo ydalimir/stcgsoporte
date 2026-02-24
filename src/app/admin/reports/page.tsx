@@ -10,11 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, Loader2, DollarSign, TrendingUp, TrendingDown, FileText, ShoppingCart, Users, AreaChart } from 'lucide-react';
+import { CalendarIcon, Loader2, DollarSign, FileText, ShoppingCart, AreaChart, Download } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, startOfMonth, endOfMonth, sub, differenceInDays, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, sub, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { cn } from '@/lib/utils';
 import type { Quote } from '@/components/admin/quote-manager';
 import type { PurchaseOrder } from '@/components/admin/purchase-order-manager';
@@ -22,6 +21,7 @@ import type { Supplier } from '@/components/admin/supplier-manager';
 import { errorEmitter } from '@/lib/error-emitter';
 import { FirestorePermissionError } from '@/lib/errors';
 import { useRouter } from 'next/navigation';
+import * as XLSX from "xlsx";
 
 type UserProfile = {
   role: 'admin' | 'employee';
@@ -63,8 +63,8 @@ export default function ReportsPage() {
             router.push('/');
             return;
         }
-        const unsub = onSnapshot(doc(db, "users", user.uid), (doc) => {
-            const profile = doc.data() as UserProfile;
+        const unsub = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
+            const profile = docSnap.data() as UserProfile;
             setUserProfile(profile);
             if (profile.role !== 'admin' && !profile.permissions?.reports) {
                 router.push('/admin');
@@ -132,7 +132,7 @@ export default function ReportsPage() {
                             defaultMonth={date?.from}
                             selected={date}
                             onSelect={setDate}
-                            numberOfMonths={2}
+                            numberOfMonths={1}
                             locale={es}
                         />
                     </PopoverContent>
@@ -156,8 +156,8 @@ export default function ReportsPage() {
 }
 
 function VentasReportTab({ allQuotes, range }: { allQuotes: Quote[], range?: DateRange }) {
-    const { currentPeriodStats, prevPeriodStats, dailyData } = useMemo(() => {
-        if (!range?.from || !range?.to) return { currentPeriodStats: null, prevPeriodStats: null, dailyData: [] };
+    const { currentPeriodStats, prevPeriodStats } = useMemo(() => {
+        if (!range?.from || !range?.to) return { currentPeriodStats: null, prevPeriodStats: null };
 
         const periodDuration = differenceInDays(range.to, range.from);
         const prevPeriodStart = sub(range.from, { days: periodDuration + 1 });
@@ -181,21 +181,9 @@ function VentasReportTab({ allQuotes, range }: { allQuotes: Quote[], range?: Dat
         };
 
         const currentPeriodStats = processData(range.from, range.to);
-
-        const dailyData = Array.from({ length: periodDuration + 1 }, (_, i) => {
-            const date = new Date(range.from!);
-            date.setDate(date.getDate() + i);
-            const dailyQuotes = allQuotes.filter(q => isSameDay(new Date(q.date), date));
-            const dailyIncome = dailyQuotes.filter(q => q.status === 'Aceptada').reduce((sum, q) => sum + q.total, 0);
-            return {
-                name: format(date, 'd MMM', { locale: es }),
-                Ingresos: dailyIncome,
-            };
-        });
-
         const prevPeriodStats = processData(prevPeriodStart, prevPeriodEnd);
 
-        return { currentPeriodStats, prevPeriodStats, dailyData };
+        return { currentPeriodStats, prevPeriodStats };
 
     }, [allQuotes, range]);
 
@@ -205,16 +193,32 @@ function VentasReportTab({ allQuotes, range }: { allQuotes: Quote[], range?: Dat
         if (diff === 0) return "Sin cambios vs período anterior";
         return `${diff > 0 ? '+' : ''}${diff.toFixed(2)}% vs período anterior`;
     };
+    
+    const handleDownloadVentas = () => {
+        if (!range?.from || !range?.to) return;
+        const acceptedQuotesInRange = allQuotes.filter(q => {
+            const quoteDate = new Date(q.date.replace(/-/g, '\/'));
+            const isInRange = quoteDate >= range.from! && quoteDate <= range.to!;
+            return q.status === 'Aceptada' && isInRange;
+        });
+
+        const dataToExport = acceptedQuotesInRange.map(q => ({
+            'ID Cotización': q.quoteNumber,
+            'Cliente': q.clientName,
+            'Fecha': new Date(q.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}),
+            'Total': q.total,
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte de Ventas");
+        XLSX.writeFile(workbook, `Reporte_Ventas_${format(range.from, "yyyy-MM-dd")}_a_${format(range.to, "yyyy-MM-dd")}.xlsx`);
+    };
 
     if (!currentPeriodStats) return <div>Seleccione un rango de fechas para ver el reporte.</div>;
 
     const incomeComparison = getComparison(currentPeriodStats.totalIncome, prevPeriodStats.totalIncome);
     const acceptedComparison = getComparison(currentPeriodStats.acceptedCount, prevPeriodStats.acceptedCount);
-
-    const quoteStatusData = [
-        { name: 'Aceptadas', value: currentPeriodStats.acceptedCount, fill: 'hsl(var(--chart-2))' },
-        { name: 'Rechazadas', value: currentPeriodStats.rejectedCount, fill: 'hsl(var(--destructive))' },
-    ];
 
     return (
         <div className="grid gap-6">
@@ -223,50 +227,19 @@ function VentasReportTab({ allQuotes, range }: { allQuotes: Quote[], range?: Dat
                 <StatCard title="Cotizaciones Aceptadas" value={`${currentPeriodStats.acceptedCount}`} comparison={acceptedComparison} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
                 <StatCard title="Cotizaciones Rechazadas" value={`${currentPeriodStats.rejectedCount}`} comparison={getComparison(currentPeriodStats.rejectedCount, prevPeriodStats.rejectedCount)} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
             </div>
-            <div className="grid md:grid-cols-2 gap-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Ingresos por Día</CardTitle>
-                        <CardDescription>Total de ingresos de cotizaciones aceptadas en el período.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={dailyData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => `$${Number(value).toLocaleString()}`} />
-                                <Tooltip formatter={(value) => [`$${Number(value).toLocaleString('es-MX')}`, 'Ingresos']} />
-                                <Legend />
-                                <Line type="monotone" dataKey="Ingresos" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={false} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Estado de Cotizaciones</CardTitle>
-                        <CardDescription>Total de cotizaciones aceptadas vs. rechazadas.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                         <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={quoteStatusData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} allowDecimals={false} />
-                                <Tooltip />
-                                <Bar dataKey="value" name="Cantidad" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
+            <div className="flex justify-end mt-4">
+                <Button onClick={handleDownloadVentas} disabled={!range?.from || !range.to}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Descargar Reporte de Ventas
+                </Button>
             </div>
         </div>
     );
 }
 
-function ComprasReportTab({ allPurchaseOrders, allSuppliers, range }: { allPurchaseOrders: PurchaseOrder[], allSuppliers: Supplier[], range?: DateRange }) {
-     const { currentPeriodStats, prevPeriodStats, topSuppliersData } = useMemo(() => {
-        if (!range?.from || !range?.to) return { currentPeriodStats: null, prevPeriodStats: null, topSuppliersData: [] };
+function ComprasReportTab({ allPurchaseOrders, range }: { allPurchaseOrders: PurchaseOrder[], allSuppliers: Supplier[], range?: DateRange }) {
+     const { currentPeriodStats, prevPeriodStats } = useMemo(() => {
+        if (!range?.from || !range?.to) return { currentPeriodStats: null, prevPeriodStats: null };
 
         const periodDuration = differenceInDays(range.to, range.from);
         const prevPeriodStart = sub(range.from, { days: periodDuration + 1 });
@@ -279,15 +252,9 @@ function ComprasReportTab({ allPurchaseOrders, allSuppliers, range }: { allPurch
             });
             
             const totalSpending = filteredPOs.reduce((sum, po) => sum + po.total, 0);
-            
-            const supplierCounts: Record<string, number> = {};
-            filteredPOs.forEach(po => {
-                supplierCounts[po.supplierName] = (supplierCounts[po.supplierName] || 0) + 1;
-            });
 
             return {
                 totalSpending,
-                supplierCounts,
                 poCount: filteredPOs.length
             };
         };
@@ -295,13 +262,7 @@ function ComprasReportTab({ allPurchaseOrders, allSuppliers, range }: { allPurch
         const currentPeriodStats = processData(range.from, range.to);
         const prevPeriodStats = processData(prevPeriodStart, prevPeriodEnd);
 
-        const topSuppliersData = Object.entries(currentPeriodStats.supplierCounts)
-            .map(([name, count]) => ({ name, value: count }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
-
-
-        return { currentPeriodStats, prevPeriodStats, topSuppliersData };
+        return { currentPeriodStats, prevPeriodStats };
 
     }, [allPurchaseOrders, range]);
 
@@ -310,6 +271,27 @@ function ComprasReportTab({ allPurchaseOrders, allSuppliers, range }: { allPurch
         const diff = ((current - previous) / previous) * 100;
         if (diff === 0) return "Sin cambios vs período anterior";
         return `${diff > 0 ? '+' : ''}${diff.toFixed(2)}% vs período anterior`;
+    };
+    
+    const handleDownloadCompras = () => {
+        if (!range?.from || !range?.to) return;
+        const poInRange = allPurchaseOrders.filter(po => {
+            const poDate = new Date(po.date.replace(/-/g, '\/'));
+            return poDate >= range.from! && poDate <= range.to!;
+        });
+
+        const dataToExport = poInRange.map(po => ({
+            'ID Orden': po.purchaseOrderNumber,
+            'Proveedor': po.supplierName,
+            'Fecha': new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}),
+            'Total': po.total,
+            'Estado': po.status,
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte de Compras");
+        XLSX.writeFile(workbook, `Reporte_Compras_${format(range.from, "yyyy-MM-dd")}_a_${format(range.to, "yyyy-MM-dd")}.xlsx`);
     };
 
     if (!currentPeriodStats) return <div>Seleccione un rango de fechas para ver el reporte.</div>;
@@ -323,23 +305,14 @@ function ComprasReportTab({ allPurchaseOrders, allSuppliers, range }: { allPurch
                 <StatCard title="Gasto Total" value={`$${currentPeriodStats.totalSpending.toLocaleString('es-MX')}`} comparison={spendingComparison} icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />} />
                 <StatCard title="Órdenes de Compra" value={`${currentPeriodStats.poCount}`} comparison={poCountComparison} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
             </div>
-             <Card>
-                <CardHeader>
-                    <CardTitle>Top 5 Proveedores</CardTitle>
-                    <CardDescription>Proveedores con más órdenes de compra en el período seleccionado.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                     <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={topSuppliersData} layout="vertical">
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} allowDecimals={false} />
-                            <YAxis type="category" dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} width={150} />
-                            <Tooltip formatter={(value) => [value, 'Órdenes']} />
-                            <Bar dataKey="value" name="Órdenes" fill="hsl(var(--chart-3))" radius={[0, 4, 4, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>
+            <div className="flex justify-end mt-4">
+                <Button onClick={handleDownloadCompras} disabled={!range?.from || !range.to}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Descargar Reporte de Compras
+                </Button>
+            </div>
         </div>
     );
 }
+
+    
