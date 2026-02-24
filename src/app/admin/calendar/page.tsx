@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { errorEmitter } from '@/lib/error-emitter';
 import { FirestorePermissionError } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
+import { es } from 'date-fns/locale';
 
 type Project = {
     id: string;
@@ -189,6 +190,7 @@ export default function CalendarPage() {
                         className="p-0"
                         modifiers={projectModifiers}
                         modifiersClassNames={projectModifiersClassNames}
+                        locale={es}
                     />
                 </CardContent>
             </Card>

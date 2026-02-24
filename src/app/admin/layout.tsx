@@ -189,7 +189,7 @@ export default function AdminLayout({
                         className="shrink-0 md:hidden"
                         >
                         <Menu className="h-5 w-5" />
-                        <span className="sr-only">Toggle navigation menu</span>
+                        <span className="sr-only">Abrir/cerrar menú de navegación</span>
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="left" className="flex flex-col p-0">
@@ -211,7 +211,7 @@ export default function AdminLayout({
                             <User className="h-5 w-5" />
                         </AvatarFallback>
                         </Avatar>
-                        <span className="sr-only">Toggle user menu</span>
+                        <span className="sr-only">Abrir/cerrar menú de usuario</span>
                     </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
