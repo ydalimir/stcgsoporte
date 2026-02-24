@@ -89,15 +89,9 @@ export default function CalendarPage() {
         return () => unsubscribe();
     }, [user, userProfile, authIsLoading]);
 
-    const { selectedDayProjects, overdueProjects, projectModifiers } = useMemo(() => {
+    const { selectedDayProjects, projectModifiers } = useMemo(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-
-        const allOverdueProjects = projects.filter(p => {
-             if (p.status === 'Completado' || !p.programmedDate) return false;
-             const programmedDate = new Date(p.programmedDate.replace(/-/g, '\/'));
-             return programmedDate < today;
-        });
 
         const selectedDateStr = date?.toISOString().split('T')[0];
         const allSelectedDayProjects = projects.filter(p => p.programmedDate === selectedDateStr && p.status !== 'Completado');
@@ -148,7 +142,6 @@ export default function CalendarPage() {
 
         return { 
             selectedDayProjects: allSelectedDayProjects,
-            overdueProjects: allOverdueProjects, 
             projectModifiers: finalModifiers, 
         };
     }, [date, projects]);
@@ -188,18 +181,6 @@ export default function CalendarPage() {
             </Card>
 
             <div className="lg:col-span-2 space-y-8">
-                 {overdueProjects.length > 0 && (
-                    <Card className="border-destructive">
-                        <CardHeader>
-                            <CardTitle className="text-destructive">Proyectos Vencidos</CardTitle>
-                             <CardDescription>Estos proyectos han pasado su fecha programada y no han sido completados.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                           <ProjectList projects={overdueProjects} />
-                        </CardContent>
-                    </Card>
-                )}
-
                 <Card>
                     <CardHeader>
                         <CardTitle>
