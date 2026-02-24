@@ -12,6 +12,7 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   SortingState,
+  ColumnFiltersState,
 } from "@tanstack/react-table";
 import {
   Table,
@@ -36,7 +37,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2, FileSpreadsheet, ArrowUpDown, Calendar as CalendarIcon, Eraser } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Download, Trash2, Edit, Loader2, FileSpreadsheet, ArrowUpDown, Calendar as CalendarIcon, Eraser, ChevronDown } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -345,6 +346,7 @@ export function PurchaseOrderManager() {
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [sorting, setSorting] = useState<SortingState>([{ id: 'date', desc: true }]);
   const [date, setDate] = useState<DateRange | undefined>(undefined);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
 
   useEffect(() => {
     if (authIsLoading) return;
@@ -590,6 +592,7 @@ export function PurchaseOrderManager() {
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
     initialState: {
         pagination: {
             pageSize: 10,
@@ -598,6 +601,7 @@ export function PurchaseOrderManager() {
     state: {
       globalFilter: filter,
       sorting,
+      columnFilters,
     },
     onGlobalFilterChange: setFilter,
   });
@@ -653,7 +657,33 @@ export function PurchaseOrderManager() {
                     />
                 </PopoverContent>
             </Popover>
-            {(filter || date) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="capitalize">
+                    {(table.getColumn("status")?.getFilterValue() as string) ?? "Estado"}
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                  <DropdownMenuRadioGroup
+                    value={
+                      (table.getColumn("status")?.getFilterValue() as string) ?? "all"
+                    }
+                    onValueChange={(value) => {
+                      table.getColumn("status")?.setFilterValue(
+                        value === "all" ? undefined : value
+                      );
+                    }}
+                  >
+                    <DropdownMenuRadioItem value="all">Todos</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="Borrador">Borrador</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="Enviada">Enviada</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="Recibida Parcialmente">Recibida Parcialmente</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="Recibida">Recibida</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {(filter || date || table.getColumn('status')?.getFilterValue()) && (
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -663,6 +693,7 @@ export function PurchaseOrderManager() {
                                 onClick={() => {
                                     setFilter("");
                                     setDate(undefined);
+                                    table.getColumn('status')?.setFilterValue(undefined);
                                 }}
                                 className="h-9 w-9"
                             >
@@ -748,5 +779,6 @@ export function PurchaseOrderManager() {
     </div>
   );
 }
+
 
 
