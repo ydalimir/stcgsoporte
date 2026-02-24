@@ -8,7 +8,7 @@ import { auth, db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, LogOut, Loader2, ShieldCheck } from "lucide-react";
+import { User, LogOut, Loader2, ShieldCheck, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
@@ -147,6 +147,10 @@ export default function ProfilePage() {
   return (
     <div className="container mx-auto px-4 py-16">
       <div className="max-w-2xl mx-auto">
+        <Button variant="outline" onClick={() => router.back()} className="mb-6">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Volver
+        </Button>
         <Card>
           <CardHeader className="text-center">
             <Avatar className="mx-auto h-24 w-24 mb-4 border-2 border-primary/20">
