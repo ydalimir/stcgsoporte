@@ -25,7 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { Loader2, PlusCircle, MoreHorizontal, Edit, Trash2, Check, ChevronsUpDown, Download, FileSpreadsheet } from "lucide-react";
+import { Loader2, PlusCircle, MoreHorizontal, Edit, Trash2, Check, ChevronsUpDown, Download, FileSpreadsheet, ArrowUpDown, Calendar as CalendarIcon, Eraser, ChevronDown } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -54,7 +54,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ColumnDef, flexRender, getCoreRowModel, useReactTable, getFilteredRowModel, getPaginationRowModel } from "@tanstack/react-table";
+import { ColumnDef, flexRender, getCoreRowModel, useReactTable, getFilteredRowModel, getPaginationRowModel, ColumnFiltersState, SortingState, getSortedRowModel } from "@tanstack/react-table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
 import {
   Popover,
@@ -88,6 +88,16 @@ import type { Client } from "./client-manager";
 import * as XLSX from "xlsx";
 import { User } from "firebase/auth";
 import { useSearchParams } from "next/navigation";
+import { DateRange } from "react-day-picker";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 
 const projectSchema = z.object({
@@ -516,6 +526,10 @@ export function ProjectManager() {
   const highlightId = searchParams.get('highlight');
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
 
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [date, setDate] = useState<DateRange | undefined>(undefined);
+
   useEffect(() => {
     rowRefs.current = {};
   }, [projects]);
@@ -557,7 +571,7 @@ export function ProjectManager() {
 
     const unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
-        setProjects(data.sort((a,b) => b.createdAt?.toMillis() - a.createdAt?.toMillis()));
+        setProjects(data.sort((a,b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)));
         setIsLoading(false);
     }, (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'projects', operation: 'list' }));
@@ -594,6 +608,22 @@ export function ProjectManager() {
         unsubscribePOs();
     };
   }, [user, userProfile, isProfileLoading, toast]);
+  
+  const filteredProjects = useMemo(() => {
+    if (!date?.from) return projects;
+    
+    const fromDate = new Date(date.from);
+    fromDate.setHours(0, 0, 0, 0);
+
+    const toDate = date.to ? new Date(date.to) : new Date(date.from);
+    toDate.setHours(23, 59, 59, 999);
+
+    return projects.filter(project => {
+        if (!project.programmedDate) return false;
+        const projectDate = new Date(project.programmedDate.replace(/-/g, '\/'));
+        return projectDate >= fromDate && projectDate <= toDate;
+    });
+  }, [projects, date]);
   
   const handleSaveProject = useCallback(async (data: Omit<Project, 'id' | 'lastUpdated' | 'createdAt' | 'userId'>) => {
     if (!user) return;
@@ -791,12 +821,24 @@ export function ProjectManager() {
     }), [ projects, quotes, purchaseOrders, user, userProfile, handleDeleteProject, handleStatusChange, handleLinkQuote, handleLinkPurchaseOrder, handleEditQuote, handleEditPO]);
 
   const table = useReactTable({ 
-    data: projects, 
+    data: filteredProjects, 
     columns,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    state: { globalFilter: filter },
+    getSortedRowModel: getSortedRowModel(),
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    initialState: {
+        pagination: {
+            pageSize: 10,
+        }
+    },
+    state: { 
+      globalFilter: filter,
+      sorting,
+      columnFilters,
+    },
     onGlobalFilterChange: setFilter,
   });
 
@@ -834,7 +876,96 @@ export function ProjectManager() {
   return (
     <div>
         <div className="flex justify-between items-center mb-4">
-             <Input placeholder="Buscar por cliente o descripción..." value={filter} onChange={(e) => setFilter(e.target.value)} className="max-w-sm"/>
+            <div className="flex items-center gap-2">
+                <Input placeholder="Buscar por cliente o descripción..." value={filter} onChange={(e) => setFilter(e.target.value)} className="max-w-sm"/>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            id="date"
+                            variant={"outline"}
+                            className={cn(
+                                "w-[300px] justify-start text-left font-normal",
+                                !date && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {date?.from ? (
+                                date.to ? (
+                                    <>
+                                        {format(date.from, "d 'de' LLL, y", { locale: es })} -{" "}
+                                        {format(date.to, "d 'de' LLL, y", { locale: es })}
+                                    </>
+                                ) : (
+                                    format(date.from, "d 'de' LLL, y", { locale: es })
+                                )
+                            ) : (
+                                <span>Filtrar por fecha programada...</span>
+                            )}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            initialFocus
+                            mode="range"
+                            defaultMonth={date?.from}
+                            selected={date}
+                            onSelect={setDate}
+                            numberOfMonths={1}
+                            locale={es}
+                        />
+                    </PopoverContent>
+                </Popover>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="capitalize">
+                          {(table.getColumn("status")?.getFilterValue() as string) ?? "Estado"}
+                          <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuRadioGroup
+                          value={
+                            (table.getColumn("status")?.getFilterValue() as string) ?? "all"
+                          }
+                          onValueChange={(value) => {
+                            table.getColumn("status")?.setFilterValue(
+                              value === "all" ? undefined : value
+                            );
+                          }}
+                        >
+                          <DropdownMenuRadioItem value="all">Todos</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="Nuevo">Nuevo</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="En Progreso">En Progreso</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="En Pausa">En Pausa</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="Completado">Completado</DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                {(filter || date || table.getColumn('status')?.getFilterValue()) && (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                        setFilter("");
+                                        setDate(undefined);
+                                        table.getColumn('status')?.setFilterValue(undefined);
+                                    }}
+                                    className="h-9 w-9"
+                                >
+                                    <Eraser className="h-4 w-4" />
+                                    <span className="sr-only">Limpiar filtros</span>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Limpiar filtros</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )}
+            </div>
             <Button onClick={() => { setSelectedProject(null); setIsFormOpen(true);}}><PlusCircle className="mr-2 h-4 w-4" /> Crear Proyecto</Button>
         </div>
         <div className="rounded-md border">
@@ -897,7 +1028,14 @@ export function ProjectManager() {
 const getColumns = (
     { handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, purchaseOrders, handleLinkPurchaseOrder, handleEditQuote, handleEditPO, user, userProfile, setLinkingProject, setIsQuoteFormOpen, setLinkingProjectForPO, setIsPOFormOpen }: any
 ): ColumnDef<Project>[] => [
-      { accessorKey: "client", header: "Cliente" },
+      { 
+        accessorKey: "client", 
+        header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                Cliente <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ), 
+      },
       { accessorKey: "description", header: "Descripción", cell: ({row}) => <div className="max-w-xs whitespace-normal">{row.original.description}</div> },
       { accessorKey: "responsible", header: "Responsable", cell: ({row}) => {
           const name = row.original.responsible;
@@ -1021,11 +1159,19 @@ const getColumns = (
             </DropdownMenu>
          )
       }},
-      { accessorKey: "programmedDate", header: "Fecha Prog.", cell: ({row}) => {
-        if (!row.original.programmedDate) return 'N/A';
-        const localDate = new Date(row.original.programmedDate.replace(/-/g, '\/'));
-        return localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
-      }},
+      { 
+        accessorKey: "programmedDate", 
+        header: ({ column }) => (
+            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                Fecha Prog. <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
+        cell: ({row}) => {
+            if (!row.original.programmedDate) return 'N/A';
+            const localDate = new Date(row.original.programmedDate.replace(/-/g, '\/'));
+            return localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
+        } 
+      },
        { 
         id: "purchaseOrder",
         header: "Orden de Compra",
@@ -1352,3 +1498,6 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
 
 
 
+
+
+    
