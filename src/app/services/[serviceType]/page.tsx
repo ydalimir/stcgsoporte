@@ -37,18 +37,17 @@ type ServiceType = keyof typeof serviceCategories;
 
 
 function ServiceTypePageContent() {
-  const params = useParams();
-  const serviceType = params.serviceType as ServiceType;
+  const { serviceType } = useParams();
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const serviceInfo = serviceCategories[serviceType];
+  const serviceInfo = serviceCategories[serviceType as ServiceType];
 
   useEffect(() => {
     if (!serviceType) return;
     
     setIsLoading(true);
-    const q = query(collection(db, "services"), where("serviceType", "==", serviceType));
+    const q = query(collection(db, "services"), where("serviceType", "==", serviceType as string));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const servicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));

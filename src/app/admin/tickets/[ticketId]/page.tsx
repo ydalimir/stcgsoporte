@@ -14,9 +14,8 @@ import { errorEmitter } from '@/lib/error-emitter';
 import { FirestorePermissionError } from '@/lib/errors';
 
 export default function TicketDetailPage() {
-  const params = useParams();
+  const { ticketId } = useParams();
   const router = useRouter();
-  const ticketId = params.ticketId as string;
   const { user, isLoading: authIsLoading } = useAuth();
   
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -32,7 +31,7 @@ export default function TicketDetailPage() {
     if (!ticketId) return;
 
     setIsLoading(true);
-    const docRef = doc(db, 'tickets', ticketId);
+    const docRef = doc(db, 'tickets', ticketId as string);
 
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
