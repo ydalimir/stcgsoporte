@@ -26,6 +26,8 @@ import { useRouter } from 'next/navigation';
 import * as XLSX from "xlsx";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 type UserProfile = {
   role: 'admin' | 'employee';
@@ -280,6 +282,66 @@ function VentasReportTab({ allQuotes, range, selectedClient }: { allQuotes: Quot
         XLSX.writeFile(workbook, fileName);
     };
 
+    const handleDownloadVentasPDF = () => {
+        if (!range?.from || !range.to || !currentPeriodStats) return;
+
+        const doc = new jsPDF();
+        const clientName = selectedClient || "Todos los clientes";
+        const dateRangeStr = `Del ${format(range.from, "d MMM yyyy", { locale: es })} al ${format(range.to, "d MMM yyyy", { locale: es })}`;
+
+        // Title
+        doc.setFontSize(18);
+        doc.text("Reporte de Ventas", 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Cliente: ${clientName}`, 14, 30);
+        doc.text(`Periodo: ${dateRangeStr}`, 14, 36);
+
+        // Stats
+        autoTable(doc, {
+            startY: 45,
+            head: [['Métrica', 'Valor']],
+            body: [
+                ['Ingresos Totales', `$${currentPeriodStats.totalIncome.toLocaleString('es-MX')}`],
+                ['Cotizaciones Aceptadas', `${currentPeriodStats.acceptedCount}`],
+                ['Cotizaciones Pagadas', `${currentPeriodStats.paidCount}`],
+                ['Cotizaciones Rechazadas', `${currentPeriodStats.rejectedCount}`],
+            ],
+            theme: 'striped',
+            headStyles: { fillColor: [41, 71, 121] },
+        });
+        
+        let paidQuotesInRange = allQuotes.filter(q => {
+            const quoteDate = new Date(q.date.replace(/-/g, '\/'));
+            const isInRange = quoteDate >= range.from! && quoteDate <= range.to!;
+            return q.status === 'Pagada' && isInRange;
+        });
+
+        if (selectedClient) {
+            paidQuotesInRange = paidQuotesInRange.filter(q => q.clientName === selectedClient);
+        }
+        
+        if (paidQuotesInRange.length > 0) {
+             autoTable(doc, {
+                startY: (doc as any).lastAutoTable.finalY + 10,
+                head: [['ID Cotización', 'Cliente', 'Fecha', 'Total']],
+                body: paidQuotesInRange.map(q => [
+                    q.quoteNumber,
+                    q.clientName,
+                    new Date(q.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}),
+                    `$${q.total.toLocaleString('es-MX')}`
+                ]),
+                headStyles: { fillColor: [41, 71, 121] },
+            });
+        } else {
+             doc.text("No hay cotizaciones pagadas para este periodo y cliente.", 14, (doc as any).lastAutoTable.finalY + 10);
+        }
+
+        const clientFileNamePart = selectedClient ? `${selectedClient.replace(/ /g, '_')}_` : '';
+        const fileName = `Reporte_Ventas_PDF_${clientFileNamePart}${format(range.from, "yyyy-MM-dd")}_a_${format(range.to, "yyyy-MM-dd")}.pdf`;
+        doc.save(fileName);
+    };
+
     if (!currentPeriodStats) return <div>Seleccione un rango de fechas para ver el reporte.</div>;
 
     return (
@@ -290,10 +352,14 @@ function VentasReportTab({ allQuotes, range, selectedClient }: { allQuotes: Quot
                 <StatCard title="Cotizaciones Pagadas" value={`${currentPeriodStats.paidCount}`} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
                 <StatCard title="Cotizaciones Rechazadas" value={`${currentPeriodStats.rejectedCount}`} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
             </div>
-            <div className="flex justify-end mt-4">
+            <div className="flex justify-end mt-4 gap-2">
+                <Button onClick={handleDownloadVentasPDF} variant="outline" disabled={!range?.from || !range.to}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Descargar PDF
+                </Button>
                 <Button onClick={handleDownloadVentas} disabled={!range?.from || !range.to}>
                     <Download className="mr-2 h-4 w-4" />
-                    Descargar Reporte de Ventas
+                    Descargar Excel
                 </Button>
             </div>
         </div>
@@ -356,7 +422,7 @@ function ComprasReportTab({ allPurchaseOrders, range }: { allPurchaseOrders: Pur
             <div className="flex justify-end mt-4">
                 <Button onClick={handleDownloadCompras} disabled={!range?.from || !range.to}>
                     <Download className="mr-2 h-4 w-4" />
-                    Descargar Reporte de Compras
+                    Descargar Excel
                 </Button>
             </div>
         </div>
@@ -364,4 +430,5 @@ function ComprasReportTab({ allPurchaseOrders, range }: { allPurchaseOrders: Pur
 }
 
     
+
 
