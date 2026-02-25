@@ -227,24 +227,13 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
   };
 
   const filteredQuotes = useMemo(() => {
-    const linkedQuoteIds = new Set(
-        (purchaseOrders || [])
-            .filter(po => po.quoteId && po.id !== purchaseOrder?.id)
-            .map(po => po.quoteId)
-    );
-
     return quotes.filter(quote => {
-        if (linkedQuoteIds.has(quote.id)) {
-            return false;
-        }
-
         if (userRole === 'admin') {
             return true;
         }
-
         return quote.userId === user?.uid;
     });
-  }, [quotes, purchaseOrders, purchaseOrder, user, userRole]);
+  }, [quotes, user, userRole]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
