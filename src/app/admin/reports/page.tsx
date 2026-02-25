@@ -58,8 +58,12 @@ export default function ReportsPage() {
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    
+    const [activeTab, setActiveTab] = useState('sales');
     const [selectedClient, setSelectedClient] = useState<string | null>(null);
     const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
+    const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
+    const [isSupplierPopoverOpen, setIsSupplierPopoverOpen] = useState(false);
 
 
     useEffect(() => {
@@ -110,6 +114,7 @@ export default function ReportsPage() {
     const handleClearFilters = () => {
         setDate({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) });
         setSelectedClient(null);
+        setSelectedSupplier(null);
     }
 
     if (isLoading || authLoading) {
@@ -154,42 +159,81 @@ export default function ReportsPage() {
                             />
                         </PopoverContent>
                     </Popover>
-                     <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" role="combobox" className="w-[300px] justify-start text-left font-normal">
-                                {selectedClient || "Filtrar por cliente..."}
-                                <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0" align="start">
-                            <Command>
-                                <CommandInput placeholder="Buscar cliente..." />
-                                <CommandList>
-                                    <CommandEmpty>No se encontraron clientes.</CommandEmpty>
-                                    <CommandGroup>
-                                        <CommandItem value="all" onSelect={() => { setSelectedClient(null); setIsClientPopoverOpen(false); }}>
-                                            <Check className={cn("mr-2 h-4 w-4", !selectedClient ? "opacity-100" : "opacity-0")} />
-                                            Todos los clientes
-                                        </CommandItem>
-                                        {clients.map((client) => (
-                                            <CommandItem
-                                                key={client.id}
-                                                value={client.name}
-                                                onSelect={() => {
-                                                    setSelectedClient(client.name);
-                                                    setIsClientPopoverOpen(false);
-                                                }}
-                                            >
-                                                <Check className={cn("mr-2 h-4 w-4", selectedClient === client.name ? "opacity-100" : "opacity-0")} />
-                                                {client.name}
+                    {activeTab === 'sales' && (
+                         <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-[300px] justify-start text-left font-normal">
+                                    {selectedClient || "Filtrar por cliente..."}
+                                    <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[300px] p-0" align="start">
+                                <Command>
+                                    <CommandInput placeholder="Buscar cliente..." />
+                                    <CommandList>
+                                        <CommandEmpty>No se encontraron clientes.</CommandEmpty>
+                                        <CommandGroup>
+                                            <CommandItem value="all" onSelect={() => { setSelectedClient(null); setIsClientPopoverOpen(false); }}>
+                                                <Check className={cn("mr-2 h-4 w-4", !selectedClient ? "opacity-100" : "opacity-0")} />
+                                                Todos los clientes
                                             </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-                    {(!!date || !!selectedClient) && (
+                                            {clients.map((client) => (
+                                                <CommandItem
+                                                    key={client.id}
+                                                    value={client.name}
+                                                    onSelect={() => {
+                                                        setSelectedClient(client.name);
+                                                        setIsClientPopoverOpen(false);
+                                                    }}
+                                                >
+                                                    <Check className={cn("mr-2 h-4 w-4", selectedClient === client.name ? "opacity-100" : "opacity-0")} />
+                                                    {client.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    )}
+                    {activeTab === 'purchases' && (
+                         <Popover open={isSupplierPopoverOpen} onOpenChange={setIsSupplierPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-[300px] justify-start text-left font-normal">
+                                    {selectedSupplier || "Filtrar por proveedor..."}
+                                    <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[300px] p-0" align="start">
+                                <Command>
+                                    <CommandInput placeholder="Buscar proveedor..." />
+                                    <CommandList>
+                                        <CommandEmpty>No se encontraron proveedores.</CommandEmpty>
+                                        <CommandGroup>
+                                            <CommandItem value="all" onSelect={() => { setSelectedSupplier(null); setIsSupplierPopoverOpen(false); }}>
+                                                <Check className={cn("mr-2 h-4 w-4", !selectedSupplier ? "opacity-100" : "opacity-0")} />
+                                                Todos los proveedores
+                                            </CommandItem>
+                                            {suppliers.map((supplier) => (
+                                                <CommandItem
+                                                    key={supplier.id}
+                                                    value={supplier.name}
+                                                    onSelect={() => {
+                                                        setSelectedSupplier(supplier.name);
+                                                        setIsSupplierPopoverOpen(false);
+                                                    }}
+                                                >
+                                                    <Check className={cn("mr-2 h-4 w-4", selectedSupplier === supplier.name ? "opacity-100" : "opacity-0")} />
+                                                    {supplier.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    )}
+                    {(selectedClient || selectedSupplier) && (
                          <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -204,7 +248,7 @@ export default function ReportsPage() {
                 </div>
             </div>
 
-            <Tabs defaultValue="sales">
+            <Tabs defaultValue="sales" onValueChange={setActiveTab}>
                 <TabsList>
                     <TabsTrigger value="sales">Ventas</TabsTrigger>
                     <TabsTrigger value="purchases">Compras</TabsTrigger>
@@ -213,7 +257,7 @@ export default function ReportsPage() {
                     <VentasReportTab allQuotes={quotes} range={date} selectedClient={selectedClient} />
                 </TabsContent>
                 <TabsContent value="purchases" className="mt-4">
-                    <ComprasReportTab allPurchaseOrders={purchaseOrders} allSuppliers={suppliers} range={date} />
+                    <ComprasReportTab allPurchaseOrders={purchaseOrders} allSuppliers={suppliers} range={date} selectedSupplier={selectedSupplier} />
                 </TabsContent>
             </Tabs>
         </div>
@@ -366,16 +410,20 @@ function VentasReportTab({ allQuotes, range, selectedClient }: { allQuotes: Quot
     );
 }
 
-function ComprasReportTab({ allPurchaseOrders, range }: { allPurchaseOrders: PurchaseOrder[], allSuppliers: Supplier[], range?: DateRange }) {
+function ComprasReportTab({ allPurchaseOrders, range, selectedSupplier }: { allPurchaseOrders: PurchaseOrder[], allSuppliers: Supplier[], range?: DateRange, selectedSupplier: string | null }) {
      const { currentPeriodStats } = useMemo(() => {
         if (!range?.from || !range?.to) return { currentPeriodStats: null };
 
         const processData = (startDate: Date, endDate: Date) => {
-            const filteredPOs = allPurchaseOrders.filter(po => {
+            let filteredPOs = allPurchaseOrders.filter(po => {
                 const poDate = new Date(po.date);
                 return poDate >= startDate && poDate <= endDate;
             });
             
+            if (selectedSupplier) {
+                filteredPOs = filteredPOs.filter(po => po.supplierName === selectedSupplier);
+            }
+
             const totalSpending = filteredPOs.reduce((sum, po) => sum + po.total, 0);
 
             return {
@@ -388,14 +436,18 @@ function ComprasReportTab({ allPurchaseOrders, range }: { allPurchaseOrders: Pur
 
         return { currentPeriodStats };
 
-    }, [allPurchaseOrders, range]);
+    }, [allPurchaseOrders, range, selectedSupplier]);
     
     const handleDownloadCompras = () => {
         if (!range?.from || !range?.to) return;
-        const poInRange = allPurchaseOrders.filter(po => {
+        let poInRange = allPurchaseOrders.filter(po => {
             const poDate = new Date(po.date.replace(/-/g, '\/'));
             return poDate >= range.from! && poDate <= range.to!;
         });
+
+        if (selectedSupplier) {
+            poInRange = poInRange.filter(po => po.supplierName === selectedSupplier);
+        }
 
         const dataToExport = poInRange.map(po => ({
             'ID Orden': po.purchaseOrderNumber,
@@ -408,7 +460,10 @@ function ComprasReportTab({ allPurchaseOrders, range }: { allPurchaseOrders: Pur
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte de Compras");
-        XLSX.writeFile(workbook, `Reporte_Compras_${format(range.from, "yyyy-MM-dd")}_a_${format(range.to, "yyyy-MM-dd")}.xlsx`);
+        
+        const supplierFileNamePart = selectedSupplier ? `${selectedSupplier.replace(/ /g, '_')}_` : '';
+        const fileName = `Reporte_Compras_${supplierFileNamePart}${format(range.from, "yyyy-MM-dd")}_a_${format(range.to, "yyyy-MM-dd")}.xlsx`;
+        XLSX.writeFile(workbook, fileName);
     };
 
     if (!currentPeriodStats) return <div>Seleccione un rango de fechas para ver el reporte.</div>;
@@ -430,5 +485,6 @@ function ComprasReportTab({ allPurchaseOrders, range }: { allPurchaseOrders: Pur
 }
 
     
+
 
 
