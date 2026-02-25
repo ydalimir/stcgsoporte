@@ -466,6 +466,63 @@ function ComprasReportTab({ allPurchaseOrders, range, selectedSupplier }: { allP
         XLSX.writeFile(workbook, fileName);
     };
 
+    const handleDownloadComprasPDF = () => {
+        if (!range?.from || !range?.to || !currentPeriodStats) return;
+    
+        const doc = new jsPDF();
+        const supplierName = selectedSupplier || "Todos los proveedores";
+        const dateRangeStr = `Del ${format(range.from, "d MMM yyyy", { locale: es })} al ${format(range.to, "d MMM yyyy", { locale: es })}`;
+    
+        doc.setFontSize(18);
+        doc.text("Reporte de Compras", 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Proveedor: ${supplierName}`, 14, 30);
+        doc.text(`Periodo: ${dateRangeStr}`, 14, 36);
+    
+        autoTable(doc, {
+            startY: 45,
+            head: [['Métrica', 'Valor']],
+            body: [
+                ['Gasto Total', `$${currentPeriodStats.totalSpending.toLocaleString('es-MX')}`],
+                ['Órdenes de Compra', `${currentPeriodStats.poCount}`],
+            ],
+            theme: 'striped',
+            headStyles: { fillColor: [41, 71, 121] },
+        });
+        
+        let poInRange = allPurchaseOrders.filter(po => {
+            const poDate = new Date(po.date.replace(/-/g, '\/'));
+            const isInRange = poDate >= range.from! && poDate <= range.to!;
+            return isInRange;
+        });
+    
+        if (selectedSupplier) {
+            poInRange = poInRange.filter(po => po.supplierName === selectedSupplier);
+        }
+        
+        if (poInRange.length > 0) {
+             autoTable(doc, {
+                startY: (doc as any).lastAutoTable.finalY + 10,
+                head: [['ID Orden', 'Proveedor', 'Fecha', 'Total', 'Estado']],
+                body: poInRange.map(po => [
+                    po.purchaseOrderNumber,
+                    po.supplierName,
+                    new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}),
+                    `$${po.total.toLocaleString('es-MX')}`,
+                    po.status
+                ]),
+                headStyles: { fillColor: [41, 71, 121] },
+            });
+        } else {
+             doc.text("No hay órdenes de compra para este periodo y proveedor.", 14, (doc as any).lastAutoTable.finalY + 10);
+        }
+    
+        const supplierFileNamePart = selectedSupplier ? `${selectedSupplier.replace(/ /g, '_')}_` : '';
+        const fileName = `Reporte_Compras_PDF_${supplierFileNamePart}${format(range.from, "yyyy-MM-dd")}_a_${format(range.to, "yyyy-MM-dd")}.pdf`;
+        doc.save(fileName);
+    };
+
     if (!currentPeriodStats) return <div>Seleccione un rango de fechas para ver el reporte.</div>;
 
     return (
@@ -474,7 +531,11 @@ function ComprasReportTab({ allPurchaseOrders, range, selectedSupplier }: { allP
                 <StatCard title="Gasto Total" value={`$${currentPeriodStats.totalSpending.toLocaleString('es-MX')}`} icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />} />
                 <StatCard title="Órdenes de Compra" value={`${currentPeriodStats.poCount}`} icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
             </div>
-            <div className="flex justify-end mt-4">
+            <div className="flex justify-end mt-4 gap-2">
+                <Button onClick={handleDownloadComprasPDF} variant="outline" disabled={!range?.from || !range.to}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Descargar PDF
+                </Button>
                 <Button onClick={handleDownloadCompras} disabled={!range?.from || !range.to}>
                     <Download className="mr-2 h-4 w-4" />
                     Descargar Excel
@@ -485,6 +546,7 @@ function ComprasReportTab({ allPurchaseOrders, range, selectedSupplier }: { allP
 }
 
     
+
 
 
 
