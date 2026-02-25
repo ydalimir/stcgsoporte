@@ -555,6 +555,205 @@ export function ProjectManager() {
         setIsQuoteFormOpen(true);
     }, []);
   
+    const getColumns = useCallback(
+    (
+        { handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, handleEditQuote, user, userProfile, setLinkingProject, setIsQuoteFormOpen, setSelectedProject, setIsFormOpen }: any
+    ): ColumnDef<Project>[] => [
+      { 
+        accessorKey: "client", 
+        header: ({ column }) => (
+            <Button variant="ghost" className="p-0 justify-start" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                Cliente <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ), 
+      },
+      { accessorKey: "description", header: "Descripción", cell: ({row}) => <div className="max-w-xs whitespace-normal">{row.original.description}</div> },
+      { accessorKey: "responsible", header: "Responsable", cell: ({row}) => {
+          const name = row.original.responsible;
+          const initials = name?.split(' ').map(n => n[0]).join('').substring(0, 2) || '';
+          return (
+            <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8 text-xs">
+                    <AvatarFallback>{initials}</AvatarFallback>
+                </Avatar>
+                <span>{name}</span>
+            </div>
+          )
+      } },
+       { 
+        id: "quote",
+        header: "Cotización",
+        cell: ({ row }) => {
+            const project = row.original;
+            const currentQuote = quotes.find(q => q.id === project.quoteId);
+            const [open, setOpen] = useState(false);
+            
+            const otherLinkedQuoteIds = new Set(
+              projects.filter(p => p.id !== project.id).map(p => p.quoteId).filter(Boolean)
+            );
+            
+            const availableQuotes = quotes.filter(q => {
+                if (otherLinkedQuoteIds.has(q.id)) return false; 
+                if (userProfile?.role === 'admin') return true; 
+                return q.userId === user?.uid; 
+            });
+
+            const onSelectQuote = (quoteId: string | null) => {
+              handleLinkQuote(project.id, quoteId);
+              setOpen(false);
+            }
+
+            return (
+              <div className="flex items-center gap-1">
+                <Popover open={open} onOpenChange={setOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={open} className="w-[150px] justify-between">
+                      {currentQuote 
+                          ? currentQuote.quoteNumber
+                          : "Asignar..."
+                      }
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Buscar por cliente o ID..." />
+                      <CommandList>
+                        <CommandEmpty>No se encontraron cotizaciones.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem key="ninguna" value="ninguna" onSelect={() => onSelectQuote(null)}>
+                            <Check className={cn("mr-2 h-4 w-4", !project.quoteId ? "opacity-100" : "opacity-0")}/>
+                            Ninguna
+                          </CommandItem>
+                          {availableQuotes.map(q => (
+                            <CommandItem 
+                              key={q.id} 
+                              value={`${q.quoteNumber} ${q.clientName}`}
+                              onSelect={() => onSelectQuote(q.id)}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", project.quoteId === q.id ? "opacity-100" : "opacity-0")}/>
+                              {q.quoteNumber} ({q.clientName})
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                        <CommandSeparator />
+                          <CommandGroup>
+                              <CommandItem onSelect={() => { setOpen(false); setLinkingProject(project); setIsQuoteFormOpen(true); }}>
+                                  <PlusCircle className="mr-2 h-4 w-4" />
+                                  Crear y Vincular Cotización
+                              </CommandItem>
+                          </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                 {currentQuote && (
+                    <div className="flex items-center">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditQuote(currentQuote)}>
+                            <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={async () => await downloadQuotePDF(currentQuote)}>
+                            <Download className="h-4 w-4" />
+                        </Button>
+                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadQuoteExcel(currentQuote)}>
+                            <FileSpreadsheet className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
+              </div>
+            )
+        }
+      },
+      { accessorKey: "status", header: "Estado", cell: ({row}) => {
+         const project = row.original;
+         const status = project.status;
+         return (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="p-0 h-auto">
+                        <Badge variant="outline" className={cn('cursor-pointer capitalize', {
+                           'text-blue-600 border-blue-600': status === 'Nuevo',
+                           'text-yellow-600 border-yellow-600': status === 'En Progreso',
+                           'text-red-600 border-red-600': status === 'En Pausa',
+                           'text-green-600 border-green-600': status === 'Completado',
+                        })}>{status}</Badge>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                     <DropdownMenuRadioGroup value={project.status} onValueChange={(newStatus) => handleStatusChange(project.id, newStatus as Project['status'])}>
+                        <DropdownMenuRadioItem value="Nuevo">Nuevo</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="En Progreso">En Progreso</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="En Pausa">En Pausa</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="Completado">Completado</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
+         )
+      }},
+      { 
+        accessorKey: "programmedDate", 
+        header: ({ column }) => (
+            <Button variant="ghost" className="p-0 justify-start" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                Fecha Prog. <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
+        cell: ({row}) => {
+            if (!row.original.programmedDate) return 'N/A';
+            const localDate = new Date(row.original.programmedDate.replace(/-/g, '\/'));
+            return localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
+        } 
+      },
+      { accessorKey: "priority", header: "Prioridad", cell: ({row}) => {
+         const priority = row.original.priority;
+         return <Badge variant="outline" className={cn('capitalize', {
+            'text-red-600 border-red-600': priority === 'Alta',
+            'text-yellow-600 border-yellow-600': priority === 'Media',
+            'text-green-600 border-green-600': priority === 'Baja',
+         })}>{priority}</Badge>
+      }},
+      { 
+        accessorKey: "createdAt", 
+        header: ({ column }) => (
+            <Button variant="ghost" className="p-0 justify-start" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                Creado <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
+        cell: ({row}) => {
+            if (!row.original.createdAt) return 'N/A';
+            const localDate = new Date(row.original.createdAt.toDate());
+            return localDate.toLocaleDateString('es-MX');
+        } 
+      },
+      { id: "actions",
+        cell: ({ row }) => {
+            const project = row.original;
+            return (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => { setSelectedProject(project); setIsFormOpen(true); }}><Edit className="mr-2 h-4 w-4"/> Editar</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild><DropdownMenuItem onSelect={e => e.preventDefault()} className="text-red-500"><Trash2 className="mr-2 h-4 w-4"/> Eliminar</DropdownMenuItem></AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
+                                    <AlertDialogDescription>Esta acción eliminará el proyecto permanentemente.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteProject(project.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            )
+        }
+      }
+], []);
+
   const columns = useMemo(() => getColumns({
         handleDeleteProject, 
         handleStatusChange, 
@@ -568,7 +767,7 @@ export function ProjectManager() {
         setIsQuoteFormOpen,
         setSelectedProject,
         setIsFormOpen,
-    }), [ projects, quotes, user, userProfile, handleDeleteProject, handleStatusChange, handleLinkQuote, handleEditQuote, setIsFormOpen, setSelectedProject]);
+    }), [ projects, quotes, user, userProfile, handleDeleteProject, handleStatusChange, handleLinkQuote, handleEditQuote, setIsFormOpen, setSelectedProject, getColumns]);
 
   const table = useReactTable({ 
     data: filteredProjects, 
@@ -753,203 +952,6 @@ export function ProjectManager() {
   );
 }
 
-const getColumns = (
-    { handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, handleEditQuote, user, userProfile, setLinkingProject, setIsQuoteFormOpen, setSelectedProject, setIsFormOpen }: any
-): ColumnDef<Project>[] => [
-      { 
-        accessorKey: "client", 
-        header: ({ column }) => (
-            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                Cliente <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-        ), 
-      },
-      { accessorKey: "description", header: "Descripción", cell: ({row}) => <div className="max-w-xs whitespace-normal">{row.original.description}</div> },
-      { accessorKey: "responsible", header: "Responsable", cell: ({row}) => {
-          const name = row.original.responsible;
-          const initials = name?.split(' ').map(n => n[0]).join('').substring(0, 2) || '';
-          return (
-            <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8 text-xs">
-                    <AvatarFallback>{initials}</AvatarFallback>
-                </Avatar>
-                <span>{name}</span>
-            </div>
-          )
-      } },
-       { 
-        id: "quote",
-        header: "Cotización",
-        cell: ({ row }) => {
-            const project = row.original;
-            const currentQuote = quotes.find(q => q.id === project.quoteId);
-            const [open, setOpen] = useState(false);
-            
-            const otherLinkedQuoteIds = new Set(
-              projects.filter(p => p.id !== project.id).map(p => p.quoteId).filter(Boolean)
-            );
-            
-            const availableQuotes = quotes.filter(q => {
-                if (otherLinkedQuoteIds.has(q.id)) return false; 
-                if (userProfile?.role === 'admin') return true; 
-                return q.userId === user?.uid; 
-            });
-
-            const onSelectQuote = (quoteId: string | null) => {
-              handleLinkQuote(project.id, quoteId);
-              setOpen(false);
-            }
-
-            return (
-              <div className="flex items-center gap-1">
-                <Popover open={open} onOpenChange={setOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" role="combobox" aria-expanded={open} className="w-[150px] justify-between">
-                      {currentQuote 
-                          ? currentQuote.quoteNumber
-                          : "Asignar..."
-                      }
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0">
-                    <Command>
-                      <CommandInput placeholder="Buscar por cliente o ID..." />
-                      <CommandList>
-                        <CommandEmpty>No se encontraron cotizaciones.</CommandEmpty>
-                        <CommandGroup>
-                          <CommandItem key="ninguna" value="ninguna" onSelect={() => onSelectQuote(null)}>
-                            <Check className={cn("mr-2 h-4 w-4", !project.quoteId ? "opacity-100" : "opacity-0")}/>
-                            Ninguna
-                          </CommandItem>
-                          {availableQuotes.map(q => (
-                            <CommandItem 
-                              key={q.id} 
-                              value={`${q.quoteNumber} ${q.clientName}`}
-                              onSelect={() => onSelectQuote(q.id)}
-                            >
-                              <Check className={cn("mr-2 h-4 w-4", project.quoteId === q.id ? "opacity-100" : "opacity-0")}/>
-                              {q.quoteNumber} ({q.clientName})
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                        <CommandSeparator />
-                          <CommandGroup>
-                              <CommandItem onSelect={() => { setOpen(false); setLinkingProject(project); setIsQuoteFormOpen(true); }}>
-                                  <PlusCircle className="mr-2 h-4 w-4" />
-                                  Crear y Vincular Cotización
-                              </CommandItem>
-                          </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                 {currentQuote && (
-                    <div className="flex items-center">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditQuote(currentQuote)}>
-                            <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={async () => await downloadQuotePDF(currentQuote)}>
-                            <Download className="h-4 w-4" />
-                        </Button>
-                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadQuoteExcel(currentQuote)}>
-                            <FileSpreadsheet className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
-              </div>
-            )
-        }
-      },
-      { accessorKey: "status", header: "Estado", cell: ({row}) => {
-         const project = row.original;
-         const status = project.status;
-         return (
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="p-0 h-auto">
-                        <Badge variant="outline" className={cn('cursor-pointer capitalize', {
-                           'text-blue-600 border-blue-600': status === 'Nuevo',
-                           'text-yellow-600 border-yellow-600': status === 'En Progreso',
-                           'text-red-600 border-red-600': status === 'En Pausa',
-                           'text-green-600 border-green-600': status === 'Completado',
-                        })}>{status}</Badge>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                     <DropdownMenuRadioGroup value={project.status} onValueChange={(newStatus) => handleStatusChange(project.id, newStatus as Project['status'])}>
-                        <DropdownMenuRadioItem value="Nuevo">Nuevo</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="En Progreso">En Progreso</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="En Pausa">En Pausa</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="Completado">Completado</DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-            </DropdownMenu>
-         )
-      }},
-      { 
-        accessorKey: "programmedDate", 
-        header: ({ column }) => (
-            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                Fecha Prog. <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-        ),
-        cell: ({row}) => {
-            if (!row.original.programmedDate) return 'N/A';
-            const localDate = new Date(row.original.programmedDate.replace(/-/g, '\/'));
-            return localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
-        } 
-      },
-      { accessorKey: "priority", header: "Prioridad", cell: ({row}) => {
-         const priority = row.original.priority;
-         return <Badge variant="outline" className={cn('capitalize', {
-            'text-red-600 border-red-600': priority === 'Alta',
-            'text-yellow-600 border-yellow-600': priority === 'Media',
-            'text-green-600 border-green-600': priority === 'Baja',
-         })}>{priority}</Badge>
-      }},
-      { 
-        accessorKey: "createdAt", 
-        header: ({ column }) => (
-            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                Creado <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-        ),
-        cell: ({row}) => {
-            if (!row.original.createdAt) return 'N/A';
-            const localDate = new Date(row.original.createdAt.toDate());
-            return localDate.toLocaleDateString('es-MX');
-        } 
-      },
-      { id: "actions",
-        cell: ({ row }) => {
-            const project = row.original;
-            return (
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => { setSelectedProject(project); setIsFormOpen(true); }}><Edit className="mr-2 h-4 w-4"/> Editar</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild><DropdownMenuItem onSelect={e => e.preventDefault()} className="text-red-500"><Trash2 className="mr-2 h-4 w-4"/> Eliminar</DropdownMenuItem></AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
-                                    <AlertDialogDescription>Esta acción eliminará el proyecto permanentemente.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteProject(project.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            )
-        }
-      }
-];
 
 
 interface ProjectFormDialogProps {
