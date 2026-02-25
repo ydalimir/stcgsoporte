@@ -271,11 +271,11 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote, userRole }: Quo
                                 variant="outline"
                                 role="combobox"
                                 className={cn(
-                                    "w-full justify-between",
+                                    "w-full justify-between font-normal",
                                     !field.value && "text-muted-foreground"
                                 )}
                                 >
-                                {field.value || "Seleccionar o escribir un cliente"}
+                                <span className="truncate">{field.value || "Seleccionar o escribir un cliente"}</span>
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </FormControl>
@@ -505,9 +505,7 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote, userRole }: Quo
             </div>
 
             <DialogFooter className="p-6 bg-muted/30 border-t mt-6">
-                <DialogClose asChild>
-                    <Button type="button" variant="ghost">Cancelar</Button>
-                </DialogClose>
+                <DialogClose asChild><Button type="button" variant="ghost">Cancelar</Button></DialogClose>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Guardar Cotización
@@ -519,3 +517,4 @@ export function QuoteForm({ isOpen, onOpenChange, onSave, quote, userRole }: Quo
     </Dialog>
   );
 }
+
