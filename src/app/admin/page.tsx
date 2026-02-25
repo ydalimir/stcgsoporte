@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -87,7 +88,7 @@ const downloadQuotePDF = async (quote: Quote) => {
 
     let logoDataUrl: string | null = null;
     try {
-        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771958796/logo-Photoroom_klbk3u.png';
+        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771961790/logo-Photoroom_1_rpqv3n.png';
         const response = await fetch(logoUrl);
         const blob = await response.blob();
         logoDataUrl = await new Promise<string>(resolve => {
@@ -182,7 +183,7 @@ const downloadQuotePDF = async (quote: Quote) => {
                lastDrawnPage = data.pageNumber;
             }
         },
-        head: [['No.', 'Descripción', 'Unidad', 'Cantidad', 'Precio', 'Importe']],
+        head: [['ARTÍCULO NO.', 'DESCRIPCIÓN', 'UNIDAD', 'CANTIDAD', 'PRECIO POR UNIDAD', 'TOTAL']],
         body: quote.items.map((item, index) => [
             index + 1,
             item.description, 
@@ -197,20 +198,20 @@ const downloadQuotePDF = async (quote: Quote) => {
             const ivaAmount = subtotal * (ivaPercentage / 100);
             const total = quote.total ?? subtotal + ivaAmount;
             return [
-                ['', '', '', '', { content: 'Subtotal', styles: { halign: 'right' } }, { content: `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
-                ['', '', '', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
-                ['', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' } }],
+                ['', '', '', '', '', { content: 'Subtotal', styles: { halign: 'right' } }, { content: `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
+                ['', '', '', '', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
+                ['', '', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' } }],
             ];
         })(),
-        headStyles: { fillColor: [41, 71, 121], fontSize: 8 },
+        headStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: 'bold', fontSize: 8 },
         bodyStyles: { fontSize: 8, overflow: 'linebreak' },
         columnStyles: {
-            0: { cellWidth: 10 },
-            1: { cellWidth: 72 },
-            2: { cellWidth: 15 },
-            3: { cellWidth: 20, halign: 'right' },
+            0: { cellWidth: 20, halign: 'center' },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 20, halign: 'center' },
+            3: { cellWidth: 25, halign: 'right' },
             4: { cellWidth: 30, halign: 'right' },
-            5: { cellWidth: 35, halign: 'right' },
+            5: { cellWidth: 30, halign: 'right' },
         },
         margin: { top: topMargin, bottom: bottomMargin, left: pageMargin, right: pageMargin }
     });
@@ -564,3 +565,4 @@ export default function AdminDashboardPage() {
 }
 
     
+

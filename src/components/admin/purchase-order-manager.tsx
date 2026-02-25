@@ -113,7 +113,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
 
     let logoDataUrl: string | null = null;
     try {
-        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771958796/logo-Photoroom_klbk3u.png';
+        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771961790/logo-Photoroom_1_rpqv3n.png';
         const response = await fetch(logoUrl);
         const blob = await response.blob();
         logoDataUrl = await new Promise<string>(resolve => {
@@ -201,9 +201,16 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       ]),
       theme: 'grid',
-      headStyles: { fillColor: [220, 220, 220], textColor: 0, fontSize: 8, fontStyle: 'bold', halign: 'center' },
-      bodyStyles: { fontSize: 8 },
-      columnStyles: { 5: { halign: 'right' }},
+      headStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: 'bold', fontSize: 8 },
+      bodyStyles: { fontSize: 8, overflow: 'linebreak' },
+      columnStyles: {
+            0: { cellWidth: 20, halign: 'center' },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 20, halign: 'center' },
+            3: { cellWidth: 25, halign: 'right' },
+            4: { cellWidth: 30, halign: 'right' },
+            5: { cellWidth: 30, halign: 'right' },
+      },
       margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin },
     });
 
