@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, Loader2, DollarSign, FileText, ShoppingCart, AreaChart, Download } from 'lucide-react';
+import { CalendarIcon, Loader2, DollarSign, FileText, ShoppingCart, AreaChart, Download, ChevronsUpDown, Check, Eraser } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, startOfMonth, endOfMonth, sub, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -19,10 +19,13 @@ import { cn } from '@/lib/utils';
 import type { Quote } from '@/components/admin/quote-manager';
 import type { PurchaseOrder } from '@/components/admin/purchase-order-manager';
 import type { Supplier } from '@/components/admin/supplier-manager';
+import type { Client } from '@/components/admin/client-manager';
 import { errorEmitter } from '@/lib/error-emitter';
 import { FirestorePermissionError } from '@/lib/errors';
 import { useRouter } from 'next/navigation';
 import * as XLSX from "xlsx";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type UserProfile = {
   role: 'admin' | 'employee';
@@ -51,7 +54,11 @@ export default function ReportsPage() {
     const [quotes, setQuotes] = useState<Quote[]>([]);
     const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+    const [clients, setClients] = useState<Client[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedClient, setSelectedClient] = useState<string | null>(null);
+    const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
+
 
     useEffect(() => {
         if (authLoading) return;
@@ -88,11 +95,20 @@ export default function ReportsPage() {
         unsubs.push(onSnapshot(collection(db, 'suppliers'), (snapshot) => {
             setSuppliers(snapshot.docs.map(d => ({id: d.id, ...d.data()} as Supplier)));
         }, (err) => errorEmitter.emit('permission-error', new FirestorePermissionError({path: 'suppliers', operation: 'list'}))));
+        
+        unsubs.push(onSnapshot(collection(db, 'clients'), (snapshot) => {
+            setClients(snapshot.docs.map(d => ({id: d.id, ...d.data()} as Client)));
+        }, (err) => errorEmitter.emit('permission-error', new FirestorePermissionError({path: 'clients', operation: 'list'}))));
 
         setIsLoading(false);
         return () => unsubs.forEach(unsub => unsub());
 
     }, [userProfile]);
+
+    const handleClearFilters = () => {
+        setDate({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) });
+        setSelectedClient(null);
+    }
 
     if (isLoading || authLoading) {
         return <div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -100,41 +116,90 @@ export default function ReportsPage() {
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                  <div className="flex items-center gap-3">
                     <AreaChart className="w-6 h-6" />
                     <h1 className="text-2xl font-bold">Reportes</h1>
                 </div>
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                            id="date"
-                            variant={"outline"}
-                            className={cn("w-[300px] justify-start text-left font-normal", !date && "text-muted-foreground")}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date?.from ? (
-                                date.to ? (
-                                    <>
-                                        {format(date.from, "d 'de' LLL, y", { locale: es })} -{" "}
-                                        {format(date.to, "d 'de' LLL, y", { locale: es })}
-                                    </>
-                                ) : format(date.from, "d 'de' LLL, y", { locale: es })
-                            ) : <span>Seleccionar rango de fechas</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                        <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={date?.from}
-                            selected={date}
-                            onSelect={setDate}
-                            numberOfMonths={1}
-                            locale={es}
-                        />
-                    </PopoverContent>
-                </Popover>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                id="date"
+                                variant={"outline"}
+                                className={cn("w-[300px] justify-start text-left font-normal", !date && "text-muted-foreground")}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {date?.from ? (
+                                    date.to ? (
+                                        <>
+                                            {format(date.from, "d 'de' LLL, y", { locale: es })} -{" "}
+                                            {format(date.to, "d 'de' LLL, y", { locale: es })}
+                                        </>
+                                    ) : format(date.from, "d 'de' LLL, y", { locale: es })
+                                ) : <span>Seleccionar rango de fechas</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="end">
+                            <Calendar
+                                initialFocus
+                                mode="range"
+                                defaultMonth={date?.from}
+                                selected={date}
+                                onSelect={setDate}
+                                numberOfMonths={1}
+                                locale={es}
+                            />
+                        </PopoverContent>
+                    </Popover>
+                     <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" role="combobox" className="w-[300px] justify-start text-left font-normal">
+                                {selectedClient || "Filtrar por cliente..."}
+                                <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0" align="start">
+                            <Command>
+                                <CommandInput placeholder="Buscar cliente..." />
+                                <CommandList>
+                                    <CommandEmpty>No se encontraron clientes.</CommandEmpty>
+                                    <CommandGroup>
+                                        <CommandItem value="all" onSelect={() => { setSelectedClient(null); setIsClientPopoverOpen(false); }}>
+                                            <Check className={cn("mr-2 h-4 w-4", !selectedClient ? "opacity-100" : "opacity-0")} />
+                                            Todos los clientes
+                                        </CommandItem>
+                                        {clients.map((client) => (
+                                            <CommandItem
+                                                key={client.id}
+                                                value={client.name}
+                                                onSelect={() => {
+                                                    setSelectedClient(client.name);
+                                                    setIsClientPopoverOpen(false);
+                                                }}
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", selectedClient === client.name ? "opacity-100" : "opacity-0")} />
+                                                {client.name}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                    {(!!date || !!selectedClient) && (
+                         <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" onClick={handleClearFilters} size="icon">
+                                        <Eraser className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Limpiar Filtros</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
+                </div>
             </div>
 
             <Tabs defaultValue="sales">
@@ -143,7 +208,7 @@ export default function ReportsPage() {
                     <TabsTrigger value="purchases">Compras</TabsTrigger>
                 </TabsList>
                 <TabsContent value="sales" className="mt-4">
-                    <VentasReportTab allQuotes={quotes} range={date} />
+                    <VentasReportTab allQuotes={quotes} range={date} selectedClient={selectedClient} />
                 </TabsContent>
                 <TabsContent value="purchases" className="mt-4">
                     <ComprasReportTab allPurchaseOrders={purchaseOrders} allSuppliers={suppliers} range={date} />
@@ -153,16 +218,20 @@ export default function ReportsPage() {
     );
 }
 
-function VentasReportTab({ allQuotes, range }: { allQuotes: Quote[], range?: DateRange }) {
+function VentasReportTab({ allQuotes, range, selectedClient }: { allQuotes: Quote[], range?: DateRange, selectedClient: string | null }) {
     const { currentPeriodStats } = useMemo(() => {
         if (!range?.from || !range?.to) return { currentPeriodStats: null };
 
         const processData = (startDate: Date, endDate: Date) => {
-            const filteredQuotes = allQuotes.filter(q => {
+            let filteredQuotes = allQuotes.filter(q => {
                 const quoteDate = new Date(q.date);
                 return quoteDate >= startDate && quoteDate <= endDate;
             });
             
+            if (selectedClient) {
+                filteredQuotes = filteredQuotes.filter(q => q.clientName === selectedClient);
+            }
+
             const accepted = filteredQuotes.filter(q => q.status === 'Aceptada');
             const rejected = filteredQuotes.filter(q => q.status === 'Rechazada');
             const paid = filteredQuotes.filter(q => q.status === 'Pagada');
@@ -180,15 +249,19 @@ function VentasReportTab({ allQuotes, range }: { allQuotes: Quote[], range?: Dat
 
         return { currentPeriodStats };
 
-    }, [allQuotes, range]);
+    }, [allQuotes, range, selectedClient]);
 
     const handleDownloadVentas = () => {
-        if (!range?.from || !range?.to) return;
-        const paidQuotesInRange = allQuotes.filter(q => {
+        if (!range?.from || !range.to) return;
+        let paidQuotesInRange = allQuotes.filter(q => {
             const quoteDate = new Date(q.date.replace(/-/g, '\/'));
             const isInRange = quoteDate >= range.from! && quoteDate <= range.to!;
             return q.status === 'Pagada' && isInRange;
         });
+
+        if (selectedClient) {
+            paidQuotesInRange = paidQuotesInRange.filter(q => q.clientName === selectedClient);
+        }
 
         const dataToExport = paidQuotesInRange.map(q => ({
             'ID Cotización': q.quoteNumber,
@@ -201,7 +274,10 @@ function VentasReportTab({ allQuotes, range }: { allQuotes: Quote[], range?: Dat
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte de Ventas");
-        XLSX.writeFile(workbook, `Reporte_Ventas_${format(range.from, "yyyy-MM-dd")}_a_${format(range.to, "yyyy-MM-dd")}.xlsx`);
+        
+        const clientFileNamePart = selectedClient ? `${selectedClient.replace(/ /g, '_')}_` : '';
+        const fileName = `Reporte_Ventas_${clientFileNamePart}${format(range.from, "yyyy-MM-dd")}_a_${format(range.to, "yyyy-MM-dd")}.xlsx`;
+        XLSX.writeFile(workbook, fileName);
     };
 
     if (!currentPeriodStats) return <div>Seleccione un rango de fechas para ver el reporte.</div>;
@@ -288,3 +364,4 @@ function ComprasReportTab({ allPurchaseOrders, range }: { allPurchaseOrders: Pur
 }
 
     
+
