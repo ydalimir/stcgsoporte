@@ -886,6 +886,8 @@ export function ProjectManager() {
         setIsQuoteFormOpen,
         setLinkingProjectForPO,
         setIsPOFormOpen,
+        setSelectedProject,
+        setIsFormOpen,
     }), [ projects, quotes, purchaseOrders, user, userProfile, handleDeleteProject, handleStatusChange, handleLinkQuote, handleLinkPurchaseOrder, handleEditQuote, handleEditPO]);
 
   const table = useReactTable({ 
@@ -1094,7 +1096,7 @@ export function ProjectManager() {
 }
 
 const getColumns = (
-    { handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, purchaseOrders, handleLinkPurchaseOrder, handleEditQuote, handleEditPO, user, userProfile, setLinkingProject, setIsQuoteFormOpen, setLinkingProjectForPO, setIsPOFormOpen }: any
+    { handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, purchaseOrders, handleLinkPurchaseOrder, handleEditQuote, handleEditPO, user, userProfile, setLinkingProject, setIsQuoteFormOpen, setLinkingProjectForPO, setIsPOFormOpen, setSelectedProject, setIsFormOpen }: any
 ): ColumnDef<Project>[] => [
       { 
         accessorKey: "client", 
@@ -1575,5 +1577,6 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
         </Dialog>
     )
 }
+
 
 
