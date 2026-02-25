@@ -65,7 +65,7 @@ export default function SignUpPage() {
 
   return (
      <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-5">
-       <div className="flex items-center justify-center bg-background p-8 order-2 md:order-1 md:col-span-3">
+       <div className="col-span-3 flex items-center justify-center bg-background p-8 order-2 md:order-1">
         <div className="w-full max-w-sm">
             <div className="text-center mb-8">
                 <div className="mx-auto bg-primary/10 text-primary w-fit p-3 rounded-full mb-4">
@@ -119,18 +119,17 @@ export default function SignUpPage() {
           </form>
         </div>
       </div>
-       <div className="relative hidden flex-col items-center justify-center p-8 md:flex order-1 md:order-2 md:col-span-2">
-         <Image
-            src="https://ucarecdn.com/2e73c219-cd6c-4d47-abfd-e4b2a36f286b/normal_65b16ffde4984.webp"
-            alt="Mantenimiento de equipo de cocina"
-            fill
-            className="object-cover"
-            data-ai-hint="kitchen maintenance"
-        />
+       <div className="relative col-span-2 hidden flex-col items-center justify-center bg-gray-900 p-8 text-white md:flex order-1 md:order-2">
         <div className="absolute inset-0 bg-white/60" />
-        <div className="relative z-10 text-center space-y-4">
-            <Logo className="justify-center" width={150} height={38} />
-            <p className="text-lg text-foreground/80">La solución definitiva para la gestión de servicios técnicos.</p>
+        <Image
+          src="https://ucarecdn.com/2e73c219-cd6c-4d47-abfd-e4b2a36f286b/normal_65b16ffde4984.webp"
+          alt="Mantenimiento de equipo de cocina"
+          fill
+          className="object-cover"
+          data-ai-hint="kitchen maintenance"
+        />
+        <div className="relative z-10 mt-8 text-center">
+          <Logo className="justify-center" width={150} height={38} />
         </div>
       </div>
     </div>
