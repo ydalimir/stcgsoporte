@@ -334,10 +334,7 @@ export default function AdminDashboardPage() {
       const userProfile = profileDoc.data() as UserProfile;
       const is_admin = userProfile.role === 'admin';
       
-      const baseProjectsQuery = query(collection(db, "projects"), where("status", "==", "En Progreso"), orderBy("programmedDate", "asc"));
-      const projectsQuery = is_admin 
-          ? baseProjectsQuery
-          : query(baseProjectsQuery, where("userId", "==", user.uid));
+      const projectsQuery = query(collection(db, "projects"), where("status", "==", "En Progreso"), orderBy("programmedDate", "asc"));
 
       dataListenersUnsubs.push(onSnapshot(projectsQuery, (snapshot) => {
           const projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
@@ -531,3 +528,5 @@ export default function AdminDashboardPage() {
     </>
   );
 }
+
+    
