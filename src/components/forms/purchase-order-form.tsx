@@ -54,7 +54,6 @@ const poFormSchema = z.object({
   supplierDetails: z.string().min(1, "Los detalles del proveedor son requeridos."),
   billToDetails: z.string().min(1, "Los detalles de facturación son requeridos."),
   date: z.string().min(1, "La fecha es requerida."),
-  deliveryDate: z.string().optional(),
   status: z.enum(["Borrador", "Enviada", "Recibida Parcialmente", "Recibida"]),
   items: z.array(poItemSchema).min(1, "Debe agregar al menos un ítem."),
   quoteId: z.string().optional(),
@@ -98,7 +97,6 @@ const defaultValues: POFormValues = {
   status: "Borrador",
   items: [],
   iva: 16,
-  deliveryDate: "",
   quoteId: "",
   tipoPago: "",
   diasCredito: "",
@@ -159,10 +157,14 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
 
   const paymentDueDate = useMemo(() => {
     const days = parseInt(creditDays || '0', 10);
-    if (!issueDate || isNaN(days) || days <= 0) {
+    if (!issueDate) {
         return "N/A";
     }
     const baseDate = new Date(issueDate.replace(/-/g, '\/'));
+    if (isNaN(days) || days <= 0) {
+        return baseDate.toLocaleDateString('es-MX', { timeZone: 'UTC' });
+    }
+    
     baseDate.setDate(baseDate.getDate() + days);
     return baseDate.toLocaleDateString('es-MX', { timeZone: 'UTC' });
   }, [issueDate, creditDays]);
@@ -174,7 +176,6 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
           ...defaultValues,
           ...purchaseOrder,
           date: purchaseOrder.date ? purchaseOrder.date.split('T')[0] : formatDate(new Date()),
-          deliveryDate: purchaseOrder.deliveryDate ? purchaseOrder.deliveryDate.split('T')[0] : "",
           items: purchaseOrder.items || [],
           quoteId: purchaseOrder.quoteId || ""
         });
@@ -320,10 +321,9 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
                     <FormField name="tipoPago" control={form.control} render={({ field }) => (<FormItem><FormLabel>Tipo de Pago</FormLabel><FormControl><Input {...field} readOnly disabled /></FormControl></FormItem>)} />
                     <FormField name="diasCredito" control={form.control} render={({ field }) => (<FormItem><FormLabel>Días de Crédito</FormLabel><FormControl><Input {...field} readOnly disabled /></FormControl></FormItem>)} />
                     <FormItem>
-                        <FormLabel>Fecha Venc. Pago</FormLabel>
+                        <FormLabel>Fecha de Pago</FormLabel>
                         <FormControl><Input value={paymentDueDate} readOnly disabled /></FormControl>
                     </FormItem>
-                    <FormField name="deliveryDate" control={form.control} render={({ field }) => (<FormItem><FormLabel>Fecha Aprox. Entrega</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)} />
               </div>
 
               <div className="border p-4 rounded-lg">

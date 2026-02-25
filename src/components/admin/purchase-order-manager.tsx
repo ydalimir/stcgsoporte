@@ -80,7 +80,6 @@ export type PurchaseOrder = {
   id: string;
   purchaseOrderNumber: string;
   date: string;
-  deliveryDate?: string;
   supplierId?: string;
   supplierName: string;
   supplierDetails: string;
@@ -165,7 +164,14 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
     
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
     const quoteDisplay = linkedQuote ? linkedQuote.quoteNumber : 'N/A';
-    const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
+    
+    const creditDays = parseInt(po.diasCredito || '0', 10);
+    let paymentDueDate = 'N/A';
+    if (po.date && !isNaN(creditDays)) {
+        const baseDate = new Date(po.date.replace(/-/g, '\/'));
+        baseDate.setDate(baseDate.getDate() + creditDays);
+        paymentDueDate = baseDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
+    }
 
     autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 5,
@@ -173,7 +179,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
             { content: `COTIZACIÓN:\n${quoteDisplay}`},
             { content: `TIPO DE PAGO:\n${po.tipoPago || 'N/A'}`},
             { content: `DÍAS DE CRÉDITO:\n${po.diasCredito || '0'}`},
-            { content: `FECHA APROX ENTREGA:\n${deliveryDate}`},
+            { content: `FECHA DE PAGO:\n${paymentDueDate}`},
         ]],
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
@@ -268,7 +274,7 @@ const downloadExcel = (po: PurchaseOrder) => {
     
     const creditDays = parseInt(po.diasCredito || '0', 10);
     let paymentDueDate = 'N/A';
-    if (po.date && !isNaN(creditDays) && creditDays > 0) {
+    if (po.date && !isNaN(creditDays)) {
         const baseDate = new Date(po.date.replace(/-/g, '\/'));
         baseDate.setDate(baseDate.getDate() + creditDays);
         paymentDueDate = baseDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
@@ -278,8 +284,7 @@ const downloadExcel = (po: PurchaseOrder) => {
       ["Orden de Compra:", poId],
       ["Proveedor:", po.supplierName],
       ["Fecha:", po.date ? new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
-      ["Fecha de Entrega:", po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
-      ["Fecha Vencimiento:", paymentDueDate],
+      ["Fecha de Pago:", paymentDueDate],
       ["Estado:", po.status],
       ["Tipo de Pago:", po.tipoPago || ''],
       ["Días de Crédito:", po.diasCredito || '0'],
@@ -779,6 +784,7 @@ export function PurchaseOrderManager() {
     </div>
   );
 }
+
 
 
 
