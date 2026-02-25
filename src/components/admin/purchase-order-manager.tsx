@@ -136,7 +136,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         didDrawPage: (data) => {
             if (data.pageNumber === 1) {
                 if (logoDataUrl) {
-                    doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 40, 15);
+                    doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 30, 15);
                 }
                 
                 doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(0, 0, 0);
@@ -777,8 +777,4 @@ export function PurchaseOrderManager() {
     </div>
   );
 }
-
-
-
-
 

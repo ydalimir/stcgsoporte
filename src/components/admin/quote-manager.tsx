@@ -196,7 +196,7 @@ const downloadPDF = async (quote: Quote) => {
 
     const drawHeader = () => {
         if (logoDataUrl) {
-            doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 40, 15);
+            doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 30, 15);
         }
         
         const headerDetailsX = pageWidth - pageMargin;
@@ -874,6 +874,4 @@ export function QuoteManager() {
     </div>
   );
 }
-
-
 
