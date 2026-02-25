@@ -87,6 +87,7 @@ export type PurchaseOrder = {
   quoteId?: string;
   tipoPago?: string;
   diasCredito?: string;
+  paymentDueDate?: string;
   status: "Borrador" | "Enviada" | "Recibida Parcialmente" | "Recibida";
   items: PurchaseOrderItem[];
   observations?: string;
@@ -165,13 +166,9 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
     const quoteDisplay = linkedQuote ? linkedQuote.quoteNumber : 'N/A';
     
-    const creditDays = parseInt(po.diasCredito || '0', 10);
-    let paymentDueDate = 'N/A';
-    if (po.date && !isNaN(creditDays)) {
-        const baseDate = new Date(po.date.replace(/-/g, '\/'));
-        baseDate.setDate(baseDate.getDate() + creditDays);
-        paymentDueDate = baseDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
-    }
+    const paymentDueDate = po.paymentDueDate
+        ? new Date(po.paymentDueDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'})
+        : 'N/A';
 
     autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 5,
@@ -272,13 +269,9 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
 const downloadExcel = (po: PurchaseOrder) => {
     const poId = po.purchaseOrderNumber;
     
-    const creditDays = parseInt(po.diasCredito || '0', 10);
-    let paymentDueDate = 'N/A';
-    if (po.date && !isNaN(creditDays)) {
-        const baseDate = new Date(po.date.replace(/-/g, '\/'));
-        baseDate.setDate(baseDate.getDate() + creditDays);
-        paymentDueDate = baseDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
-    }
+    const paymentDueDate = po.paymentDueDate
+        ? new Date(po.paymentDueDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'})
+        : 'N/A';
 
     const poData = [
       ["Orden de Compra:", poId],
@@ -784,6 +777,7 @@ export function PurchaseOrderManager() {
     </div>
   );
 }
+
 
 
 

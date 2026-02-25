@@ -59,6 +59,7 @@ const poFormSchema = z.object({
   quoteId: z.string().optional(),
   tipoPago: z.string().optional(),
   diasCredito: z.string().optional(),
+  paymentDueDate: z.string().optional(),
   observations: z.string().optional(),
   discountPercentage: z.coerce.number().min(0).max(100).optional(),
   iva: z.coerce.number().min(0, "El IVA no puede ser negativo.").default(16),
@@ -94,6 +95,7 @@ const defaultValues: POFormValues = {
   supplierDetails: "",
   billToDetails: billToDefault,
   date: formatDate(new Date()),
+  paymentDueDate: formatDate(new Date()),
   status: "Borrador",
   items: [],
   iva: 16,
@@ -155,19 +157,18 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
   const issueDate = form.watch('date');
   const creditDays = form.watch('diasCredito');
 
-  const paymentDueDate = useMemo(() => {
+  useEffect(() => {
     const days = parseInt(creditDays || '0', 10);
-    if (!issueDate) {
-        return "N/A";
-    }
+    if (!issueDate) return;
+    
     const baseDate = new Date(issueDate.replace(/-/g, '\/'));
-    if (isNaN(days) || days <= 0) {
-        return baseDate.toLocaleDateString('es-MX', { timeZone: 'UTC' });
+    
+    if (!isNaN(days) && days > 0) {
+        baseDate.setDate(baseDate.getDate() + days);
     }
     
-    baseDate.setDate(baseDate.getDate() + days);
-    return baseDate.toLocaleDateString('es-MX', { timeZone: 'UTC' });
-  }, [issueDate, creditDays]);
+    form.setValue('paymentDueDate', formatDate(baseDate));
+  }, [issueDate, creditDays, form]);
 
   useEffect(() => {
     if (isOpen) {
@@ -176,6 +177,7 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
           ...defaultValues,
           ...purchaseOrder,
           date: purchaseOrder.date ? purchaseOrder.date.split('T')[0] : formatDate(new Date()),
+          paymentDueDate: purchaseOrder.paymentDueDate ? purchaseOrder.paymentDueDate.split('T')[0] : undefined,
           items: purchaseOrder.items || [],
           quoteId: purchaseOrder.quoteId || ""
         });
@@ -320,10 +322,19 @@ export function PurchaseOrderForm({ isOpen, onOpenChange, onSave, purchaseOrder,
                     )} />
                     <FormField name="tipoPago" control={form.control} render={({ field }) => (<FormItem><FormLabel>Tipo de Pago</FormLabel><FormControl><Input {...field} readOnly disabled /></FormControl></FormItem>)} />
                     <FormField name="diasCredito" control={form.control} render={({ field }) => (<FormItem><FormLabel>Días de Crédito</FormLabel><FormControl><Input {...field} readOnly disabled /></FormControl></FormItem>)} />
-                    <FormItem>
-                        <FormLabel>Fecha de Pago</FormLabel>
-                        <FormControl><Input value={paymentDueDate} readOnly disabled /></FormControl>
-                    </FormItem>
+                    <FormField
+                        name="paymentDueDate"
+                        control={form.control}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Fecha de Pago</FormLabel>
+                                <FormControl>
+                                    <Input type="date" {...field} value={field.value || ''} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
               </div>
 
               <div className="border p-4 rounded-lg">
