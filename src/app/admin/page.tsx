@@ -121,21 +121,55 @@ const downloadQuotePDF = async (quote: Quote) => {
     drawHeader(); 
 
     const localDate = new Date(quote.date.replace(/-/g, '\/'));
+    
+    const clientInfo = [
+        `Empresa: ${quote.clientName}`,
+        `Teléfono: ${quote.clientPhone}`,
+        `Dirección: ${quote.clientAddress}`,
+        `RFC: ${quote.rfc || 'N/A'}`,
+    ].join('\n');
+
+    const quoteInfo = [
+        `Fecha: ${localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'})}`,
+        `Ciudad: Mérida, Yucatán`,
+        `Tipo de Servicio: ${quote.tipoServicio || 'N/A'}`,
+        `Tipo de Trabajo: ${quote.tipoTrabajo || 'N/A'}`,
+        `Equipo/Lugar: ${quote.equipoLugar || 'N/A'}`,
+    ].join('\n');
+    
+    const companyInfo = [
+        "Calle 55C No. 851 entre 100A y 104,",
+        "Fraccionamiento las Américas C.P. 97302",
+        "Mérida, Yucatán",
+        "",
+        "Oficinas: 990-101-0221",
+        "Correo: corporativo@lebaref.com",
+        "Administrativo: 999-593-5287",
+    ].join('\n');
+
     autoTable(doc, {
         startY: 35,
-        body: [
-            [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'})}`, styles: { halign: 'right' } }],
-            [{ content: `Empresa: ${quote.clientName}` }, { content: `Ciudad: Mérida`, styles: { halign: 'right' } }],
-            [{ content: `Dirección: ${quote.clientAddress}` }, { content: `Tipo de Servicio: ${quote.tipoServicio || ''}`, styles: { halign: 'right' } }],
-            [{ content: `Teléfono: ${quote.clientPhone}` }, { content: `Tipo de Trabajo: ${quote.tipoTrabajo || ''}`, styles: { halign: 'right' } }],
-            [{ content: `RFC: ${quote.rfc || ''}`}, ''],
-            [{ content: `Equipo/Lugar: ${quote.equipoLugar || ''}`, colSpan: 2 }],
-        ],
-        theme: 'plain',
-        styles: { fontSize: 9, cellPadding: 1, overflow: 'linebreak' },
-        columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },
+        head: [['Datos del Cliente', 'Datos de la Cotización', 'Contacto LEBAREF']],
+        body: [[clientInfo, quoteInfo, companyInfo]],
+        theme: 'grid',
+        headStyles: {
+            fontStyle: 'bold',
+            fillColor: [240, 240, 240],
+            textColor: 0,
+            fontSize: 9,
+        },
+        styles: {
+            fontSize: 8,
+            cellPadding: 2,
+            overflow: 'linebreak',
+            valign: 'top'
+        },
+        columnStyles: {
+            0: { cellWidth: 'auto' },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 'auto' },
+        },
         margin: { top: topMargin, left: pageMargin, right: pageMargin },
-        showHead: false,
     });
     
     let finalY = (doc as any).lastAutoTable.finalY;
