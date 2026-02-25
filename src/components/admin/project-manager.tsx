@@ -82,8 +82,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { QuoteForm } from "../forms/quote-form";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import type { PurchaseOrder } from "./purchase-order-manager";
-import { PurchaseOrderForm } from "../forms/purchase-order-form";
 import type { Client } from "./client-manager";
 import * as XLSX from "xlsx";
 import { User } from "firebase/auth";
@@ -109,7 +107,6 @@ const projectSchema = z.object({
   programmedDate: z.string().min(1, { message: "La fecha programada es requerida." }),
   priority: z.enum(["Baja", "Media", "Alta"]),
   quoteId: z.string().optional().nullable(),
-  purchaseOrderId: z.string().optional().nullable(),
 });
 
 export type Project = z.infer<typeof projectSchema> & {
@@ -334,241 +331,11 @@ const downloadQuoteExcel = (quote: Quote) => {
     XLSX.writeFile(wb, `${quoteId}.xlsx`);
 };
 
-const downloadPurchaseOrderPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
-    const doc = new jsPDF();
-    const pageHeight = doc.internal.pageSize.height;
-    const pageWidth = doc.internal.pageSize.width;
-    const pageMargin = 14;
-    const bottomMargin = 30;
-
-    let logoDataUrl: string | null = null;
-    try {
-        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771958796/logo-Photoroom_klbk3u.png';
-        const response = await fetch(logoUrl);
-        const blob = await response.blob();
-        logoDataUrl = await new Promise<string>(resolve => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-        });
-    } catch (error) {
-        console.error("Error loading logo for PDF:", error);
-    }
-
-    const drawFooter = (pageNumber: number, totalPages: number) => {
-        doc.setFontSize(8).setTextColor(150);
-        doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo:", pageWidth / 2, pageHeight - 15, {align: 'center'});
-        doc.text("corporativo@lebaref.com", pageWidth / 2, pageHeight - 10, {align: 'center'});
-        doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 10, { align: 'right' });
-    };
-    
-    autoTable(doc, {
-        didDrawPage: (data) => {
-            if (data.pageNumber === 1) {
-                if (logoDataUrl) {
-                    doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 40, 15);
-                }
-                
-                doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(0, 0, 0);
-                doc.text("ORDEN DE COMPRA", pageWidth - pageMargin, 20, { align: 'right' });
-
-                doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(100, 100, 100);
-                const poDate = po.date ? new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
-                doc.text(`FECHA: ${poDate}`, pageWidth - pageMargin, 28, { align: 'right' });
-                doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, pageWidth - pageMargin, 32, { align: 'right' });
-            }
-        },
-        // --- BILL TO / SEND TO ---
-        body: [
-            [
-                { content: 'FACTURAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 9 } },
-                { content: 'ENVIAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 9 } }
-            ],
-            [
-                { content: po.billToDetails, styles: { fontSize: 9 } },
-                { content: po.supplierDetails, styles: { fontSize: 9 } }
-            ]
-        ],
-        theme: 'plain',
-        startY: 40,
-        margin: { top: 40, bottom: bottomMargin }
-    });
-    
-    // --- PO DETAILS GRID ---
-    const linkedQuote = quotes.find(q => q.id === po.quoteId);
-    const quoteDisplay = linkedQuote ? linkedQuote.quoteNumber : 'N/A';
-    const deliveryDate = po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
-
-    autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 5,
-        body: [[
-            { content: `COTIZACIÓN:\n${quoteDisplay}`},
-            { content: `TIPO DE PAGO:\n${po.tipoPago || 'N/A'}`},
-            { content: `DÍAS DE CRÉDITO:\n${po.diasCredito || '0'}`},
-            { content: `FECHA APROX ENTREGA:\n${deliveryDate}`},
-        ]],
-        theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
-        margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin },
-    });
-
-    // --- ITEMS TABLE ---
-    const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
-    const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
-    const subTotalAfterDiscount = subtotal - discountAmount;
-    const ivaAmount = subTotalAfterDiscount * (po.iva / 100);
-    const total = subTotalAfterDiscount + ivaAmount;
-    
-    autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 5,
-      head: [['ARTÍCULO NO.', 'DESCRIPCIÓN', 'UNIDAD', 'CANTIDAD', 'PRECIO POR UNIDAD', 'TOTAL']],
-      body: po.items.map((item, index) => [
-        index + 1,
-        item.description, 
-        item.unit || 'PZA',
-        (item.quantity || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-        `$${(item.price || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      ]),
-      theme: 'grid',
-      headStyles: { fillColor: [220, 220, 220], textColor: 0, fontSize: 8, fontStyle: 'bold', halign: 'center' },
-      bodyStyles: { fontSize: 8 },
-      columnStyles: { 5: { halign: 'right' }},
-      margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin },
-    });
-
-    let finalY = (doc as any).lastAutoTable.finalY;
-
-    // --- Function to check space and add new page if needed ---
-    const checkPageSpace = (requiredSpace: number) => {
-        if (finalY + requiredSpace > pageHeight - bottomMargin) {
-            doc.addPage();
-            finalY = pageMargin; // Reset Y position
-        }
-    };
-    
-    // --- OBSERVATIONS ---
-    const observationsLines = po.observations ? doc.splitTextToSize(po.observations, 110) : [];
-    const observationsHeight = (observationsLines.length * 5) + 10; // 5 per line + padding
-    checkPageSpace(observationsHeight + 40); // Check space for observations and totals
-    
-    autoTable(doc, {
-        startY: finalY + 5,
-        body: [
-            [{ content: 'Observaciones / Instrucciones:', styles: { fontStyle: 'bold' } }],
-            [{ content: observationsLines.join('\n') }],
-        ],
-        theme: 'plain',
-        styles: { fontSize: 9 },
-        margin: { left: pageMargin, right: pageWidth / 2, bottom: bottomMargin }
-    });
-
-    // --- TOTALS ---
-    const totalsBody = [
-        [{ content: 'SUBTOTAL', styles: { halign: 'left' }}, { content: `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' }}],
-    ];
-    if (po.discountPercentage && po.discountPercentage > 0) {
-        totalsBody.push([{ content: `DESCUENTO ${po.discountPercentage}%`, styles: { halign: 'left' }}, { content: `-$${discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' }}]);
-    }
-    totalsBody.push([{ content: 'IVA', styles: { halign: 'left' }}, { content: `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' }}]);
-    totalsBody.push([{ content: 'TOTAL', styles: { fontStyle: 'bold', halign: 'left' }}, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' }}]);
-
-    autoTable(doc, {
-        startY: finalY + 5,
-        body: totalsBody,
-        theme: 'plain',
-        styles: { fontSize: 9 },
-        margin: { left: pageWidth / 2 + 10, right: pageMargin, bottom: bottomMargin }
-    });
-
-    finalY = (doc as any).lastAutoTable.finalY;
-
-    // --- SIGNATURE ---
-    checkPageSpace(30);
-    const signatureY = finalY + 15;
-    doc.setDrawColor(0,0,0);
-    doc.line(pageMargin, signatureY, pageMargin + 80, signatureY); 
-    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0,0,0);
-    doc.text('FIRMA AUTORIZADA', pageMargin + 40, signatureY + 5, { align: 'center' });
-    
-    // --- RENDER FOOTER ON ALL PAGES ---
-    const totalPages = (doc as any).internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-        doc.setPage(i);
-        drawFooter(i, totalPages);
-    }
-    
-    doc.save(`${po.purchaseOrderNumber}.pdf`);
-}
-
-const downloadPurchaseOrderExcel = (po: PurchaseOrder) => {
-    const poId = po.purchaseOrderNumber;
-    
-    const poData = [
-      ["Orden de Compra:", poId],
-      ["Proveedor:", po.supplierName],
-      ["Fecha:", po.date ? new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
-      ["Fecha de Entrega:", po.deliveryDate ? new Date(po.deliveryDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : ''],
-      ["Estado:", po.status],
-      ["Tipo de Pago:", po.tipoPago || ''],
-      ["Días de Crédito:", po.diasCredito || '0'],
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet(poData);
-
-    XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1}); 
-
-    const addresses = [
-        ["FACTURAR A:", "ENVIAR A:"],
-        [po.billToDetails, po.supplierDetails]
-    ];
-    XLSX.utils.sheet_add_aoa(ws, addresses, {origin: -1});
-
-    XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1}); 
-    
-    const itemsHeader = ["Descripción", "Unidad", "Cantidad", "Precio Unitario", "Total"];
-    const itemsData = po.items.map(item => [
-      item.description,
-      item.unit || 'PZA',
-      item.quantity,
-      item.price,
-      (item.quantity || 0) * (item.price || 0)
-    ]);
-
-    XLSX.utils.sheet_add_aoa(ws, [itemsHeader], {origin: -1});
-    XLSX.utils.sheet_add_json(ws, itemsData, {origin: -1, skipHeader: true});
-
-    const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
-    const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
-    const subTotalAfterDiscount = subtotal - discountAmount;
-    const ivaAmount = subTotalAfterDiscount * (po.iva / 100);
-    const total = subTotalAfterDiscount + ivaAmount;
-
-    const totalsData = [
-        [],
-        ["", "", "", "Subtotal", subtotal],
-        ["", "", "", `Descuento (${po.discountPercentage || 0}%)`, -discountAmount],
-        ["", "", "", `IVA (${po.iva}%)`, ivaAmount],
-        ["", "", "", "Total", total],
-    ];
-
-    XLSX.utils.sheet_add_aoa(ws, totalsData, {origin: -1});
-
-     XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1});
-     XLSX.utils.sheet_add_aoa(ws, [["Observaciones:", po.observations || '']], {origin: -1});
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Orden de Compra");
-    XLSX.writeFile(wb, `${poId}.xlsx`);
-};
-
-
 export function ProjectManager() {
   const { user, isLoading: authIsLoading } = useAuth();
   const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -580,10 +347,6 @@ export function ProjectManager() {
   const [isQuoteFormOpen, setIsQuoteFormOpen] = useState(false);
   const [linkingProject, setLinkingProject] = useState<Project | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
-
-  const [isPOFormOpen, setIsPOFormOpen] = useState(false);
-  const [linkingProjectForPO, setLinkingProjectForPO] = useState<Project | null>(null);
-  const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
   
   const highlightId = searchParams.get('highlight');
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
@@ -652,22 +415,10 @@ export function ProjectManager() {
         }));
     });
     
-    const poQuery = collection(db, "purchase_orders");
-    const unsubscribePOs = onSnapshot(poQuery, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PurchaseOrder));
-        setPurchaseOrders(data);
-    }, (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'purchase_orders',
-            operation: 'list',
-        }));
-    });
-
 
     return () => {
         unsubscribeProjects();
         unsubscribeQuotes();
-        unsubscribePOs();
     };
   }, [user, userProfile, isProfileLoading, toast]);
   
@@ -803,92 +554,21 @@ export function ProjectManager() {
         setEditingQuote(quote);
         setIsQuoteFormOpen(true);
     }, []);
-
-  const handleLinkPurchaseOrder = useCallback(async (projectId: string, purchaseOrderId: string | null) => {
-      const projectDoc = doc(db, "projects", projectId);
-      try {
-        await updateDoc(projectDoc, { purchaseOrderId: purchaseOrderId });
-        toast({ title: "Proyecto Actualizado", description: "La orden de compra ha sido vinculada/desvinculada." });
-      } catch(error) {
-         console.error("Error linking purchase order:", error);
-         toast({ title: "Error al vincular", variant: "destructive" });
-      }
-  }, [toast]);
-
-  const handleSaveAndLinkPO = useCallback(async (poData: any) => {
-    if (!linkingProjectForPO || !user) return;
-    try {
-        const newPOId = await runTransaction(db, async (transaction) => {
-            const userDocRef = doc(db, "users", user.uid);
-            const userDoc = await transaction.get(userDocRef);
-            if (!userDoc.exists()) throw new Error("User profile not found");
-
-            const userData = userDoc.data();
-            const newPoCounter = (userData.purchaseOrderCounter || 0) + 1;
-            const userCode = userData.userCode || "00";
-        
-            const newPoNumber = `OC${userCode}-${String(newPoCounter).padStart(4, '0')}`;
-            
-            transaction.update(userDocRef, { purchaseOrderCounter: newPoCounter });
-
-            const newPORef = doc(collection(db, "purchase_orders"));
-            transaction.set(newPORef, { ...poData, purchaseOrderNumber: newPoNumber, userId: user.uid });
-            return newPORef.id;
-        });
-
-        const projectDoc = doc(db, "projects", linkingProjectForPO.id);
-        await updateDoc(projectDoc, { purchaseOrderId: newPOId });
-
-        toast({ title: "Orden de Compra Creada y Vinculada", description: "La nueva orden de compra se ha vinculado al proyecto." });
-
-    } catch (error) {
-        console.error("Error creating and linking PO:", error);
-        toast({ title: "Error al vincular", description: "No se pudo crear y vincular la orden de compra.", variant: "destructive" });
-    } finally {
-        setIsPOFormOpen(false);
-        setLinkingProjectForPO(null);
-    }
-  }, [linkingProjectForPO, toast, user]);
-
-  const handleUpdatePO = useCallback(async (poData: any) => {
-      if (!editingPO) return;
-      try {
-          const poRef = doc(db, "purchase_orders", editingPO.id);
-          await updateDoc(poRef, poData);
-          toast({ title: "Orden de Compra Actualizada", description: `La orden para ${poData.supplierName} ha sido actualizada.` });
-      } catch (error) {
-          console.error("Error updating PO:", error);
-          toast({ title: "Error al actualizar", description: "No se pudo actualizar la orden de compra.", variant: "destructive" });
-      } finally {
-          setIsPOFormOpen(false);
-          setEditingPO(null);
-      }
-  }, [editingPO, toast]);
-
-    const handleEditPO = useCallback((po: PurchaseOrder) => {
-        setEditingPO(po);
-        setIsPOFormOpen(true);
-    }, []);
   
   const columns = useMemo(() => getColumns({
         handleDeleteProject, 
         handleStatusChange, 
         quotes, 
         projects, 
-        handleLinkQuote, 
-        purchaseOrders, 
-        handleLinkPurchaseOrder, 
-        handleEditQuote, 
-        handleEditPO, 
+        handleLinkQuote,
+        handleEditQuote,
         user, 
         userProfile,
         setLinkingProject,
         setIsQuoteFormOpen,
-        setLinkingProjectForPO,
-        setIsPOFormOpen,
         setSelectedProject,
         setIsFormOpen,
-    }), [ projects, quotes, purchaseOrders, user, userProfile, handleDeleteProject, handleStatusChange, handleLinkQuote, handleLinkPurchaseOrder, handleEditQuote, handleEditPO]);
+    }), [ projects, quotes, user, userProfile, handleDeleteProject, handleStatusChange, handleLinkQuote, handleEditQuote, setIsFormOpen, setSelectedProject]);
 
   const table = useReactTable({ 
     data: filteredProjects, 
@@ -930,14 +610,9 @@ export function ProjectManager() {
     editingQuote || (linkingProject ? { clientName: linkingProject.client } : null)
   , [editingQuote, linkingProject]);
 
-  const poForForm = useMemo(() => 
-    editingPO || (linkingProjectForPO ? {} : null)
-  , [editingPO, linkingProjectForPO]);
-
   const role = userProfile?.role;
   
   const linkedQuoteIds = useMemo(() => new Set(projects.map(p => p.quoteId).filter(Boolean)), [projects]);
-  const linkedPoIds = useMemo(() => new Set(projects.map(p => p.purchaseOrderId).filter(Boolean)), [projects]);
 
   if (isLoading || authIsLoading || isProfileLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -1056,12 +731,10 @@ export function ProjectManager() {
         onOpenChange={setIsFormOpen} 
         onSave={handleSaveProject} 
         project={selectedProject} 
-        quotes={quotes} 
-        purchaseOrders={purchaseOrders} 
+        quotes={quotes}
         user={user}
         userProfile={userProfile}
         linkedQuoteIds={linkedQuoteIds}
-        linkedPoIds={linkedPoIds}
       />
       <QuoteForm 
         isOpen={isQuoteFormOpen}
@@ -1076,27 +749,12 @@ export function ProjectManager() {
         quote={quoteForForm}
         userRole={role}
       />
-      <PurchaseOrderForm
-        isOpen={isPOFormOpen}
-        onOpenChange={(open) => {
-            if (!open) {
-                setLinkingProjectForPO(null);
-                setEditingPO(null);
-            }
-            setIsPOFormOpen(open);
-        }}
-        onSave={editingPO ? handleUpdatePO : handleSaveAndLinkPO}
-        purchaseOrder={poForForm as PurchaseOrder}
-        userRole={role}
-        user={user}
-        purchaseOrders={purchaseOrders}
-      />
     </div>
   );
 }
 
 const getColumns = (
-    { handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, purchaseOrders, handleLinkPurchaseOrder, handleEditQuote, handleEditPO, user, userProfile, setLinkingProject, setIsQuoteFormOpen, setLinkingProjectForPO, setIsPOFormOpen, setSelectedProject, setIsFormOpen }: any
+    { handleDeleteProject, handleStatusChange, quotes, projects, handleLinkQuote, handleEditQuote, user, userProfile, setLinkingProject, setIsQuoteFormOpen, setSelectedProject, setIsFormOpen }: any
 ): ColumnDef<Project>[] => [
       { 
         accessorKey: "client", 
@@ -1242,88 +900,6 @@ const getColumns = (
             return localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'});
         } 
       },
-       { 
-        id: "purchaseOrder",
-        header: "Orden de Compra",
-        cell: ({ row }) => {
-            const project = row.original;
-            const currentPO = purchaseOrders.find(po => po.id === project.purchaseOrderId);
-            const [open, setOpen] = useState(false);
-            
-            const otherLinkedPoIds = new Set(projects.filter(p => p.id !== project.id).map(p => p.purchaseOrderId).filter(Boolean));
-            
-            const availablePOs = purchaseOrders.filter(po => {
-                if (otherLinkedPoIds.has(po.id)) return false; 
-                if (userProfile?.role === 'admin') return true; 
-                return po.userId === user?.uid; 
-            });
-
-            const onSelectPO = (poId: string | null) => {
-              handleLinkPurchaseOrder(project.id, poId);
-              setOpen(false);
-            }
-
-            return (
-              <div className="flex items-center gap-1">
-                <Popover open={open} onOpenChange={setOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" role="combobox" aria-expanded={open} className="w-[150px] justify-between">
-                      {currentPO 
-                          ? currentPO.purchaseOrderNumber
-                          : "Asignar..."
-                      }
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0">
-                    <Command>
-                      <CommandInput placeholder="Buscar por proveedor o ID..." />
-                      <CommandList>
-                        <CommandEmpty>No se encontraron órdenes.</CommandEmpty>
-                        <CommandGroup>
-                          <CommandItem key="ninguna-po" value="ninguna-po" onSelect={() => onSelectPO(null)}>
-                            <Check className={cn("mr-2 h-4 w-4", !project.purchaseOrderId ? "opacity-100" : "opacity-0")}/>
-                            Ninguna
-                          </CommandItem>
-                          {availablePOs.map(po => (
-                            <CommandItem 
-                              key={po.id} 
-                              value={`${po.purchaseOrderNumber} ${po.supplierName}`}
-                              onSelect={() => onSelectPO(po.id)}
-                            >
-                              <Check className={cn("mr-2 h-4 w-4", project.purchaseOrderId === po.id ? "opacity-100" : "opacity-0")}/>
-                              {po.purchaseOrderNumber} ({po.supplierName})
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                        <CommandSeparator />
-                          <CommandGroup>
-                              <CommandItem onSelect={() => { setOpen(false); setLinkingProjectForPO(project); setIsPOFormOpen(true); }}>
-                                  <PlusCircle className="mr-2 h-4 w-4" />
-                                  Crear y Vincular O.C.
-                              </CommandItem>
-                          </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                 {currentPO && (
-                    <div className="flex items-center">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditPO(currentPO)}>
-                            <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={async () => await downloadPurchaseOrderPDF(currentPO, quotes)}>
-                            <Download className="h-4 w-4" />
-                        </Button>
-                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadPurchaseOrderExcel(currentPO)}>
-                            <FileSpreadsheet className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
-              </div>
-            )
-        }
-      },
       { accessorKey: "priority", header: "Prioridad", cell: ({row}) => {
          const priority = row.original.priority;
          return <Badge variant="outline" className={cn('capitalize', {
@@ -1382,14 +958,12 @@ interface ProjectFormDialogProps {
   onSave: (data: Omit<Project, 'id' | 'lastUpdated' | 'createdAt' | 'userId'>) => void;
   project: Project | null;
   quotes: Quote[];
-  purchaseOrders: PurchaseOrder[];
   user: User | null;
   userProfile: UserProfile | null;
   linkedQuoteIds: Set<string>;
-  linkedPoIds: Set<string>;
 }
 
-function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purchaseOrders, user, userProfile, linkedQuoteIds, linkedPoIds }: ProjectFormDialogProps) {
+function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, user, userProfile, linkedQuoteIds }: ProjectFormDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [clients, setClients] = useState<Client[]>([]);
     const [isClientComboboxOpen, setIsClientComboboxOpen] = useState(false);
@@ -1414,7 +988,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
 
     const form = useForm<z.infer<typeof projectSchema>>({
         resolver: zodResolver(projectSchema),
-        defaultValues: { client: "", description: "", responsible: "", status: "Nuevo", programmedDate: formatDate(new Date()), priority: "Media", quoteId: null, purchaseOrderId: null }
+        defaultValues: { client: "", description: "", responsible: "", status: "Nuevo", programmedDate: formatDate(new Date()), priority: "Media", quoteId: null }
     });
 
     useEffect(() => {
@@ -1424,10 +998,9 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
                 ...project, 
                 programmedDate: project.programmedDate,
                 quoteId: project.quoteId || null,
-                purchaseOrderId: project.purchaseOrderId || null,
             });
           } else {
-            form.reset({ client: "", description: "", responsible: "", status: "Nuevo", programmedDate: formatDate(new Date()), priority: "Media", quoteId: null, purchaseOrderId: null });
+            form.reset({ client: "", description: "", responsible: "", status: "Nuevo", programmedDate: formatDate(new Date()), priority: "Media", quoteId: null });
           }
         }
       }, [project, isOpen, form]);
@@ -1520,50 +1093,27 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
                             </Select><FormMessage /></FormItem>
                            )} />
                         </div>
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                             <FormField control={form.control} name="quoteId" render={({ field }) => (
-                                <FormItem><FormLabel>Cotización Vinculada</FormLabel>
-                                <Select onValueChange={(value) => field.onChange(value === 'none' ? null : value)} value={field.value ?? "none"}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar cotización..." /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="none">Ninguna</SelectItem>
-                                        {quotes.filter(q => {
-                                            const isLinked = linkedQuoteIds.has(q.id);
-                                            const isSelfLinked = project?.quoteId === q.id;
-                                            if (isLinked && !isSelfLinked) return false;
-                                            if (userProfile?.role === 'admin') return true;
-                                            return q.userId === user?.uid;
-                                        }).map(q => (
-                                            <SelectItem key={q.id} value={q.id}>
-                                               {q.quoteNumber} ({q.clientName})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage /></FormItem>
-                            )} />
-                             <FormField control={form.control} name="purchaseOrderId" render={({ field }) => (
-                                <FormItem><FormLabel>Orden de Compra Vinculada</FormLabel>
-                                 <Select onValueChange={(value) => field.onChange(value === 'none' ? null : value)} value={field.value ?? "none"}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar orden..." /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="none">Ninguna</SelectItem>
-                                        {purchaseOrders.filter(po => {
-                                            const isLinked = linkedPoIds.has(po.id);
-                                            const isSelfLinked = project?.purchaseOrderId === po.id;
-                                            if(isLinked && !isSelfLinked) return false;
-                                            if (userProfile?.role === 'admin') return true;
-                                            return po.userId === user?.uid;
-                                        }).map(po => (
-                                            <SelectItem key={po.id} value={po.id}>
-                                               {po.purchaseOrderNumber} ({po.supplierName})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage /></FormItem>
-                            )} />
-                        </div>
+                        <FormField control={form.control} name="quoteId" render={({ field }) => (
+                            <FormItem><FormLabel>Cotización Vinculada</FormLabel>
+                            <Select onValueChange={(value) => field.onChange(value === 'none' ? null : value)} value={field.value ?? "none"}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar cotización..." /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    <SelectItem value="none">Ninguna</SelectItem>
+                                    {quotes.filter(q => {
+                                        const isLinked = linkedQuoteIds.has(q.id);
+                                        const isSelfLinked = project?.quoteId === q.id;
+                                        if (isLinked && !isSelfLinked) return false;
+                                        if (userProfile?.role === 'admin') return true;
+                                        return q.userId === user?.uid;
+                                    }).map(q => (
+                                        <SelectItem key={q.id} value={q.id}>
+                                           {q.quoteNumber} ({q.clientName})
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage /></FormItem>
+                        )} />
                          <DialogFooter className="sticky bottom-0 bg-background pt-4">
                             <DialogClose asChild><Button type="button" variant="ghost">Cancelar</Button></DialogClose>
                             <Button type="submit" disabled={isSubmitting}>
@@ -1577,6 +1127,3 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, purc
         </Dialog>
     )
 }
-
-
-
