@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, query, where, orderBy, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Briefcase, FileText, ShoppingCart, List, Loader2 } from "lucide-react";
+import { Briefcase, FileText, ShoppingCart, List, Loader2, Download, FileSpreadsheet } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { errorEmitter } from "@/lib/error-emitter";
@@ -13,7 +14,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 type StatCardProps = {
   title: string;
@@ -37,7 +40,247 @@ type Project = {
     userId: string;
     lastUpdated: any;
     createdAt: any;
+    quoteId?: string;
 };
+
+type QuoteItem = {
+  description: string;
+  quantity: number;
+  price: number;
+  unidad?: string;
+};
+
+type Quote = {
+  id: string;
+  quoteNumber: string;
+  clientName: string;
+  clientPhone: string;
+  clientEmail?: string;
+  clientAddress: string;
+  date: string;
+  expirationDate?: string;
+  rfc?: string;
+  observations?: string;
+  policies?: string;
+  paymentTerms?: string;
+  subtotal: number;
+  total: number;
+  iva?: number;
+  status: "Borrador" | "Enviada" | "Aceptada" | "Rechazada" | "Pagada";
+  items: QuoteItem[];
+  linkedTicketId?: string;
+  tipoServicio?: string;
+  tipoTrabajo?: string;
+  equipoLugar?: string;
+  userId: string;
+};
+
+const downloadQuotePDF = async (quote: Quote) => {
+    const doc = new jsPDF();
+    const quoteId = quote.quoteNumber;
+    const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
+    const pageMargin = 14;
+    const bottomMargin = 40; 
+    const topMargin = 40;
+    let lastDrawnPage = 1;
+
+    let logoDataUrl: string | null = null;
+    try {
+        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771958796/logo-Photoroom_klbk3u.png';
+        const response = await fetch(logoUrl);
+        const blob = await response.blob();
+        logoDataUrl = await new Promise<string>(resolve => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error("Error loading logo for PDF:", error);
+    }
+
+    const drawHeader = () => {
+        if (logoDataUrl) {
+            doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 40, 15);
+        }
+        
+        const headerDetailsX = pageWidth - pageMargin;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`COTIZACIÓN`, headerDetailsX, 20 - 2, { align: 'right' });
+        
+        doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(100, 100, 100);
+        doc.text(`${quoteId}`, headerDetailsX, 20 + 4, { align: 'right' });
+
+        doc.setDrawColor(221, 221, 221); 
+        doc.line(pageMargin, 30, pageWidth - pageMargin, 30);
+        doc.setTextColor(0, 0, 0);
+    };
+
+    drawHeader(); 
+
+    const localDate = new Date(quote.date.replace(/-/g, '\/'));
+    autoTable(doc, {
+        startY: 35,
+        body: [
+            [{ content: `Datos del cliente`, styles: { fontStyle: 'bold' } }, { content: `Fecha: ${localDate.toLocaleDateString('es-MX', {timeZone: 'UTC'})}`, styles: { halign: 'right' } }],
+            [{ content: `Empresa: ${quote.clientName}` }, { content: `Ciudad: Mérida`, styles: { halign: 'right' } }],
+            [{ content: `Dirección: ${quote.clientAddress}` }, { content: `Tipo de Servicio: ${quote.tipoServicio || ''}`, styles: { halign: 'right' } }],
+            [{ content: `Teléfono: ${quote.clientPhone}` }, { content: `Tipo de Trabajo: ${quote.tipoTrabajo || ''}`, styles: { halign: 'right' } }],
+            [{ content: `RFC: ${quote.rfc || ''}`}, ''],
+            [{ content: `Equipo/Lugar: ${quote.equipoLugar || ''}`, colSpan: 2 }],
+        ],
+        theme: 'plain',
+        styles: { fontSize: 9, cellPadding: 1, overflow: 'linebreak' },
+        columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },
+        margin: { top: topMargin, left: pageMargin, right: pageMargin },
+        showHead: false,
+    });
+    
+    let finalY = (doc as any).lastAutoTable.finalY;
+
+    autoTable(doc, {
+        startY: finalY + 2,
+        didDrawPage: (data) => {
+            if (data.pageNumber > lastDrawnPage) {
+               drawHeader();
+               lastDrawnPage = data.pageNumber;
+            }
+        },
+        head: [['No.', 'Descripción', 'Unidad', 'Cantidad', 'Precio', 'Importe']],
+        body: quote.items.map((item, index) => [
+            index + 1,
+            item.description, 
+            item.unidad || 'PZA',
+            (item.quantity || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            `$${(item.price || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        ]),
+        foot: (() => {
+            const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+            const ivaPercentage = quote.iva ?? 16;
+            const ivaAmount = subtotal * (ivaPercentage / 100);
+            const total = quote.total ?? subtotal + ivaAmount;
+            return [
+                ['', '', '', '', { content: 'Subtotal', styles: { halign: 'right' } }, { content: `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
+                ['', '', '', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
+                ['', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' } }],
+            ];
+        })(),
+        headStyles: { fillColor: [41, 71, 121], fontSize: 8 },
+        bodyStyles: { fontSize: 8, overflow: 'linebreak' },
+        columnStyles: {
+            0: { cellWidth: 10 },
+            1: { cellWidth: 72 },
+            2: { cellWidth: 15 },
+            3: { cellWidth: 20, halign: 'right' },
+            4: { cellWidth: 30, halign: 'right' },
+            5: { cellWidth: 35, halign: 'right' },
+        },
+        margin: { top: topMargin, bottom: bottomMargin, left: pageMargin, right: pageMargin }
+    });
+
+    finalY = (doc as any).lastAutoTable.finalY;
+
+    if (finalY + 60 > pageHeight - bottomMargin) { 
+        doc.addPage();
+        drawHeader();
+        lastDrawnPage++;
+        finalY = topMargin;
+    }
+
+    const sectionsBody: any[] = [];
+    if (quote.observations) {
+        sectionsBody.push([{ content: 'Comentarios y Diagnóstico:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
+        sectionsBody.push([{ content: doc.splitTextToSize(quote.observations, 180), styles: { fontSize: 8, cellPadding: {top: 1, bottom: 4} } }]);
+    }
+    if (quote.policies) {
+        sectionsBody.push([{ content: 'Garantías:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
+        sectionsBody.push([{ content: doc.splitTextToSize(quote.policies, 180), styles: { fontSize: 7, cellPadding: {top: 1, bottom: 4} } }]);
+    }
+    if (quote.paymentTerms) {
+        sectionsBody.push([{ content: 'Condiciones de Pago:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
+        sectionsBody.push([{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 8, cellPadding: {top: 1, bottom: 4} } }]);
+    }
+
+    if (sectionsBody.length > 0) {
+        autoTable(doc, {
+            startY: finalY + 2,
+            body: sectionsBody,
+            theme: 'plain',
+            styles: { overflow: 'linebreak' },
+            margin: { top: topMargin, left: pageMargin, right: pageMargin, bottom: bottomMargin },
+            didDrawPage: (data) => {
+                if(data.pageNumber > lastDrawnPage) {
+                    drawHeader();
+                    lastDrawnPage = data.pageNumber;
+                }
+            },
+        });
+        finalY = (doc as any).lastAutoTable.finalY;
+    }
+    
+    const signatureBlockHeight = 25;
+    const footerHeight = 20;
+
+    if (finalY + signatureBlockHeight > pageHeight - footerHeight) {
+        doc.addPage();
+        drawHeader();
+        finalY = topMargin;
+    }
+
+    const signatureY = finalY + 15;
+    doc.setDrawColor(150, 150, 150);
+    doc.line(70, signatureY, 140, signatureY);
+    doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
+    doc.text("FIRMA DE ACEPTACIÓN", 105, signatureY + 5, { align: 'center' });
+    
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8).setTextColor(150);
+        doc.text("Gracias por su preferencia.", pageMargin, pageHeight - 15);
+        doc.text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 15, { align: 'right' });
+    }
+    
+    doc.save(`${quoteId}.pdf`);
+};
+
+const downloadQuoteExcel = (quote: Quote) => {
+    const quoteId = quote.quoteNumber;
+    
+    const itemsHeader = ["Descripción", "Unidad", "Cantidad", "Precio Unitario", "Importe"];
+    const itemsData = quote.items.map(item => [
+      item.description,
+      item.unidad || 'PZA',
+      item.quantity,
+      item.price,
+      (item.quantity || 0) * (item.price || 0)
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet([itemsHeader]);
+    XLSX.utils.sheet_add_json(ws, itemsData, {origin: -1, skipHeader: true});
+
+    const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+    const ivaPercentage = quote.iva ?? 16;
+    const ivaAmount = subtotal * (ivaPercentage / 100);
+    const total = quote.total ?? subtotal + ivaAmount;
+
+    const totalsData = [
+        [], 
+        ["", "", "", "Subtotal", subtotal],
+        ["", "", "", `IVA (${ivaPercentage}%)`, ivaAmount],
+        ["", "", "", "Total", total],
+    ];
+
+    XLSX.utils.sheet_add_aoa(ws, totalsData, {origin: -1});
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Cotizacion");
+    XLSX.writeFile(wb, `${quoteId}.xlsx`);
+};
+
 
 const StatCard = ({ title, value, icon, description }: StatCardProps) => (
   <Card>
@@ -62,23 +305,23 @@ export default function AdminDashboardPage() {
     projects: 0,
   });
   const [inProgressProjects, setInProgressProjects] = useState<Project[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const PROJECTS_PER_PAGE = 10;
 
   useEffect(() => {
     if (authIsLoading) {
-      return; // Wait for auth to be initialized
+      return;
     }
     if (!user) {
       router.push('/');
-      return; // Redirect if not logged in
+      return;
     }
 
     let dataListenersUnsubs: (() => void)[] = [];
 
     const profileUnsub = onSnapshot(doc(db, "users", user.uid), (profileDoc) => {
-      // Clean up previous data listeners before creating new ones
       dataListenersUnsubs.forEach(unsub => unsub());
       dataListenersUnsubs = [];
 
@@ -119,9 +362,11 @@ export default function AdminDashboardPage() {
         : query(collection(db, "purchase_orders"), where("userId", "==", user.uid));
 
       dataListenersUnsubs.push(onSnapshot(quotesStatsQuery, (snapshot) => {
-        const quotes = snapshot.docs.map(doc => doc.data());
-        const pendingQuotes = quotes.filter(q => q.status === 'Enviada' || q.status === 'Borrador').length;
-        setStats(prev => ({ ...prev, quotes: quotes.length, pendingQuotes }));
+        const quotesData = snapshot.docs.map(doc => doc.data());
+        const pendingQuotes = quotesData.filter(q => q.status === 'Enviada' || q.status === 'Borrador').length;
+        setStats(prev => ({ ...prev, quotes: quotesData.length, pendingQuotes }));
+        const fullQuotesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data()} as Quote));
+        setQuotes(fullQuotesData);
       }, () => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({ path: "quotes", operation: 'list' }));
       }));
@@ -211,6 +456,7 @@ export default function AdminDashboardPage() {
                                         <TableHead>Cliente</TableHead>
                                         <TableHead>Descripción</TableHead>
                                         <TableHead>Responsable</TableHead>
+                                        <TableHead>Cotización</TableHead>
                                         <TableHead>Prioridad</TableHead>
                                         <TableHead>Fecha Prog.</TableHead>
                                     </TableRow>
@@ -221,6 +467,25 @@ export default function AdminDashboardPage() {
                                             <TableCell>{project.client}</TableCell>
                                             <TableCell className="max-w-xs truncate">{project.description}</TableCell>
                                             <TableCell>{project.responsible}</TableCell>
+                                            <TableCell>
+                                                {(() => {
+                                                    const linkedQuote = quotes.find(q => q.id === project.quoteId);
+                                                    if (linkedQuote) {
+                                                        return (
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-medium">{linkedQuote.quoteNumber}</span>
+                                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={async () => await downloadQuotePDF(linkedQuote)}>
+                                                                    <Download className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadQuoteExcel(linkedQuote)}>
+                                                                    <FileSpreadsheet className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return 'N/A';
+                                                })()}
+                                            </TableCell>
                                             <TableCell>
                                                 <Badge variant="outline" className={cn('capitalize', {
                                                     'text-red-600 border-red-600': project.priority === 'Alta',
