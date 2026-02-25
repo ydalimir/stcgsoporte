@@ -52,9 +52,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-5">
-      <div className="relative col-span-2 hidden flex-col items-center justify-center bg-gray-900 p-8 text-white md:flex">
-        <div className="absolute inset-0 bg-white/60" />
+    <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-7">
+      <div className="relative col-span-3 hidden flex-col items-center justify-center p-8 text-white md:flex">
         <Image
           src="https://res.cloudinary.com/mundodepixeles/image/upload/v1768286128/photo-1541888946425-d81bb19240f5_enhjmo.avif"
           alt="Taller de mantenimiento"
@@ -62,11 +61,12 @@ export default function LoginPage() {
           className="object-cover"
           data-ai-hint="workshop tools"
         />
+        <div className="absolute inset-0 bg-white/75" />
         <div className="relative z-10 mt-8 text-center">
           <Logo className="justify-center" width={150} height={38} />
         </div>
       </div>
-      <div className="col-span-3 flex items-center justify-center bg-background p-8">
+      <div className="col-span-4 flex items-center justify-center bg-background p-8">
         <div className="w-full max-w-sm">
             <div className="text-center mb-8">
                 <div className="mx-auto bg-primary/10 text-primary w-fit p-3 rounded-full mb-4">
