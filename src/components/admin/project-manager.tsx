@@ -686,7 +686,7 @@ export function ProjectManager() {
             }
 
             return (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 whitespace-nowrap">
                 <Popover open={open} onOpenChange={setOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" aria-expanded={open} className="w-[150px] justify-between">
@@ -1213,5 +1213,6 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, user
 }
 
     
+
 
 
