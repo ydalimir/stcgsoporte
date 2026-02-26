@@ -302,7 +302,7 @@ const downloadQuotePDF = async (quote: Quote) => {
                 halign: 'right',
                 cellWidth: 25,
                 fontStyle: 'bold',
-                textColor: [0,0,0]
+                textColor: [0, 0, 0]
             }
         },
         didParseCell: (data) => {
@@ -730,7 +730,7 @@ export function ProjectManager() {
                   </PopoverContent>
                 </Popover>
                  {currentQuote && (
-                    <div className="flex items-center">
+                    <div className="flex items-center flex-nowrap">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditQuote(currentQuote)}>
                             <Edit className="h-4 w-4" />
                         </Button>
@@ -1213,4 +1213,5 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, user
 }
 
     
+
 

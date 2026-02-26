@@ -553,7 +553,7 @@ export default function AdminDashboardPage() {
                                                     const linkedQuote = quotes.find(q => q.id === project.quoteId);
                                                     if (linkedQuote) {
                                                         return (
-                                                            <div className="flex items-center gap-2">
+                                                            <div className="flex items-center gap-1 whitespace-nowrap">
                                                                 <span className="font-medium">{linkedQuote.quoteNumber}</span>
                                                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={async () => await downloadQuotePDF(linkedQuote)}>
                                                                     <Download className="h-4 w-4" />
@@ -616,4 +616,5 @@ export default function AdminDashboardPage() {
     
 
     
+
 
