@@ -253,8 +253,8 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         body: totalsData,
         startY: finalY + 5,
         theme: 'grid',
-        tableWidth: 65,
-        margin: { left: pageWidth - pageMargin - 65 },
+        tableWidth: 55,
+        margin: { left: pageWidth - pageMargin - 55 },
         styles: {
             fontSize: 8,
             cellPadding: 2,
@@ -265,11 +265,11 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
                 fillColor: [41, 71, 121],
                 textColor: 255,
                 halign: 'right',
-                cellWidth: 35
+                cellWidth: 30
             },
             1: {
                 halign: 'right',
-                cellWidth: 30,
+                cellWidth: 25,
                 fontStyle: 'bold'
             }
         },
@@ -809,11 +809,5 @@ export function PurchaseOrderManager() {
     </div>
   );
 }
-
-
-
-
-
-
 
     

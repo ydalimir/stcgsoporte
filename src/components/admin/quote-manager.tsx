@@ -244,7 +244,7 @@ const downloadPDF = async (quote: Quote) => {
 
     autoTable(doc, {
         startY: 35,
-        head: [['Datos del Cliente', 'Datos de la Cotización', 'Contacto LEBAREF']],
+        head: [['DATOS DEL CLIENTE', 'DATOS DE LA COTIZACIÓN', 'CONTACTO LEBAREF']],
         body: [[clientInfo, quoteInfo, companyInfo]],
         theme: 'grid',
         headStyles: {
@@ -321,8 +321,8 @@ const downloadPDF = async (quote: Quote) => {
         ],
         startY: finalY + 5,
         theme: 'grid',
-        tableWidth: 65,
-        margin: { left: pageWidth - pageMargin - 65 },
+        tableWidth: 55,
+        margin: { left: pageWidth - pageMargin - 55 },
         styles: {
             fontSize: 8,
             cellPadding: 2,
@@ -333,11 +333,11 @@ const downloadPDF = async (quote: Quote) => {
                 fillColor: [41, 71, 121], // Blue
                 textColor: 255, // White
                 halign: 'right',
-                cellWidth: 35
+                cellWidth: 30
             },
             1: {
                 halign: 'right',
-                cellWidth: 30,
+                cellWidth: 25,
                 fontStyle: 'bold'
             }
         },
@@ -912,13 +912,5 @@ export function QuoteManager() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
 
     
