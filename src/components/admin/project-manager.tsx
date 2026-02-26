@@ -150,7 +150,7 @@ const downloadQuotePDF = async (quote: Quote) => {
 
     const drawHeader = () => {
         if (logoDataUrl) {
-            doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 40, 15);
+            doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 30, 15);
         }
         
         const headerDetailsX = pageWidth - pageMargin;
@@ -275,8 +275,8 @@ const downloadQuotePDF = async (quote: Quote) => {
         ],
         startY: finalY + 5,
         theme: 'grid',
-        tableWidth: 90,
-        margin: { left: pageWidth - pageMargin - 90 },
+        tableWidth: 80,
+        margin: { left: pageWidth - pageMargin - 80 },
         styles: {
             fontSize: 8,
             cellPadding: 2,
@@ -291,7 +291,7 @@ const downloadQuotePDF = async (quote: Quote) => {
             },
             1: {
                 halign: 'right',
-                cellWidth: 45,
+                cellWidth: 35,
                 fontStyle: 'bold'
             }
         },
@@ -303,6 +303,7 @@ const downloadQuotePDF = async (quote: Quote) => {
     });
 
     finalY = (doc as any).lastAutoTable.finalY;
+
 
     if (finalY + 60 > pageHeight - bottomMargin) { 
         doc.addPage();
@@ -1206,3 +1207,6 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, user
 
 
 
+
+
+    

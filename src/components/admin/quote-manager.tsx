@@ -196,7 +196,7 @@ const downloadPDF = async (quote: Quote) => {
 
     const drawHeader = () => {
         if (logoDataUrl) {
-            doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 40, 15);
+            doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 30, 15);
         }
         
         const headerDetailsX = pageWidth - pageMargin;
@@ -321,8 +321,8 @@ const downloadPDF = async (quote: Quote) => {
         ],
         startY: finalY + 5,
         theme: 'grid',
-        tableWidth: 90,
-        margin: { left: pageWidth - pageMargin - 90 },
+        tableWidth: 80,
+        margin: { left: pageWidth - pageMargin - 80 },
         styles: {
             fontSize: 8,
             cellPadding: 2,
@@ -337,7 +337,7 @@ const downloadPDF = async (quote: Quote) => {
             },
             1: {
                 halign: 'right',
-                cellWidth: 45,
+                cellWidth: 35,
                 fontStyle: 'bold'
             }
         },
@@ -919,3 +919,6 @@ export function QuoteManager() {
 
 
 
+
+
+    
