@@ -249,8 +249,8 @@ const downloadPDF = async (quote: Quote) => {
         theme: 'grid',
         headStyles: {
             fontStyle: 'bold',
-            fillColor: [41, 71, 121],
-            textColor: 255,
+            fillColor: [240, 240, 240],
+            textColor: [0,0,0],
             fontSize: 8,
         },
         styles: {
@@ -873,6 +873,7 @@ export function QuoteManager() {
     </div>
   );
 }
+
 
 
 
