@@ -240,6 +240,7 @@ const downloadQuotePDF = async (quote: Quote) => {
             `$${(item.price || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         ]),
+        theme: 'grid',
         headStyles: { fillColor: [41, 71, 121], textColor: 255, fontStyle: 'bold', fontSize: 7 },
         bodyStyles: { fontSize: 7, overflow: 'linebreak' },
         columnStyles: {
