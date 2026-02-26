@@ -123,6 +123,11 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
     } catch (error) {
         console.error("Error loading logo for PDF:", error);
     }
+    
+    const processTextWithLineBreaks = (text: string, maxWidth: number) => {
+        if (!text) return [];
+        return text.split('\n').map(line => doc.splitTextToSize(line, maxWidth)).flat();
+    };
 
     // Header
     if (logoDataUrl) {
@@ -216,7 +221,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
     doc.text("Observaciones / Instrucciones:", pageMargin, finalY + 10);
     if(po.observations) {
         doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(0,0,0);
-        const splitObs = doc.splitTextToSize(po.observations, 120);
+        const splitObs = processTextWithLineBreaks(po.observations, 120);
         doc.text(splitObs, pageMargin, finalY + 15);
         finalY += (splitObs.length * 4)
     }

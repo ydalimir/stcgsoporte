@@ -99,6 +99,11 @@ const downloadQuotePDF = async (quote: Quote) => {
     } catch (error) {
         console.error("Error loading logo for PDF:", error);
     }
+    
+    const processTextWithLineBreaks = (text: string, maxWidth: number) => {
+        if (!text) return [];
+        return text.split('\n').map(line => doc.splitTextToSize(line, maxWidth)).flat();
+    };
 
     const drawHeader = () => {
         if (logoDataUrl) {
@@ -192,23 +197,23 @@ const downloadQuotePDF = async (quote: Quote) => {
             { content: 'TOTAL', styles: { halign: 'center' } }
         ]],
         body: quote.items.map((item, index) => [
-            index + 1,
-            item.description, 
-            item.unidad || 'PZA',
-            (item.quantity || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-            `$${(item.price || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            { content: index + 1, styles: { halign: 'center' } },
+            { content: item.description, styles: { halign: 'left' } },
+            { content: item.unidad || 'PZA', styles: { halign: 'center' } },
+            { content: (item.quantity || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), styles: { halign: 'right' } },
+            { content: `$${(item.price || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } },
+            { content: `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }
         ]),
         theme: 'grid',
-        headStyles: { fillColor: [41, 71, 121], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+        headStyles: { fillColor: [41, 71, 121], textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center' },
         bodyStyles: { fontSize: 7, overflow: 'linebreak' },
         columnStyles: {
-            0: { cellWidth: 20, halign: 'center' },
-            1: { cellWidth: 'auto', halign: 'left' },
-            2: { cellWidth: 20, halign: 'center' },
-            3: { cellWidth: 25, halign: 'right' },
-            4: { cellWidth: 30, halign: 'right' },
-            5: { cellWidth: 30, halign: 'right' },
+            0: { cellWidth: 20 },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 20 },
+            3: { cellWidth: 25 },
+            4: { cellWidth: 30 },
+            5: { cellWidth: 30 },
         },
         margin: { top: topMargin, bottom: bottomMargin, left: pageMargin, right: pageMargin }
     });
@@ -275,15 +280,15 @@ const downloadQuotePDF = async (quote: Quote) => {
     const sectionsBody: any[] = [];
     if (quote.observations) {
         sectionsBody.push([{ content: 'Comentarios y Diagnóstico:', styles: { fontStyle: 'bold', fontSize: 8 } }]);
-        sectionsBody.push([{ content: doc.splitTextToSize(quote.observations, 180), styles: { fontSize: 7, cellPadding: {top: 1, bottom: 4} } }]);
+        sectionsBody.push([{ content: processTextWithLineBreaks(quote.observations, 180), styles: { fontSize: 7, cellPadding: {top: 1, bottom: 4} } }]);
     }
     if (quote.policies) {
         sectionsBody.push([{ content: 'Garantías:', styles: { fontStyle: 'bold', fontSize: 8 } }]);
-        sectionsBody.push([{ content: doc.splitTextToSize(quote.policies, 180), styles: { fontSize: 6, cellPadding: {top: 1, bottom: 4} } }]);
+        sectionsBody.push([{ content: processTextWithLineBreaks(quote.policies, 180), styles: { fontSize: 6, cellPadding: {top: 1, bottom: 4} } }]);
     }
     if (quote.paymentTerms) {
         sectionsBody.push([{ content: 'Condiciones de Pago:', styles: { fontStyle: 'bold', fontSize: 8 } }]);
-        sectionsBody.push([{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 7, cellPadding: {top: 1, bottom: 4} } }]);
+        sectionsBody.push([{ content: processTextWithLineBreaks(quote.paymentTerms, 180), styles: { fontSize: 7, cellPadding: {top: 1, bottom: 4} } }]);
     }
 
     if (sectionsBody.length > 0) {
