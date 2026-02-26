@@ -277,7 +277,14 @@ const downloadPDF = async (quote: Quote) => {
                lastDrawnPage = data.pageNumber;
             }
         },
-        head: [['ARTÍCULO NO.', 'DESCRIPCIÓN', 'UNIDAD', 'CANTIDAD', 'PRECIO POR UNIDAD', 'TOTAL']],
+        head: [[
+            { content: 'ARTÍCULO NO.', styles: { halign: 'center' } },
+            { content: 'DESCRIPCIÓN', styles: { halign: 'left' } },
+            { content: 'UNIDAD', styles: { halign: 'center' } },
+            { content: 'CANTIDAD', styles: { halign: 'center' } },
+            { content: 'PRECIO POR UNIDAD', styles: { halign: 'center' } },
+            { content: 'TOTAL', styles: { halign: 'center' } }
+        ]],
         body: quote.items.map((item, index) => [
             index + 1,
             item.description, 
@@ -291,7 +298,7 @@ const downloadPDF = async (quote: Quote) => {
         bodyStyles: { fontSize: 7, overflow: 'linebreak' },
         columnStyles: {
             0: { cellWidth: 20, halign: 'center' },
-            1: { cellWidth: 'auto' },
+            1: { cellWidth: 'auto', halign: 'left' },
             2: { cellWidth: 20, halign: 'center' },
             3: { cellWidth: 25, halign: 'right' },
             4: { cellWidth: 30, halign: 'right' },
@@ -322,8 +329,8 @@ const downloadPDF = async (quote: Quote) => {
         ],
         startY: finalY + 5,
         theme: 'grid',
-        tableWidth: 55,
-        margin: { left: pageWidth - pageMargin - 55 },
+        tableWidth: 50,
+        margin: { left: pageWidth - pageMargin - 50 },
         styles: {
             fontSize: 8,
             cellPadding: 2,
@@ -334,7 +341,7 @@ const downloadPDF = async (quote: Quote) => {
                 fillColor: [41, 71, 121], // Blue
                 textColor: 255, // White
                 halign: 'right',
-                cellWidth: 30
+                cellWidth: 25
             },
             1: {
                 halign: 'right',

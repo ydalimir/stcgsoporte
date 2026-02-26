@@ -185,7 +185,14 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
 
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 5,
-      head: [['ARTÍCULO NO.', 'DESCRIPCIÓN', 'UNIDAD', 'CANTIDAD', 'PRECIO POR UNIDAD', 'TOTAL']],
+      head: [[
+            { content: 'ARTÍCULO NO.', styles: { halign: 'center' } },
+            { content: 'DESCRIPCIÓN', styles: { halign: 'left' } },
+            { content: 'UNIDAD', styles: { halign: 'center' } },
+            { content: 'CANTIDAD', styles: { halign: 'center' } },
+            { content: 'PRECIO POR UNIDAD', styles: { halign: 'center' } },
+            { content: 'TOTAL', styles: { halign: 'center' } }
+      ]],
       body: po.items.map((item, index) => [
         index + 1,
         item.description, 
@@ -199,7 +206,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
       bodyStyles: { fontSize: 7, overflow: 'linebreak' },
       columnStyles: {
             0: { cellWidth: 20, halign: 'center' },
-            1: { cellWidth: 'auto' },
+            1: { cellWidth: 'auto', halign: 'left' },
             2: { cellWidth: 20, halign: 'center' },
             3: { cellWidth: 25, halign: 'right' },
             4: { cellWidth: 30, halign: 'right' },
@@ -253,8 +260,8 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         body: totalsData,
         startY: finalY + 5,
         theme: 'grid',
-        tableWidth: 55,
-        margin: { left: pageWidth - pageMargin - 55 },
+        tableWidth: 50,
+        margin: { left: pageWidth - pageMargin - 50 },
         styles: {
             fontSize: 8,
             cellPadding: 2,
@@ -265,7 +272,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
                 fillColor: [41, 71, 121],
                 textColor: 255,
                 halign: 'right',
-                cellWidth: 30
+                cellWidth: 25
             },
             1: {
                 halign: 'right',
