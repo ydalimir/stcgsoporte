@@ -203,12 +203,12 @@ const downloadQuotePDF = async (quote: Quote) => {
         theme: 'grid',
         headStyles: {
             fontStyle: 'bold',
-            fillColor: [240, 240, 240],
-            textColor: 0,
-            fontSize: 9,
+            fillColor: [41, 71, 121],
+            textColor: 255,
+            fontSize: 8,
         },
         styles: {
-            fontSize: 8,
+            fontSize: 7,
             cellPadding: 2,
             overflow: 'linebreak',
             valign: 'top'
@@ -251,8 +251,8 @@ const downloadQuotePDF = async (quote: Quote) => {
                 ['', '', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' } }],
             ];
         })(),
-        headStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: 'bold', fontSize: 8 },
-        bodyStyles: { fontSize: 8, overflow: 'linebreak' },
+        headStyles: { fillColor: [41, 71, 121], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+        bodyStyles: { fontSize: 7, overflow: 'linebreak' },
         columnStyles: {
             0: { cellWidth: 20, halign: 'center' },
             1: { cellWidth: 'auto' },
@@ -276,16 +276,16 @@ const downloadQuotePDF = async (quote: Quote) => {
 
     const sectionsBody: any[] = [];
     if (quote.observations) {
-        sectionsBody.push([{ content: 'Comentarios y Diagnóstico:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
-        sectionsBody.push([{ content: doc.splitTextToSize(quote.observations, 180), styles: { fontSize: 8, cellPadding: {top: 1, bottom: 4} } }]);
+        sectionsBody.push([{ content: 'Comentarios y Diagnóstico:', styles: { fontStyle: 'bold', fontSize: 8 } }]);
+        sectionsBody.push([{ content: doc.splitTextToSize(quote.observations, 180), styles: { fontSize: 7, cellPadding: {top: 1, bottom: 4} } }]);
     }
     if (quote.policies) {
-        sectionsBody.push([{ content: 'Garantías:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
-        sectionsBody.push([{ content: doc.splitTextToSize(quote.policies, 180), styles: { fontSize: 7, cellPadding: {top: 1, bottom: 4} } }]);
+        sectionsBody.push([{ content: 'Garantías:', styles: { fontStyle: 'bold', fontSize: 8 } }]);
+        sectionsBody.push([{ content: doc.splitTextToSize(quote.policies, 180), styles: { fontSize: 6, cellPadding: {top: 1, bottom: 4} } }]);
     }
     if (quote.paymentTerms) {
-        sectionsBody.push([{ content: 'Condiciones de Pago:', styles: { fontStyle: 'bold', fontSize: 10 } }]);
-        sectionsBody.push([{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 8, cellPadding: {top: 1, bottom: 4} } }]);
+        sectionsBody.push([{ content: 'Condiciones de Pago:', styles: { fontStyle: 'bold', fontSize: 8 } }]);
+        sectionsBody.push([{ content: doc.splitTextToSize(quote.paymentTerms, 180), styles: { fontSize: 7, cellPadding: {top: 1, bottom: 4} } }]);
     }
 
     if (sectionsBody.length > 0) {
@@ -317,13 +317,13 @@ const downloadQuotePDF = async (quote: Quote) => {
     const signatureY = finalY + 15;
     doc.setDrawColor(150, 150, 150);
     doc.line(70, signatureY, 140, signatureY);
-    doc.setFontSize(10).setFont(undefined, 'normal').setTextColor(100);
+    doc.setFontSize(9).setFont(undefined, 'normal').setTextColor(100);
     doc.text("FIRMA DE ACEPTACIÓN", 105, signatureY + 5, { align: 'center' });
     
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        doc.setFontSize(8).setTextColor(150);
+        doc.setFontSize(7).setTextColor(150);
         doc.text("Gracias por su preferencia.", pageMargin, pageHeight - 15);
         doc.text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 15, { align: 'right' });
     }
@@ -1163,4 +1163,5 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, user
         </Dialog>
     )
 }
+
 

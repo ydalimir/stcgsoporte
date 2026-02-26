@@ -126,7 +126,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
     }
 
     const drawFooter = (pageNumber: number, totalPages: number) => {
-        doc.setFontSize(8).setTextColor(150);
+        doc.setFontSize(7).setTextColor(150);
         doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo:", pageWidth / 2, pageHeight - 15, {align: 'center'});
         doc.text("corporativo@lebaref.com", pageWidth / 2, pageHeight - 10, {align: 'center'});
         doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 10, { align: 'right' });
@@ -150,12 +150,12 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         },
         body: [
             [
-                { content: 'FACTURAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 9 } },
-                { content: 'ENVIAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 9 } }
+                { content: 'FACTURAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 8 } },
+                { content: 'ENVIAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 8 } }
             ],
             [
-                { content: po.billToDetails, styles: { fontSize: 9 } },
-                { content: po.supplierDetails, styles: { fontSize: 9 } }
+                { content: po.billToDetails, styles: { fontSize: 8 } },
+                { content: po.supplierDetails, styles: { fontSize: 8 } }
             ]
         ],
         theme: 'plain',
@@ -179,7 +179,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
             { content: `FECHA DE PAGO:\n${paymentDueDate}`},
         ]],
         theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
+        styles: { fontSize: 7, cellPadding: 2, halign: 'center' },
         margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin },
     });
 
@@ -201,8 +201,8 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       ]),
       theme: 'grid',
-      headStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: 'bold', fontSize: 8 },
-      bodyStyles: { fontSize: 8, overflow: 'linebreak' },
+      headStyles: { fillColor: [41, 71, 121], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+      bodyStyles: { fontSize: 7, overflow: 'linebreak' },
       columnStyles: {
             0: { cellWidth: 20, halign: 'center' },
             1: { cellWidth: 'auto' },
@@ -234,7 +234,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
             [{ content: observationsLines.join('\n') }],
         ],
         theme: 'plain',
-        styles: { fontSize: 9 },
+        styles: { fontSize: 8 },
         margin: { left: pageMargin, right: pageWidth / 2, bottom: bottomMargin }
     });
 
@@ -251,7 +251,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         startY: finalY + 5,
         body: totalsBody,
         theme: 'plain',
-        styles: { fontSize: 9 },
+        styles: { fontSize: 8 },
         margin: { left: pageWidth / 2 + 10, right: pageMargin, bottom: bottomMargin }
     });
 
@@ -261,7 +261,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
     const signatureY = finalY + 15;
     doc.setDrawColor(0,0,0);
     doc.line(pageMargin, signatureY, pageMargin + 80, signatureY); 
-    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0,0,0);
+    doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(0,0,0);
     doc.text('FIRMA AUTORIZADA', pageMargin + 40, signatureY + 5, { align: 'center' });
     
     const totalPages = (doc as any).internal.getNumberOfPages();
@@ -784,4 +784,5 @@ export function PurchaseOrderManager() {
     </div>
   );
 }
+
 

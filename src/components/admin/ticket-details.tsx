@@ -32,7 +32,7 @@ const downloadServiceOrderPDF = async (ticket: Ticket) => {
 
     let logoDataUrl: string | null = null;
     try {
-        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771958796/logo-Photoroom_klbk3u.png';
+        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771961790/logo-Photoroom_1_rpqv3n.png';
         const response = await fetch(logoUrl);
         const blob = await response.blob();
         logoDataUrl = await new Promise<string>(resolve => {
@@ -62,11 +62,11 @@ const downloadServiceOrderPDF = async (ticket: Ticket) => {
     autoTable(doc, {
       startY: 35,
       body: [
-        [{ content: 'CLIENTE', styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }, { content: 'DETALLES DEL SERVICIO', styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }],
+        [{ content: 'CLIENTE', styles: { fontStyle: 'bold', fillColor: [41, 71, 121], textColor: 255 } }, { content: 'DETALLES DEL SERVICIO', styles: { fontStyle: 'bold', fillColor: [41, 71, 121], textColor: 255 } }],
         [{ content: `Nombre: ${ticket.clientName}\nDirección: ${ticket.clientAddress}\nTeléfono: ${ticket.clientPhone}`, styles: { cellWidth: 91 } }, { content: `Tipo: ${ticket.serviceType}\nEquipo: ${ticket.equipmentType}\nUrgencia: ${ticket.urgency.charAt(0).toUpperCase() + ticket.urgency.slice(1)}`, styles: { cellWidth: 91 } }]
       ],
       theme: 'plain',
-      styles: { fontSize: 9, cellPadding: 2 },
+      styles: { fontSize: 8, cellPadding: 2 },
       margin: { bottom: bottomMargin }
     });
 
@@ -77,7 +77,7 @@ const downloadServiceOrderPDF = async (ticket: Ticket) => {
             [{ content: ticket.description }]
         ],
         theme: 'grid',
-        styles: { fontSize: 9 },
+        styles: { fontSize: 8 },
         margin: { bottom: bottomMargin }
     });
 
@@ -88,21 +88,21 @@ const downloadServiceOrderPDF = async (ticket: Ticket) => {
             [{ content: `\n\n\n\n`, styles: { minCellHeight: 30 } }]
         ],
         theme: 'grid',
-        styles: { fontSize: 9 },
+        styles: { fontSize: 8 },
         margin: { bottom: bottomMargin }
     });
 
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        doc.setFontSize(8).setTextColor(150).text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 10, { align: 'right' });
+        doc.setFontSize(7).setTextColor(150).text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 10, { align: 'right' });
     }
 
     doc.setPage(totalPages);
     const signatureY = pageHeight - 40;
     doc.setDrawColor(150, 150, 150);
     doc.line(20, signatureY, 80, signatureY);
-    doc.setFontSize(10).setTextColor(100).text("Firma del Cliente", 50, signatureY + 5, { align: 'center' });
+    doc.setFontSize(9).setTextColor(100).text("Firma del Cliente", 50, signatureY + 5, { align: 'center' });
     doc.line(116, signatureY, 176, signatureY);
     doc.text("Firma del Técnico", 146, signatureY + 5, { align: 'center' });
 
