@@ -146,7 +146,7 @@ const downloadServiceOrderPDF = async (ticket: Ticket) => {
         [{ content: `Nombre: ${ticket.clientName}\nDirección: ${ticket.clientAddress}\nTeléfono: ${ticket.clientPhone}`, styles: { cellWidth: 91 } }, { content: `Tipo: ${ticket.serviceType}\nEquipo: ${ticket.equipmentType}\nUrgencia: ${ticket.urgency.charAt(0).toUpperCase() + ticket.urgency.slice(1)}`, styles: { cellWidth: 91 } }]
       ],
       theme: 'plain',
-      styles: { fontSize: 9, cellPadding: 2 },
+      styles: { fontSize: 9, cellPadding: 2, overflow: 'linebreak' },
       margin: { bottom: bottomMargin }
     });
 
@@ -157,7 +157,7 @@ const downloadServiceOrderPDF = async (ticket: Ticket) => {
             [{ content: ticket.description }]
         ],
         theme: 'grid',
-        styles: { fontSize: 9 },
+        styles: { fontSize: 9, overflow: 'linebreak' },
         margin: { bottom: bottomMargin }
     });
 

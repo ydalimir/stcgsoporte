@@ -194,11 +194,6 @@ const downloadPDF = async (quote: Quote) => {
         console.error("Error loading logo for PDF:", error);
     }
     
-    const processTextWithLineBreaks = (text: string, maxWidth: number) => {
-        if (!text) return [];
-        return text.split('\n').map(line => doc.splitTextToSize(line, maxWidth)).flat();
-    };
-
     const drawHeader = () => {
         if (logoDataUrl) {
             doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 30, 15);
@@ -374,15 +369,15 @@ const downloadPDF = async (quote: Quote) => {
     const sectionsBody: any[] = [];
     if (quote.observations) {
         sectionsBody.push([{ content: 'Comentarios y Diagnóstico:', styles: { fontStyle: 'bold', fontSize: 8 } }]);
-        sectionsBody.push([{ content: processTextWithLineBreaks(quote.observations, 180), styles: { fontSize: 7, cellPadding: {top: 1, bottom: 4} } }]);
+        sectionsBody.push([{ content: quote.observations, styles: { fontSize: 7, cellPadding: {top: 1, bottom: 4} } }]);
     }
     if (quote.policies) {
         sectionsBody.push([{ content: 'Garantías:', styles: { fontStyle: 'bold', fontSize: 8 } }]);
-        sectionsBody.push([{ content: processTextWithLineBreaks(quote.policies, 180), styles: { fontSize: 6, cellPadding: {top: 1, bottom: 4} } }]);
+        sectionsBody.push([{ content: quote.policies, styles: { fontSize: 6, cellPadding: {top: 1, bottom: 4} } }]);
     }
     if (quote.paymentTerms) {
         sectionsBody.push([{ content: 'Condiciones de Pago:', styles: { fontStyle: 'bold', fontSize: 8 } }]);
-        sectionsBody.push([{ content: processTextWithLineBreaks(quote.paymentTerms, 180), styles: { fontSize: 7, cellPadding: {top: 1, bottom: 4} } }]);
+        sectionsBody.push([{ content: quote.paymentTerms, styles: { fontSize: 7, cellPadding: {top: 1, bottom: 4} } }]);
     }
 
     if (sectionsBody.length > 0) {

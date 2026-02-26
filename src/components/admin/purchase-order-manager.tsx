@@ -124,11 +124,6 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         console.error("Error loading logo for PDF:", error);
     }
     
-    const processTextWithLineBreaks = (text: string, maxWidth: number) => {
-        if (!text) return [];
-        return text.split('\n').map(line => doc.splitTextToSize(line, maxWidth)).flat();
-    };
-
     // Header
     if (logoDataUrl) {
         doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 30, 15);
@@ -217,13 +212,18 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
     let finalY = (doc as any).lastAutoTable.finalY;
 
     // Observations
-    doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(0,0,0);
-    doc.text("Observaciones / Instrucciones:", pageMargin, finalY + 10);
-    if(po.observations) {
-        doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(0,0,0);
-        const splitObs = processTextWithLineBreaks(po.observations, 120);
-        doc.text(splitObs, pageMargin, finalY + 15);
-        finalY += (splitObs.length * 4)
+    if (po.observations) {
+      autoTable(doc, {
+        startY: finalY + 5,
+        body: [
+          [{ content: 'Observaciones / Instrucciones:', styles: { fontStyle: 'bold', fontSize: 8 } }],
+          [{ content: po.observations }]
+        ],
+        theme: 'plain',
+        styles: { fontSize: 8, overflow: 'linebreak' },
+        margin: { left: pageMargin, right: pageMargin }
+      });
+      finalY = (doc as any).lastAutoTable.finalY;
     }
     
     // Totals
