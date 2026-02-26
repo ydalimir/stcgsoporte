@@ -109,7 +109,6 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
     const pageMargin = 14;
-    const bottomMargin = 30;
 
     let logoDataUrl: string | null = null;
     try {
@@ -125,42 +124,35 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         console.error("Error loading logo for PDF:", error);
     }
 
-    const drawFooter = (pageNumber: number, totalPages: number) => {
-        doc.setFontSize(7).setTextColor(150);
-        doc.text("Para preguntas relacionadas con esta orden de compra, póngase en contacto al correo:", pageWidth / 2, pageHeight - 15, {align: 'center'});
-        doc.text("corporativo@lebaref.com", pageWidth / 2, pageHeight - 10, {align: 'center'});
-        doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 10, { align: 'right' });
-    };
+    // Header
+    if (logoDataUrl) {
+        doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 30, 15);
+    }
     
-    autoTable(doc, {
-        didDrawPage: (data) => {
-            if (data.pageNumber === 1) {
-                if (logoDataUrl) {
-                    doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 30, 15);
-                }
-                
-                doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(0, 0, 0);
-                doc.text("ORDEN DE COMPRA", pageWidth - pageMargin, 20, { align: 'right' });
+    doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(0, 0, 0);
+    doc.text("ORDEN DE COMPRA", pageWidth - pageMargin, 20, { align: 'right' });
 
-                doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(100, 100, 100);
-                const poDate = po.date ? new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
-                doc.text(`FECHA: ${poDate}`, pageWidth - pageMargin, 28, { align: 'right' });
-                doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, pageWidth - pageMargin, 32, { align: 'right' });
-            }
-        },
+    doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(0, 0, 0);
+    const poDate = po.date ? new Date(po.date.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'}) : 'N/A';
+    doc.text(`FECHA: ${poDate}`, pageWidth - pageMargin, 28, { align: 'right' });
+    doc.text(`ORDEN DE COMPRA NO.: ${po.purchaseOrderNumber}`, pageWidth - pageMargin, 32, { align: 'right' });
+
+    // Addresses
+    autoTable(doc, {
         body: [
             [
                 { content: 'FACTURAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 8 } },
                 { content: 'ENVIAR A:', styles: { fontStyle: 'bold', textColor: [0,0,0], fontSize: 8 } }
             ],
             [
-                { content: po.billToDetails, styles: { fontSize: 8 } },
-                { content: po.supplierDetails, styles: { fontSize: 8 } }
+                { content: po.billToDetails, styles: { fontSize: 8, overflow: 'linebreak' } },
+                { content: po.supplierDetails, styles: { fontSize: 8, overflow: 'linebreak' } }
             ]
         ],
         theme: 'plain',
         startY: 40,
-        margin: { top: 40, bottom: bottomMargin }
+        tableWidth: 'auto',
+        margin: { left: pageMargin, right: pageMargin }
     });
     
     const linkedQuote = quotes.find(q => q.id === po.quoteId);
@@ -170,28 +162,30 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         ? new Date(po.paymentDueDate.replace(/-/g, '\/')).toLocaleDateString('es-MX', {timeZone: 'UTC'})
         : 'N/A';
 
+    // Details Bar
     autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 5,
         body: [[
             { content: `COTIZACIÓN:\n${quoteDisplay}`},
             { content: `TIPO DE PAGO:\n${po.tipoPago || 'N/A'}`},
             { content: `DÍAS DE CRÉDITO:\n${po.diasCredito || '0'}`},
-            { content: `FECHA DE PAGO:\n${paymentDueDate}`},
+            { content: `FECHA APROX ENTREGA:\n${paymentDueDate}`},
         ]],
         theme: 'grid',
         styles: { fontSize: 7, cellPadding: 2, halign: 'center' },
-        margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin },
+        margin: { left: pageMargin, right: pageMargin },
     });
 
+    // Items Table
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 5,
       head: [[
             { content: 'ARTÍCULO NO.', styles: { halign: 'center' } },
             { content: 'DESCRIPCIÓN', styles: { halign: 'left' } },
             { content: 'UNIDAD', styles: { halign: 'center' } },
-            { content: 'CANTIDAD', styles: { halign: 'center' } },
-            { content: 'PRECIO POR UNIDAD', styles: { halign: 'center' } },
-            { content: 'TOTAL', styles: { halign: 'center' } }
+            { content: 'CANTIDAD', styles: { halign: 'right' } },
+            { content: 'PRECIO POR UNIDAD', styles: { halign: 'right' } },
+            { content: 'TOTAL', styles: { halign: 'right' } }
       ]],
       body: po.items.map((item, index) => [
         index + 1,
@@ -202,7 +196,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       ]),
       theme: 'grid',
-      headStyles: { fillColor: [41, 71, 121], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+      headStyles: { fillColor: [220, 220, 220], textColor: [0,0,0], fontStyle: 'bold', fontSize: 7 },
       bodyStyles: { fontSize: 7, overflow: 'linebreak' },
       columnStyles: {
             0: { cellWidth: 20, halign: 'center' },
@@ -212,95 +206,55 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
             4: { cellWidth: 30, halign: 'right' },
             5: { cellWidth: 30, halign: 'right' },
       },
-      margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin },
+      margin: { left: pageMargin, right: pageMargin },
     });
 
     let finalY = (doc as any).lastAutoTable.finalY;
 
-    const checkPageSpace = (requiredSpace: number) => {
-        if (finalY + requiredSpace > pageHeight - bottomMargin) {
-            doc.addPage();
-            finalY = pageMargin;
-        }
-    };
+    // Observations
+    doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(0,0,0);
+    doc.text("Observaciones / Instrucciones:", pageMargin, finalY + 10);
+    if(po.observations) {
+        doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(0,0,0);
+        const splitObs = doc.splitTextToSize(po.observations, 120);
+        doc.text(splitObs, pageMargin, finalY + 15);
+        finalY += (splitObs.length * 4)
+    }
     
-    const observationsLines = po.observations ? doc.splitTextToSize(po.observations, 180) : [];
-    const observationsHeight = (observationsLines.length * 5) + 10;
-    checkPageSpace(observationsHeight + 40);
-    
-    autoTable(doc, {
-        startY: finalY + 5,
-        body: [
-            [{ content: 'Observaciones / Instrucciones:', styles: { fontStyle: 'bold' } }],
-            [{ content: observationsLines.join('\n') }],
-        ],
-        theme: 'plain',
-        styles: { fontSize: 8 },
-        margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin }
-    });
-    
-    finalY = (doc as any).lastAutoTable.finalY;
-    
+    // Totals
     const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
     const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
     const subTotalAfterDiscount = subtotal - discountAmount;
     const ivaAmount = subTotalAfterDiscount * (po.iva / 100);
     const total = subTotalAfterDiscount + ivaAmount;
 
-    const totalsData = [
-        ['SUBTOTAL', `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
-    ];
-    if (po.discountPercentage && po.discountPercentage > 0) {
-        totalsData.push([`DESCUENTO (${po.discountPercentage}%)`, `-$${discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
+    doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(0,0,0);
+    const labelsX = pageWidth - pageMargin - 80;
+    const valuesX = pageWidth - pageMargin;
+    const totalsY = finalY + 10;
+    
+    doc.text("SUBTOTAL", labelsX, totalsY, { align: 'left'});
+    doc.text(`$${subTotalAfterDiscount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, valuesX, totalsY, { align: 'right'});
+
+    doc.text("IVA", labelsX, totalsY + 5, { align: 'left'});
+    doc.text(`$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, valuesX, totalsY + 5, { align: 'right'});
+    
+    doc.setFont("helvetica", "bold");
+    doc.text("TOTAL", labelsX, totalsY + 10, { align: 'left'});
+    doc.text(`$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, valuesX, totalsY + 10, { align: 'right'});
+
+    finalY = totalsY + 10;
+
+    // Signature
+    let signatureY = finalY + 30;
+    if (signatureY > pageHeight - 30) {
+        doc.addPage();
+        signatureY = pageMargin + 20;
     }
-    totalsData.push([`IVA (${po.iva}%)`, `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
-    totalsData.push(['TOTAL', `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
-
-     autoTable(doc, {
-        body: totalsData,
-        startY: finalY + 5,
-        theme: 'grid',
-        tableWidth: 50,
-        margin: { left: pageWidth - pageMargin - 50 },
-        styles: {
-            fontSize: 8,
-            cellPadding: 2,
-        },
-        columnStyles: {
-            0: {
-                fontStyle: 'bold',
-                fillColor: [41, 71, 121],
-                textColor: 255,
-                halign: 'right',
-                cellWidth: 25
-            },
-            1: {
-                halign: 'right',
-                cellWidth: 25,
-                fontStyle: 'bold'
-            }
-        },
-        didParseCell: (data) => {
-            if (data.row.index === totalsData.length - 1) { // TOTAL row
-                data.cell.styles.fontStyle = 'bold';
-            }
-        }
-    });
-
-    finalY = (doc as any).lastAutoTable.finalY;
-
-    checkPageSpace(30);
-    const signatureY = finalY + 15;
     doc.setDrawColor(0,0,0);
     doc.line(pageMargin, signatureY, pageMargin + 80, signatureY); 
     doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(0,0,0);
     doc.text('FIRMA AUTORIZADA', pageMargin + 40, signatureY + 5, { align: 'center' });
-    
-    const totalPages = (doc as any).internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-        doc.setPage(i);
-        drawFooter(i, totalPages);
-    }
     
     doc.save(`${po.purchaseOrderNumber}.pdf`);
 };
