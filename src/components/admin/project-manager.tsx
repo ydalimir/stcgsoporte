@@ -240,17 +240,6 @@ const downloadQuotePDF = async (quote: Quote) => {
             `$${(item.price || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             `$${((item.quantity || 0) * (item.price || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         ]),
-        foot: (() => {
-            const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
-            const ivaPercentage = quote.iva ?? 16;
-            const ivaAmount = subtotal * (ivaPercentage / 100);
-            const total = quote.total ?? subtotal + ivaAmount;
-            return [
-                ['', '', '', '', '', { content: 'Subtotal', styles: { halign: 'right' } }, { content: `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
-                ['', '', '', '', '', { content: `IVA (${ivaPercentage}%)`, styles: { halign: 'right' } }, { content: `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' } }],
-                ['', '', '', '', '', { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } }, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' } }],
-            ];
-        })(),
         headStyles: { fillColor: [41, 71, 121], textColor: 255, fontStyle: 'bold', fontSize: 7 },
         bodyStyles: { fontSize: 7, overflow: 'linebreak' },
         columnStyles: {
@@ -265,9 +254,57 @@ const downloadQuotePDF = async (quote: Quote) => {
     });
 
     finalY = (doc as any).lastAutoTable.finalY;
+    
+    if (finalY > pageHeight - bottomMargin - 30) {
+        doc.addPage();
+        drawHeader();
+        lastDrawnPage++;
+        finalY = topMargin;
+    }
 
-    // Check for available space before adding the next sections
-    if (finalY + 60 > pageHeight - bottomMargin) { // 60 is an estimate for the sections block
+    const subtotal = quote.subtotal ?? quote.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+    const ivaPercentage = quote.iva ?? 16;
+    const ivaAmount = subtotal * (ivaPercentage / 100);
+    const total = quote.total ?? subtotal + ivaAmount;
+
+    autoTable(doc, {
+        body: [
+            ['SUBTOTAL', `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+            [`IVA (${ivaPercentage}%)`, `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+            ['TOTAL', `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+        ],
+        startY: finalY + 5,
+        theme: 'grid',
+        tableWidth: 90,
+        margin: { left: pageWidth - pageMargin - 90 },
+        styles: {
+            fontSize: 8,
+            cellPadding: 2,
+        },
+        columnStyles: {
+            0: {
+                fontStyle: 'bold',
+                fillColor: [41, 71, 121], // Blue
+                textColor: 255, // White
+                halign: 'right',
+                cellWidth: 45
+            },
+            1: {
+                halign: 'right',
+                cellWidth: 45,
+                fontStyle: 'bold'
+            }
+        },
+        didParseCell: (data) => {
+            if (data.row.index === 2) { // TOTAL row
+                data.cell.styles.fontStyle = 'bold';
+            }
+        }
+    });
+
+    finalY = (doc as any).lastAutoTable.finalY;
+
+    if (finalY + 60 > pageHeight - bottomMargin) { 
         doc.addPage();
         drawHeader();
         lastDrawnPage++;
@@ -1163,6 +1200,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, user
         </Dialog>
     )
 }
+
 
 
 

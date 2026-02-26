@@ -183,12 +183,6 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin },
     });
 
-    const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
-    const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
-    const subTotalAfterDiscount = subtotal - discountAmount;
-    const ivaAmount = subTotalAfterDiscount * (po.iva / 100);
-    const total = subTotalAfterDiscount + ivaAmount;
-    
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 5,
       head: [['ARTÍCULO NO.', 'DESCRIPCIÓN', 'UNIDAD', 'CANTIDAD', 'PRECIO POR UNIDAD', 'TOTAL']],
@@ -223,7 +217,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         }
     };
     
-    const observationsLines = po.observations ? doc.splitTextToSize(po.observations, 110) : [];
+    const observationsLines = po.observations ? doc.splitTextToSize(po.observations, 180) : [];
     const observationsHeight = (observationsLines.length * 5) + 10;
     checkPageSpace(observationsHeight + 40);
     
@@ -235,24 +229,55 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         ],
         theme: 'plain',
         styles: { fontSize: 8 },
-        margin: { left: pageMargin, right: pageWidth / 2, bottom: bottomMargin }
+        margin: { left: pageMargin, right: pageMargin, bottom: bottomMargin }
     });
+    
+    finalY = (doc as any).lastAutoTable.finalY;
+    
+    const subtotal = po.items.reduce((sum, item) => sum + (item.quantity || 0) * (item.price || 0), 0);
+    const discountAmount = subtotal * ((po.discountPercentage || 0) / 100);
+    const subTotalAfterDiscount = subtotal - discountAmount;
+    const ivaAmount = subTotalAfterDiscount * (po.iva / 100);
+    const total = subTotalAfterDiscount + ivaAmount;
 
-    const totalsBody = [
-        [{ content: 'SUBTOTAL', styles: { halign: 'left' }}, { content: `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' }}],
+    const totalsData = [
+        ['SUBTOTAL', `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
     ];
     if (po.discountPercentage && po.discountPercentage > 0) {
-        totalsBody.push([{ content: `DESCUENTO ${po.discountPercentage}%`, styles: { halign: 'left' }}, { content: `-$${discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' }}]);
+        totalsData.push([`DESCUENTO (${po.discountPercentage}%)`, `-$${discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
     }
-    totalsBody.push([{ content: 'IVA', styles: { halign: 'left' }}, { content: `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right' }}]);
-    totalsBody.push([{ content: 'TOTAL', styles: { fontStyle: 'bold', halign: 'left' }}, { content: `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', halign: 'right' }}]);
+    totalsData.push([`IVA (${po.iva}%)`, `$${ivaAmount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
+    totalsData.push(['TOTAL', `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
 
-    autoTable(doc, {
+     autoTable(doc, {
+        body: totalsData,
         startY: finalY + 5,
-        body: totalsBody,
-        theme: 'plain',
-        styles: { fontSize: 8 },
-        margin: { left: pageWidth / 2 + 10, right: pageMargin, bottom: bottomMargin }
+        theme: 'grid',
+        tableWidth: 90,
+        margin: { left: pageWidth - pageMargin - 90 },
+        styles: {
+            fontSize: 8,
+            cellPadding: 2,
+        },
+        columnStyles: {
+            0: {
+                fontStyle: 'bold',
+                fillColor: [41, 71, 121],
+                textColor: 255,
+                halign: 'right',
+                cellWidth: 45
+            },
+            1: {
+                halign: 'right',
+                cellWidth: 45,
+                fontStyle: 'bold'
+            }
+        },
+        didParseCell: (data) => {
+            if (data.row.index === totalsData.length - 1) { // TOTAL row
+                data.cell.styles.fontStyle = 'bold';
+            }
+        }
     });
 
     finalY = (doc as any).lastAutoTable.finalY;
@@ -784,6 +809,7 @@ export function PurchaseOrderManager() {
     </div>
   );
 }
+
 
 
 
