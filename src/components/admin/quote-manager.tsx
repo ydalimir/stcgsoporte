@@ -205,7 +205,7 @@ const downloadPDF = async (quote: Quote) => {
         doc.setTextColor(0, 0, 0);
         doc.text(`COTIZACIÓN`, headerDetailsX, 20 - 2, { align: 'right' });
         
-        doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(100, 100, 100);
+        doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(0, 0, 0);
         doc.text(`${quoteId}`, headerDetailsX, 20 + 4, { align: 'right' });
 
         doc.setDrawColor(221, 221, 221); 
@@ -257,7 +257,8 @@ const downloadPDF = async (quote: Quote) => {
             fontSize: 7,
             cellPadding: 2,
             overflow: 'linebreak',
-            valign: 'top'
+            valign: 'top',
+            textColor: [0, 0, 0],
         },
         columnStyles: {
             0: { cellWidth: 'auto' },
@@ -295,7 +296,7 @@ const downloadPDF = async (quote: Quote) => {
         ]),
         theme: 'grid',
         headStyles: { fillColor: [41, 71, 121], textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center' },
-        bodyStyles: { fontSize: 7, overflow: 'linebreak' },
+        bodyStyles: { fontSize: 7, overflow: 'linebreak', textColor: [0,0,0] },
         columnStyles: {
             0: { cellWidth: 20 },
             1: { cellWidth: 'auto' },
@@ -346,7 +347,8 @@ const downloadPDF = async (quote: Quote) => {
             1: {
                 halign: 'right',
                 cellWidth: 25,
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                textColor: [0, 0, 0]
             }
         },
         didParseCell: (data) => {
@@ -385,7 +387,7 @@ const downloadPDF = async (quote: Quote) => {
             startY: finalY + 2,
             body: sectionsBody,
             theme: 'plain',
-            styles: { overflow: 'linebreak' },
+            styles: { overflow: 'linebreak', textColor: [0,0,0] },
             margin: { top: topMargin, left: pageMargin, right: pageMargin, bottom: bottomMargin },
             didDrawPage: (data) => {
                 if(data.pageNumber > lastDrawnPage) {
@@ -409,13 +411,13 @@ const downloadPDF = async (quote: Quote) => {
     const signatureY = finalY + 15;
     doc.setDrawColor(150, 150, 150);
     doc.line(70, signatureY, 140, signatureY);
-    doc.setFontSize(9).setFont(undefined, 'normal').setTextColor(100);
+    doc.setFontSize(9).setFont(undefined, 'normal').setTextColor(0);
     doc.text("FIRMA DE ACEPTACIÓN", 105, signatureY + 5, { align: 'center' });
     
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        doc.setFontSize(7).setTextColor(150);
+        doc.setFontSize(7).setTextColor(0);
         doc.text("Gracias por su preferencia.", pageMargin, pageHeight - 15);
         doc.text(`Página ${i} de ${totalPages}`, pageWidth - pageMargin, pageHeight - 15, { align: 'right' });
     }
@@ -922,3 +924,4 @@ export function QuoteManager() {
 }
 
     
+
