@@ -182,7 +182,7 @@ const downloadPDF = async (quote: Quote) => {
 
     let logoDataUrl: string | null = null;
     try {
-        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771961790/logo-Photoroom_1_rpqv3n.png';
+        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771958796/logo-Photoroom_klbk3u.png';
         const response = await fetch(logoUrl);
         const blob = await response.blob();
         logoDataUrl = await new Promise<string>(resolve => {
@@ -196,7 +196,7 @@ const downloadPDF = async (quote: Quote) => {
 
     const drawHeader = () => {
         if (logoDataUrl) {
-            doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 45, 15);
+            doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 40, 15);
         }
         
         const headerDetailsX = pageWidth - pageMargin;
@@ -873,6 +873,7 @@ export function QuoteManager() {
     </div>
   );
 }
+
 
 
 

@@ -113,7 +113,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
 
     let logoDataUrl: string | null = null;
     try {
-        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771961790/logo-Photoroom_1_rpqv3n.png';
+        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771958796/logo-Photoroom_klbk3u.png';
         const response = await fetch(logoUrl);
         const blob = await response.blob();
         logoDataUrl = await new Promise<string>(resolve => {
@@ -136,7 +136,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
         didDrawPage: (data) => {
             if (data.pageNumber === 1) {
                 if (logoDataUrl) {
-                    doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 45, 15);
+                    doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 40, 15);
                 }
                 
                 doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(0, 0, 0);
@@ -784,6 +784,7 @@ export function PurchaseOrderManager() {
     </div>
   );
 }
+
 
 
 

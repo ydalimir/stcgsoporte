@@ -32,7 +32,7 @@ const downloadServiceOrderPDF = async (ticket: Ticket) => {
 
     let logoDataUrl: string | null = null;
     try {
-        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771961790/logo-Photoroom_1_rpqv3n.png';
+        const logoUrl = 'https://res.cloudinary.com/ddbgqzdpj/image/upload/v1771958796/logo-Photoroom_klbk3u.png';
         const response = await fetch(logoUrl);
         const blob = await response.blob();
         logoDataUrl = await new Promise<string>(resolve => {
@@ -46,7 +46,7 @@ const downloadServiceOrderPDF = async (ticket: Ticket) => {
 
     const drawHeader = () => {
         if (logoDataUrl) {
-            doc.addImage(logoDataUrl, 'PNG', pageMargin, 8, 45, 15);
+            doc.addImage(logoDataUrl, 'PNG', pageMargin, 8, 40, 15);
         } else {
             doc.setFont("helvetica", "bold").setFontSize(20).text("LEBAREF", pageMargin, 15);
         }
