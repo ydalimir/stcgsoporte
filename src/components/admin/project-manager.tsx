@@ -150,7 +150,7 @@ const downloadQuotePDF = async (quote: Quote) => {
 
     const drawHeader = () => {
         if (logoDataUrl) {
-            doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 30, 15);
+            doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 45, 15);
         }
         
         const headerDetailsX = pageWidth - pageMargin;
@@ -1163,6 +1163,7 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, user
         </Dialog>
     )
 }
+
 
 
 

@@ -46,7 +46,7 @@ const downloadServiceOrderPDF = async (ticket: Ticket) => {
 
     const drawHeader = () => {
         if (logoDataUrl) {
-            doc.addImage(logoDataUrl, 'PNG', pageMargin, 8, 30, 15);
+            doc.addImage(logoDataUrl, 'PNG', pageMargin, 8, 45, 15);
         } else {
             doc.setFont("helvetica", "bold").setFontSize(20).text("LEBAREF", pageMargin, 15);
         }
