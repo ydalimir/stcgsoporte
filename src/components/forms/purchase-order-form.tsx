@@ -86,9 +86,9 @@ const formatDate = (date: Date) => {
 
 const billToDefault = `Attn: Lebaref
 LEBAREF SERVICIO DE MANTENIMIENTO GENERAL S.A. DE C.V.
-CALLE 55C NO.851 ENTRE 100 A Y 104, FRACCIONAMIENTO LAS AMERICAS C.P. 97302, MERIDA YUCATAN
+Calle 33 No. 259 Num int 2 por 12 y 14 Col. Santa María Chuburna CP. 97138, Mérida, Yucatán
 990 101 02 21
-lebarefmantenimiento@gmail.com`;
+corporativo@lebaref.com`;
 
 const defaultValues: POFormValues = {
   supplierName: "",
