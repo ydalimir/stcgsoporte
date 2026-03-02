@@ -126,7 +126,7 @@ const downloadPDF = async (po: PurchaseOrder, quotes: Quote[]) => {
     
     // Header
     if (logoDataUrl) {
-        doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 30, 15);
+        doc.addImage(logoDataUrl, 'PNG', pageMargin, 12, 20, 15);
     }
     
     doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(0, 0, 0);
