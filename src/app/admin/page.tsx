@@ -167,9 +167,9 @@ const downloadQuotePDF = async (quote: Quote) => {
             textColor: [0, 0, 0],
         },
         columnStyles: {
-            0: { cellWidth: 'auto' },
-            1: { cellWidth: 'auto' },
-            2: { cellWidth: 'auto' },
+            0: { cellWidth: 60 },
+            1: { cellWidth: 60 },
+            2: { cellWidth: 62 },
         },
         margin: { top: topMargin, left: pageMargin, right: pageMargin },
     });
