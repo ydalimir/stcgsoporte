@@ -143,7 +143,6 @@ const downloadQuotePDF = async (quote: Quote) => {
         "",
         "Oficinas: 990-101-0221",
         "Correo: corporativo@lebaref.com",
-        "Administrativo: 999-593-5287",
     ].join('\n');
 
     autoTable(doc, {
@@ -614,4 +613,5 @@ export default function AdminDashboardPage() {
     
 
     
+
 
