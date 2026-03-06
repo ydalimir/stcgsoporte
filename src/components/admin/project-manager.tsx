@@ -187,9 +187,7 @@ const downloadQuotePDF = async (quote: Quote) => {
     ].join('\n');
     
     const companyInfo = [
-        "Calle 55C No. 851 entre 100A y 104,",
-        "Fraccionamiento las Américas C.P. 97302",
-        "Mérida, Yucatán",
+        "Calle 33 No. 259 Num int 2 por 12 y 14 Col. Santa María Chuburna CP. 97138, Mérida, Yucatán",
         "",
         "Oficinas: 990-101-0221",
         "Correo: corporativo@lebaref.com",
@@ -1213,3 +1211,4 @@ function ProjectFormDialog({ isOpen, onOpenChange, onSave, project, quotes, user
 }
 
     
+
